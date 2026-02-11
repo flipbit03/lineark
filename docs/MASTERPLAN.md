@@ -419,76 +419,78 @@ and ensure all tests pass."
 
 **Goal:** Working codegen, SDK with read operations, CLI that can list/read the most important entities.
 
-**Workspace setup:**
-- [ ] Create root `Cargo.toml` with `[workspace]` and `members = ["crates/*"]`
-- [ ] Create `crates/lineark-sdk/Cargo.toml` with dependencies (reqwest, tokio, serde, serde_json, chrono)
-- [ ] Create `crates/lineark/Cargo.toml` with dependencies (lineark-sdk, clap, tokio, serde_json, tabled, colored)
-- [ ] Create `crates/lineark-codegen/Cargo.toml` with dependencies (graphql-parser, prettyplease, toml)
-- [ ] Verify `cargo build --workspace` compiles with empty lib.rs/main.rs stubs
+**Workspace setup (#1):**
+- [ ] Create root `Cargo.toml` with `[workspace]` and `members = ["crates/*"]` (#1)
+- [ ] Create `crates/lineark-sdk/Cargo.toml` with dependencies (reqwest, tokio, serde, serde_json, chrono) (#1)
+- [ ] Create `crates/lineark/Cargo.toml` with dependencies (lineark-sdk, clap, tokio, serde_json, tabled, colored) (#1)
+- [ ] Create `crates/lineark-codegen/Cargo.toml` with dependencies (graphql-parser, prettyplease, toml) (#1)
+- [ ] Verify `cargo build --workspace` compiles with empty lib.rs/main.rs stubs (#1)
 
-**Schema acquisition:**
-- [ ] Fetch Linear's public GraphQL schema via introspection query
-- [ ] Save as `schema/schema.graphql`
-- [ ] Create initial `schema/operations.toml` with Phase 1 query allowlist (viewer, teams, team, users, issues, issue, projects, project, cycles, cycle, labels)
+**Schema acquisition (#2):**
+- [ ] Fetch Linear's public GraphQL schema via introspection query (#2)
+- [ ] Save as `schema/schema.graphql` (#2)
+- [ ] Create initial `schema/operations.toml` with Phase 1 query allowlist (viewer, teams, team, users, issues, issue, projects, project, cycles, cycle, labels) (#2)
 
-**Codegen — type generation:**
-- [ ] Implement `parser.rs`: parse `schema.graphql` with `graphql-parser`, extract all type definitions into a structured intermediate representation
-- [ ] Implement `emit_scalars.rs`: map GraphQL custom scalars to Rust types (DateTime->chrono, JSON->serde_json::Value, etc.)
-- [ ] Implement `emit_enums.rs`: generate Rust enums with `#[derive(Debug, Clone, Serialize, Deserialize)]` and serde rename for all 72 GraphQL enums
-- [ ] Implement `emit_types.rs`: generate Rust structs for all ~485 object types (scalar + enum fields only, skip nested objects)
-- [ ] Implement `emit_inputs.rs`: generate Rust input structs for all ~337 input types with `Default` impl and `Option<T>` for optional fields
-- [ ] Implement `main.rs` for codegen: wire up parser + emitters, read schema file, write `crates/lineark-sdk/src/generated/*.rs`
-- [ ] Format generated output with `prettyplease`
-- [ ] Run codegen and verify generated code compiles: `cargo run -p lineark-codegen && cargo build -p lineark-sdk`
+**Codegen — type generation (#3):**
+- [ ] Implement `parser.rs`: parse `schema.graphql` with `graphql-parser`, extract all type definitions into a structured intermediate representation (#3)
+- [ ] Implement `emit_scalars.rs`: map GraphQL custom scalars to Rust types (DateTime->chrono, JSON->serde_json::Value, etc.) (#3)
+- [ ] Implement `emit_enums.rs`: generate Rust enums with `#[derive(Debug, Clone, Serialize, Deserialize)]` and serde rename for all 72 GraphQL enums (#3)
+- [ ] Implement `emit_types.rs`: generate Rust structs for all ~485 object types (scalar + enum fields only, skip nested objects) (#3)
+- [ ] Implement `emit_inputs.rs`: generate Rust input structs for all ~337 input types with `Default` impl and `Option<T>` for optional fields (#3)
+- [ ] Implement `main.rs` for codegen: wire up parser + emitters, read schema file, write `crates/lineark-sdk/src/generated/*.rs` (#3)
+- [ ] Format generated output with `prettyplease` (#3)
+- [ ] Run codegen and verify generated code compiles: `cargo run -p lineark-codegen && cargo build -p lineark-sdk` (#3)
 
-**Codegen — query generation:**
-- [ ] Implement `emit_queries.rs`: for each allowed query in `operations.toml`, generate an async function on `Client` that embeds the GraphQL query string and deserializes the response
-- [ ] Implement `emit_mutations.rs`: same pattern for mutations (empty for Phase 1, but the infrastructure must exist)
-- [ ] Generate GraphQL query strings that select scalar + enum fields of the return type, plus `pageInfo` for connection types
-- [ ] Re-run codegen, verify everything compiles
+**Codegen — query generation (#4):**
+- [ ] Implement `emit_queries.rs`: for each allowed query in `operations.toml`, generate an async function on `Client` that embeds the GraphQL query string and deserializes the response (#4)
+- [ ] Implement `emit_mutations.rs`: same pattern for mutations (empty for Phase 1, but the infrastructure must exist) (#4)
+- [ ] Generate GraphQL query strings that select scalar + enum fields of the return type, plus `pageInfo` for connection types (#4)
+- [ ] Re-run codegen, verify everything compiles (#4)
 
-**SDK core (hand-written):**
-- [ ] Implement `auth.rs`: token resolution — read `~/.linear_api_token` file, `$LINEAR_API_TOKEN` env var, or accept token directly
-- [ ] Implement `client.rs`: `Client` struct wrapping `reqwest::Client`, with `from_token()`, `from_env()`, `from_file()`, `auto()` constructors
-- [ ] Implement HTTP transport: POST to `https://api.linear.app/graphql` with JSON body `{ query, variables }`, parse response `{ data, errors }`
-- [ ] Implement `error.rs`: `LinearError` enum with variants for Authentication, RateLimited, InvalidInput, Forbidden, Network, GraphQL
-- [ ] Implement rate limit handling: parse `retry-after`, `x-ratelimit-*` headers from error responses
-- [ ] Implement `pagination.rs`: `Connection<T>` struct with `nodes: Vec<T>`, `PageInfo { has_next_page, end_cursor }`, and `.all()` auto-paginator
-- [ ] Implement `lib.rs`: public re-exports of Client, error types, generated types/enums/inputs, pagination types
-- [ ] Verify SDK compiles and public API surface is clean
+**SDK core — hand-written (#5):**
+- [ ] Implement `auth.rs`: token resolution — read `~/.linear_api_token` file, `$LINEAR_API_TOKEN` env var, or accept token directly (#5)
+- [ ] Implement `client.rs`: `Client` struct wrapping `reqwest::Client`, with `from_token()`, `from_env()`, `from_file()`, `auto()` constructors (#5)
+- [ ] Implement HTTP transport: POST to `https://api.linear.app/graphql` with JSON body `{ query, variables }`, parse response `{ data, errors }` (#5)
+- [ ] Implement `error.rs`: `LinearError` enum with variants for Authentication, RateLimited, InvalidInput, Forbidden, Network, GraphQL (#5)
+- [ ] Implement rate limit handling: parse `retry-after`, `x-ratelimit-*` headers from error responses (#5)
+- [ ] Implement `pagination.rs`: `Connection<T>` struct with `nodes: Vec<T>`, `PageInfo { has_next_page, end_cursor }`, and `.all()` auto-paginator (#5)
+- [ ] Implement `lib.rs`: public re-exports of Client, error types, generated types/enums/inputs, pagination types (#5)
+- [ ] Verify SDK compiles and public API surface is clean (#5)
 
-**CLI skeleton:**
-- [ ] Implement `main.rs`: tokio async main, clap derive for top-level args (`--api-token`, `--format`)
-- [ ] Implement `output.rs`: detect `std::io::stdout().is_terminal()`, format as human tables or JSON accordingly; support `--format human|json` override
-- [ ] Implement auth resolution in CLI: `--api-token` flag > `$LINEAR_API_TOKEN` env > `~/.linear_api_token` file
-- [ ] Implement `commands/teams.rs`: `lineark teams list`
-- [ ] Implement `commands/users.rs`: `lineark users list [--active]`
-- [ ] Implement `commands/projects.rs`: `lineark projects list`
-- [ ] Implement `commands/labels.rs`: `lineark labels list [--team NAME]`
-- [ ] Implement `commands/cycles.rs`: `lineark cycles list [--team NAME] [--active] [--limit N]` and `lineark cycles read <ID-OR-NAME> [--team NAME]`
-- [ ] Implement `commands/issues.rs`: `lineark issues list [--team NAME] [--status NAME] [--assignee NAME] [--limit N]`
-- [ ] Implement `commands/issues.rs`: `lineark issues read <IDENTIFIER>` (supports ABC-123 smart identifier resolution)
-- [ ] Implement `commands/issues.rs`: `lineark issues search <QUERY> [--team NAME] [--project NAME]`
-- [ ] Implement viewer command: `lineark viewer` (who am I)
-- [ ] Implement `commands/usage.rs`: compact LLM-friendly command reference (<1000 tokens)
-- [ ] Ensure every command and subcommand has comprehensive `--help` text via clap doc comments
+**CLI skeleton (#6):**
+- [ ] Implement `main.rs`: tokio async main, clap derive for top-level args (`--api-token`, `--format`) (#6)
+- [ ] Implement `output.rs`: detect `std::io::stdout().is_terminal()`, format as human tables or JSON accordingly; support `--format human|json` override (#6)
+- [ ] Implement auth resolution in CLI: `--api-token` flag > `$LINEAR_API_TOKEN` env > `~/.linear_api_token` file (#6)
 
-**Testing:**
-- [ ] Unit tests for codegen: verify generated Rust code for a small test schema matches expected output
-- [ ] Unit tests for auth: token file reading, env var reading, precedence
-- [ ] Unit tests for error parsing: verify LinearError is correctly constructed from various API error shapes
-- [ ] Integration tests for SDK: mock HTTP responses, verify deserialization of teams/issues/users/etc.
-- [ ] CLI output tests: verify JSON output structure, verify human output is reasonable
+**CLI commands:**
+- [ ] Implement `commands/teams.rs`: `lineark teams list` (#7)
+- [ ] Implement `commands/users.rs`: `lineark users list [--active]` (#8)
+- [ ] Implement `commands/projects.rs`: `lineark projects list` (#9)
+- [ ] Implement `commands/labels.rs`: `lineark labels list [--team NAME]` (#10)
+- [ ] Implement `commands/cycles.rs`: `lineark cycles list [--team NAME] [--active] [--limit N]` and `lineark cycles read <ID-OR-NAME> [--team NAME]` (#11)
+- [ ] Implement `commands/issues.rs`: `lineark issues list [--team NAME] [--status NAME] [--assignee NAME] [--limit N]` (#12)
+- [ ] Implement `commands/issues.rs`: `lineark issues read <IDENTIFIER>` (supports ABC-123 smart identifier resolution) (#12)
+- [ ] Implement `commands/issues.rs`: `lineark issues search <QUERY> [--team NAME] [--project NAME]` (#12)
+- [ ] Implement viewer command: `lineark viewer` (who am I) (#13)
+- [ ] Implement `commands/usage.rs`: compact LLM-friendly command reference (<1000 tokens) (#14)
+- [ ] Ensure every command and subcommand has comprehensive `--help` text via clap doc comments (#15)
 
-**Phase 1 acceptance criteria:**
-- [ ] `cargo install lineark` works (or `cargo run -p lineark --`)
-- [ ] `lineark viewer` returns current user info
-- [ ] `lineark teams list` returns all teams
-- [ ] `lineark issues list --team X` returns issues
-- [ ] `lineark issues read ENG-123` returns issue details
-- [ ] JSON output when piped (`lineark teams list | jq .`)
-- [ ] Human table output when interactive
-- [ ] Auth from `~/.linear_api_token` with no flags needed
+**Testing (#16):**
+- [ ] Unit tests for codegen: verify generated Rust code for a small test schema matches expected output (#16)
+- [ ] Unit tests for auth: token file reading, env var reading, precedence (#16)
+- [ ] Unit tests for error parsing: verify LinearError is correctly constructed from various API error shapes (#16)
+- [ ] Integration tests for SDK: mock HTTP responses, verify deserialization of teams/issues/users/etc. (#16)
+- [ ] CLI output tests: verify JSON output structure, verify human output is reasonable (#16)
+
+**Phase 1 acceptance criteria (#17):**
+- [ ] `cargo install lineark` works (or `cargo run -p lineark --`) (#17)
+- [ ] `lineark viewer` returns current user info (#17)
+- [ ] `lineark teams list` returns all teams (#17)
+- [ ] `lineark issues list --team X` returns issues (#17)
+- [ ] `lineark issues read ENG-123` returns issue details (#17)
+- [ ] JSON output when piped (`lineark teams list | jq .`) (#17)
+- [ ] Human table output when interactive (#17)
+- [ ] Auth from `~/.linear_api_token` with no flags needed (#17)
 
 ---
 
@@ -496,28 +498,28 @@ and ensure all tests pass."
 
 **Goal:** Create and update the most important entities.
 
-**Codegen updates:**
-- [ ] Add mutation operations to `operations.toml`: `issueCreate`, `issueUpdate`, `issueArchive`, `commentCreate`
-- [ ] Re-run codegen, verify mutation functions are generated and compile
+**Codegen updates (#18):**
+- [ ] Add mutation operations to `operations.toml`: `issueCreate`, `issueUpdate`, `issueArchive`, `commentCreate` (#18)
+- [ ] Re-run codegen, verify mutation functions are generated and compile (#18)
 
 **CLI write commands:**
-- [ ] Implement `lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-4] [--description TEXT]`
-- [ ] Implement `lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-4] [--labels L1,L2] [--assignee ID] [--parent ID]`
-- [ ] Implement label management: `--labels` with `--label-by adding|replacing|removing` and `--clear-labels`
-- [ ] Implement priority support: `--priority 0-4` (0=no priority, 1=urgent, 2=high, 3=medium, 4=low)
-- [ ] Implement status updates: `--status "Status Name"` (resolve status name against team's workflow states)
-- [ ] Implement parent-child linking: `--parent IDENTIFIER`
-- [ ] Implement `lineark comments create <ISSUE-ID> --body <TEXT>`
+- [ ] Implement `lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-4] [--description TEXT]` (#19)
+- [ ] Implement `lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-4] [--labels L1,L2] [--assignee ID] [--parent ID]` (#20)
+- [ ] Implement label management: `--labels` with `--label-by adding|replacing|removing` and `--clear-labels` (#20)
+- [ ] Implement priority support: `--priority 0-4` (0=no priority, 1=urgent, 2=high, 3=medium, 4=low) (#20)
+- [ ] Implement status updates: `--status "Status Name"` (resolve status name against team's workflow states) (#20)
+- [ ] Implement parent-child linking: `--parent IDENTIFIER` (#20)
+- [ ] Implement `lineark comments create <ISSUE-ID> --body <TEXT>` (#21)
 
-**Testing:**
-- [ ] Integration tests for mutations: mock API, verify correct GraphQL mutation is sent with expected variables
-- [ ] CLI tests for create/update: verify output format and error handling
+**Testing (#22):**
+- [ ] Integration tests for mutations: mock API, verify correct GraphQL mutation is sent with expected variables (#22)
+- [ ] CLI tests for create/update: verify output format and error handling (#22)
 
-**Phase 2 acceptance criteria:**
-- [ ] Can create an issue: `lineark issues create "Fix bug" --team Engineering --priority 2`
-- [ ] Can update an issue: `lineark issues update ENG-123 --status "In Progress" --assignee user-id`
-- [ ] Can comment on an issue: `lineark comments create ENG-123 --body "Working on it"`
-- [ ] Write operations return the created/updated entity in the same JSON/human format as reads
+**Phase 2 acceptance criteria (#23):**
+- [ ] Can create an issue: `lineark issues create "Fix bug" --team Engineering --priority 2` (#23)
+- [ ] Can update an issue: `lineark issues update ENG-123 --status "In Progress" --assignee user-id` (#23)
+- [ ] Can comment on an issue: `lineark comments create ENG-123 --body "Working on it"` (#23)
+- [ ] Write operations return the created/updated entity in the same JSON/human format as reads (#23)
 
 ---
 
@@ -525,36 +527,36 @@ and ensure all tests pass."
 
 **Goal:** File handling, documents, broader entity support.
 
-**Embeds:**
-- [ ] Implement `lineark embeds download <URL> [--output PATH] [--overwrite]` (handle Linear's signed/expiring URLs)
-- [ ] Implement `lineark embeds upload <FILE>` (multipart upload, return asset URL in JSON)
-- [ ] Add embed info to issue read output (list of attachments with URLs)
+**Embeds (#24):**
+- [ ] Implement `lineark embeds download <URL> [--output PATH] [--overwrite]` (handle Linear's signed/expiring URLs) (#24)
+- [ ] Implement `lineark embeds upload <FILE>` (multipart upload, return asset URL in JSON) (#24)
+- [ ] Add embed info to issue read output (list of attachments with URLs) (#24)
 
-**Documents:**
-- [ ] Add document query/mutation operations to `operations.toml`
-- [ ] Re-run codegen
-- [ ] Implement `lineark documents list [--project NAME] [--issue ID]`
-- [ ] Implement `lineark documents read <ID>`
-- [ ] Implement `lineark documents create --title TEXT --content TEXT [--project NAME] [--attach-to ISSUE-ID]`
-- [ ] Implement `lineark documents update <ID> [--title TEXT] [--content TEXT]`
-- [ ] Implement `lineark documents delete <ID>`
+**Documents (#25):**
+- [ ] Add document query/mutation operations to `operations.toml` (#25)
+- [ ] Re-run codegen (#25)
+- [ ] Implement `lineark documents list [--project NAME] [--issue ID]` (#25)
+- [ ] Implement `lineark documents read <ID>` (#25)
+- [ ] Implement `lineark documents create --title TEXT --content TEXT [--project NAME] [--attach-to ISSUE-ID]` (#25)
+- [ ] Implement `lineark documents update <ID> [--title TEXT] [--content TEXT]` (#25)
+- [ ] Implement `lineark documents delete <ID>` (#25)
 
-**SDK blocking API:**
-- [ ] Implement `lineark_sdk::blocking::Client` behind `blocking` feature flag
-- [ ] Mirror all async methods as blocking equivalents
-- [ ] Test blocking API independently
+**SDK blocking API (#26):**
+- [ ] Implement `lineark_sdk::blocking::Client` behind `blocking` feature flag (#26)
+- [ ] Mirror all async methods as blocking equivalents (#26)
+- [ ] Test blocking API independently (#26)
 
-**Additional operations (as needed):**
-- [ ] Issue relations (blocking, related, duplicate)
-- [ ] Issue attachments listing
-- [ ] Any other operations that surface as needed during real usage
+**Additional operations — as needed (#27):**
+- [ ] Issue relations (blocking, related, duplicate) (#27)
+- [ ] Issue attachments listing (#27)
+- [ ] Any other operations that surface as needed during real usage (#27)
 
-**Phase 3 acceptance criteria:**
-- [ ] Can download issue attachments to local files
-- [ ] Can upload files and reference them in comments
-- [ ] Full document CRUD works
-- [ ] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers
-- [ ] Feature parity with linearis
+**Phase 3 acceptance criteria (#28):**
+- [ ] Can download issue attachments to local files (#28)
+- [ ] Can upload files and reference them in comments (#28)
+- [ ] Full document CRUD works (#28)
+- [ ] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers (#28)
+- [ ] Feature parity with linearis (#28)
 
 ---
 
@@ -562,51 +564,54 @@ and ensure all tests pass."
 
 **Goal:** Production-ready distribution and developer experience.
 
-**cargo-dist setup:**
-- [ ] Run `cargo dist init` in workspace root
-- [ ] Configure targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, aarch64-apple-darwin
-- [ ] Configure installers: shell, homebrew
-- [ ] Configure custom runner for aarch64 linux: `ubuntu-24.04-arm`
-- [ ] Verify generated `release.yml` workflow builds all targets
-- [ ] Test a release end-to-end (tag, build, GitHub Release with artifacts)
+**cargo-dist setup (#29):**
+- [ ] Run `cargo dist init` in workspace root (#29)
+- [ ] Configure targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, aarch64-apple-darwin (#29)
+- [ ] Configure installers: shell, homebrew (#29)
+- [ ] Configure custom runner for aarch64 linux: `ubuntu-24.04-arm` (#29)
+- [ ] Verify generated `release.yml` workflow builds all targets (#29)
+- [ ] Test a release end-to-end (tag, build, GitHub Release with artifacts) (#29)
 
-**release-plz setup:**
-- [ ] Add `release-plz` GitHub Action workflow
-- [ ] Configure to publish `lineark-sdk` before `lineark` (dependency ordering)
-- [ ] Configure to create git tags that trigger cargo-dist
-- [ ] Test automated version bump and release PR flow
+**release-plz setup (#30):**
+- [ ] Add `release-plz` GitHub Action workflow (#30)
+- [ ] Configure to publish `lineark-sdk` before `lineark` (dependency ordering) (#30)
+- [ ] Configure to create git tags that trigger cargo-dist (#30)
+- [ ] Test automated version bump and release PR flow (#30)
 
-**Schema update automation:**
-- [ ] Write `schema-update.yml` cron workflow (weekly)
-- [ ] Implement GraphQL introspection query fetch step
-- [ ] Diff against checked-in `schema/schema.graphql`
-- [ ] If changed: run codegen, build, test, open PR
-- [ ] Test the workflow end-to-end
+**Schema update automation (#31):**
+- [ ] Write `schema-update.yml` cron workflow (weekly) (#31)
+- [ ] Implement GraphQL introspection query fetch step (#31)
+- [ ] Diff against checked-in `schema/schema.graphql` (#31)
+- [ ] If changed: run codegen, build, test, open PR (#31)
+- [ ] Test the workflow end-to-end (#31)
 
-**Homebrew:**
-- [ ] Create `cadu/homebrew-tap` repository
-- [ ] Configure cargo-dist to publish formula there
-- [ ] Verify `brew install cadu/tap/lineark` works
+**Homebrew (#32):**
+- [ ] Create `cadu/homebrew-tap` repository (#32)
+- [ ] Configure cargo-dist to publish formula there (#32)
+- [ ] Verify `brew install cadu/tap/lineark` works (#32)
 
-**Shell completions:**
-- [ ] Enable clap shell completion generation (bash, zsh, fish)
-- [ ] Include completions in binary releases or document `lineark completions <shell>` command
+**Shell completions (#33):**
+- [ ] Enable clap shell completion generation (bash, zsh, fish) (#33)
+- [ ] Include completions in binary releases or document `lineark completions <shell>` command (#33)
 
-**Documentation:**
-- [ ] Write comprehensive README.md with: project overview, installation methods, quick start, SDK usage examples, CLI usage examples
-- [ ] Ensure all CLI commands have thorough `--help` text
+**Documentation (#34):**
+- [ ] Write comprehensive README.md with: project overview, installation methods, quick start, SDK usage examples, CLI usage examples (#34)
+- [ ] Ensure all CLI commands have thorough `--help` text (#34)
 
-**Publish:**
-- [ ] Publish `lineark-sdk` to crates.io
-- [ ] Publish `lineark` to crates.io
-- [ ] Create first GitHub Release with binaries
+**CI workflow (#35):**
+- [ ] Create `.github/workflows/ci.yml` with fmt, clippy, test, build (#35)
 
-**Phase 4 acceptance criteria:**
-- [ ] `brew install cadu/tap/lineark` works on macOS
-- [ ] `curl | sh` installer works on Linux
-- [ ] `cargo install lineark` works
-- [ ] Weekly schema update cron opens PRs when Linear's schema changes
-- [ ] Shell completions available for bash, zsh, fish
+**Publish (#36):**
+- [ ] Publish `lineark-sdk` to crates.io (#36)
+- [ ] Publish `lineark` to crates.io (#36)
+- [ ] Create first GitHub Release with binaries (#36)
+
+**Phase 4 acceptance criteria (#37):**
+- [ ] `brew install cadu/tap/lineark` works on macOS (#37)
+- [ ] `curl | sh` installer works on Linux (#37)
+- [ ] `cargo install lineark` works (#37)
+- [ ] Weekly schema update cron opens PRs when Linear's schema changes (#37)
+- [ ] Shell completions available for bash, zsh, fish (#37)
 
 ---
 
