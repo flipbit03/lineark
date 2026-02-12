@@ -1,40 +1,10 @@
-# lineark
+# lineark / lineark-sdk
 
 Unofficial [Linear](https://linear.app) CLI and Rust SDK — for humans and LLMs.
 
-## Install
+## Getting Started
 
-### Pre-built binary (fastest)
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
-```
-
-Installs to `~/.local/bin`. Override with `LINEARK_INSTALL_DIR`:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | LINEARK_INSTALL_DIR=/usr/local/bin sh
-```
-
-### Via cargo
-
-```sh
-cargo install lineark
-```
-
-### Download binary manually
-
-Grab a binary from the [latest release](https://github.com/flipbit03/lineark/releases/latest):
-
-| Platform | Asset |
-|---|---|
-| Linux x86_64 | `lineark_linux_x86_64` |
-| Linux aarch64 | `lineark_linux_aarch64` |
-| macOS aarch64 (Apple Silicon) | `lineark_macos_aarch64` |
-
-## Auth
-
-Create a [Linear API token](https://linear.app/settings/api) and save it:
+Create a [Linear API token](https://linear.app/settings/account/security) (Settings > Security & Access > Personal API Keys) and save it:
 
 ```sh
 echo "lin_api_..." > ~/.linear_api_token
@@ -46,16 +16,32 @@ Or use an environment variable:
 export LINEAR_API_TOKEN="lin_api_..."
 ```
 
-Or pass it directly:
+Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
+
+## CLI: `lineark`
+
+### Install
+
+#### Pre-built binary (fastest)
 
 ```sh
-lineark --api-token "lin_api_..." teams list
+curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
 ```
 
-## Usage
+#### Via cargo
+
+```sh
+cargo install lineark
+```
+
+#### Download binary manually
+
+Grab a binary from the [latest release](https://github.com/flipbit03/lineark/releases/latest).
+
+### Usage
 
 ```
-lineark whoami                                    Show authenticated user
+lineark whoami                                   Show authenticated user
 lineark teams list                               List all teams
 lineark users list [--active]                    List users
 lineark projects list                            List all projects
@@ -73,14 +59,21 @@ lineark usage                                    Compact command reference
 
 Every command supports `--help` for full details.
 
-## Output
+Output auto-detects format (tables in terminal, JSON when piped) — override with `--format {human,json}`.
 
-- **Terminal** → human-readable tables
-- **Piped** → JSON
+### LLM / AI Agent Setup
 
-Override with `--format human` or `--format json`.
+Add this to your LLM's context (e.g. `CLAUDE.md`, `.cursorrules`, system prompt):
 
-## SDK
+```
+We track our tickets and projects in Linear (https://linear.app), a project management tool.
+We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
+`lineark` executable. Run `lineark usage` to see usage information.
+```
+
+`lineark usage` gives your agent a complete command reference in under 1,000 tokens.
+
+## SDK: `lineark-sdk`
 
 Use `lineark-sdk` as a library in your own Rust projects:
 
@@ -93,6 +86,7 @@ use lineark_sdk::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // auto() tries all token methods (env var, ~/.linear_api_token file)
     let client = Client::auto()?;
 
     let me = client.viewer().await?;
