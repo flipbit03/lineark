@@ -4,7 +4,7 @@ pub fn run() {
         r#"lineark — Linear CLI for humans and LLMs
 
 COMMANDS:
-  lineark whoami                                    Show authenticated user
+  lineark whoami                                   Show authenticated user
   lineark teams list                               List all teams
   lineark users list [--active]                    List users
   lineark projects list                            List all projects

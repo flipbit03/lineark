@@ -286,6 +286,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
     Ok(())
 }
 
+// TODO(phase2): query workflowStates types instead of hardcoding state names
 const DONE_STATES: &[&str] = &["Done", "Canceled", "Cancelled", "Duplicate"];
 
 fn filter_done(items: &[IssueListItem], show_done: bool) -> Vec<&IssueListItem> {
@@ -350,7 +351,7 @@ async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDe
 /// Resolve a team key (e.g., "E", "ENG") to a team UUID.
 /// If the input already looks like a UUID, return it as-is.
 async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<String> {
-    if team_key.contains('-') && team_key.len() > 30 {
+    if uuid::Uuid::parse_str(team_key).is_ok() {
         return Ok(team_key.to_string());
     }
     let conn = client

@@ -72,8 +72,7 @@ fn emit_single_method(
     let field_selection = build_field_selection(return_type_name, object_map, type_kind_map);
 
     // Build argument handling.
-    let (params, variables_json, graphql_args, graphql_params) =
-        build_args(&field.name, &field.arguments);
+    let (params, variables_json, graphql_args, graphql_params) = build_args(&field.arguments);
 
     let query_string = if graphql_params.is_empty() {
         format!(
@@ -117,14 +116,7 @@ fn emit_connection_method(
     let field_selection = build_field_selection(node_type_name, object_map, type_kind_map);
 
     // Connection queries always include pagination args.
-    let (params, variables_json, graphql_args, graphql_params) =
-        build_args(&field.name, &field.arguments);
-
-    // Ensure first/after are included for pagination.
-    let has_first = field.arguments.iter().any(|a| a.name == "first");
-    if !has_first {
-        // This shouldn't happen for connection queries, but handle gracefully.
-    }
+    let (params, variables_json, graphql_args, graphql_params) = build_args(&field.arguments);
 
     let nodes_query = if graphql_params.is_empty() {
         format!(
@@ -182,7 +174,6 @@ fn build_field_selection(
 /// Build parameter tokens, variable JSON entries, GraphQL argument strings,
 /// and GraphQL parameter type declarations.
 fn build_args(
-    _field_name: &str,
     arguments: &[crate::parser::ArgumentDef],
 ) -> (
     Vec<TokenStream>, // Rust fn params

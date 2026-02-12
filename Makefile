@@ -1,4 +1,4 @@
-.PHONY: fetch-schema codegen update-schema check
+.PHONY: codegen update-schema check
 
 # Fetch the latest Linear GraphQL schema + regenerate SDK types.
 # No API key required — Linear's introspection endpoint is public.

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// Resolve a Linear API token from the filesystem.
 /// Reads `~/.linear_api_token` (linearis-compatible).
 pub fn token_from_file() -> Result<String, LinearError> {
-    let path = token_file_path();
+    let path = token_file_path()?;
     std::fs::read_to_string(&path)
         .map(|s| s.trim().to_string())
         .map_err(|e| {
@@ -29,12 +29,8 @@ pub fn auto_token() -> Result<String, LinearError> {
     token_from_env().or_else(|_| token_from_file())
 }
 
-fn token_file_path() -> PathBuf {
-    dirs_next().join(".linear_api_token")
-}
-
-fn dirs_next() -> PathBuf {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("~"))
+fn token_file_path() -> Result<PathBuf, LinearError> {
+    let home = home::home_dir()
+        .ok_or_else(|| LinearError::AuthConfig("Could not determine home directory".to_string()))?;
+    Ok(home.join(".linear_api_token"))
 }

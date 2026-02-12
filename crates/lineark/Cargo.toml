@@ -16,3 +16,4 @@ tabled = "0.17"
 colored = "2"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
+uuid = "1"
