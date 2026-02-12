@@ -75,7 +75,67 @@ fn issues_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("read"))
-        .stdout(predicate::str::contains("search"));
+        .stdout(predicate::str::contains("search"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"));
+}
+
+#[test]
+fn issues_create_help_shows_flags() {
+    lineark()
+        .args(["issues", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--assignee"))
+        .stdout(predicate::str::contains("--labels"));
+}
+
+#[test]
+fn issues_update_help_shows_flags() {
+    lineark()
+        .args(["issues", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--labels"))
+        .stdout(predicate::str::contains("--label-by"))
+        .stdout(predicate::str::contains("--clear-labels"))
+        .stdout(predicate::str::contains("--assignee"))
+        .stdout(predicate::str::contains("--parent"));
+}
+
+#[test]
+fn comments_help_shows_subcommands() {
+    lineark()
+        .args(["comments", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("create"));
+}
+
+#[test]
+fn comments_create_help_shows_flags() {
+    lineark()
+        .args(["comments", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--body"))
+        .stdout(predicate::str::contains("<ISSUE>"));
+}
+
+#[test]
+fn usage_includes_write_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("issues create"))
+        .stdout(predicate::str::contains("issues update"))
+        .stdout(predicate::str::contains("comments create"));
 }
 
 // ── Auth error handling ─────────────────────────────────────────────────────

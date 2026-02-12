@@ -36,6 +36,8 @@ enum Command {
     Cycles(commands::cycles::CyclesCmd),
     /// Manage issues.
     Issues(commands::issues::IssuesCmd),
+    /// Manage comments.
+    Comments(commands::comments::CommentsCmd),
     /// Print a compact LLM-friendly command reference.
     Usage,
 }
@@ -72,6 +74,7 @@ async fn main() {
         Command::Labels(cmd) => commands::labels::run(cmd, &client, format).await,
         Command::Cycles(cmd) => commands::cycles::run(cmd, &client, format).await,
         Command::Issues(cmd) => commands::issues::run(cmd, &client, format).await,
+        Command::Comments(cmd) => commands::comments::run(cmd, &client, format).await,
         Command::Usage => unreachable!(),
     };
 

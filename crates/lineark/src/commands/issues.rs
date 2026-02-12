@@ -1,4 +1,5 @@
 use clap::Args;
+use lineark_sdk::generated::inputs::{IssueCreateInput, IssueUpdateInput};
 use lineark_sdk::Client;
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
@@ -45,6 +46,84 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         show_done: bool,
     },
+    /// Create a new issue. Returns the created issue.
+    ///
+    /// Examples:
+    ///   lineark issues create "Fix the bug" --team ENG
+    ///   lineark issues create "Add feature" --team ENG --priority 2 --description "Details here"
+    ///   lineark issues create "Urgent fix" --team ENG --priority 1 --labels Bug,Frontend
+    Create {
+        /// Issue title.
+        title: String,
+        /// Team key (e.g., ENG) or UUID. Required.
+        #[arg(long)]
+        team: String,
+        /// Assignee user UUID.
+        #[arg(long)]
+        assignee: Option<String>,
+        /// Comma-separated label UUIDs.
+        #[arg(long, value_delimiter = ',')]
+        labels: Option<Vec<String>>,
+        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        priority: Option<i64>,
+        /// Issue description (markdown).
+        #[arg(long)]
+        description: Option<String>,
+        /// Parent issue identifier (e.g., ENG-123) or UUID.
+        #[arg(long)]
+        parent: Option<String>,
+        /// Initial status name (resolved against team's workflow states).
+        #[arg(long)]
+        status: Option<String>,
+    },
+    /// Update an existing issue. Returns the updated issue.
+    ///
+    /// Examples:
+    ///   lineark issues update ENG-123 --status "In Progress"
+    ///   lineark issues update ENG-123 --priority 1 --assignee USER-UUID
+    ///   lineark issues update ENG-123 --labels LABEL1,LABEL2 --label-by adding
+    Update {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+        /// New status name (resolved against the issue's team workflow states).
+        #[arg(long)]
+        status: Option<String>,
+        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        priority: Option<i64>,
+        /// Comma-separated label UUIDs. Behavior depends on --label-by.
+        #[arg(long, value_delimiter = ',')]
+        labels: Option<Vec<String>>,
+        /// How to apply --labels: "replacing" (default), "adding", or "removing".
+        #[arg(long, default_value = "replacing")]
+        label_by: LabelMode,
+        /// Remove all labels from the issue.
+        #[arg(long, default_value = "false")]
+        clear_labels: bool,
+        /// Assignee user UUID.
+        #[arg(long)]
+        assignee: Option<String>,
+        /// Parent issue identifier (e.g., ENG-123) or UUID.
+        #[arg(long)]
+        parent: Option<String>,
+        /// New title.
+        #[arg(long)]
+        title: Option<String>,
+        /// New description (markdown).
+        #[arg(long)]
+        description: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum LabelMode {
+    /// Replace all existing labels with the specified ones.
+    Replacing,
+    /// Add labels to the existing set.
+    Adding,
+    /// Remove the specified labels from the existing set.
+    Removing,
 }
 
 // ── List/search row (table + JSON) ──────────────────────────────────────────
@@ -282,6 +361,119 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             let items = filter_done(&conn.nodes, show_done);
             print_issue_list(&items, format);
         }
+        IssuesAction::Create {
+            title,
+            team,
+            assignee,
+            labels,
+            priority,
+            description,
+            parent,
+            status,
+        } => {
+            let team_id = resolve_team_id(client, &team).await?;
+
+            let state_id = match status {
+                Some(ref name) => Some(resolve_state_id(client, &team_id, name).await?),
+                None => None,
+            };
+
+            let parent_id = match parent {
+                Some(ref p) => Some(resolve_issue_id(client, p).await?),
+                None => None,
+            };
+
+            let input = IssueCreateInput {
+                title: Some(title),
+                team_id: Some(team_id),
+                assignee_id: assignee,
+                label_ids: labels,
+                priority,
+                description,
+                parent_id,
+                state_id,
+                ..Default::default()
+            };
+
+            let payload = client
+                .issue_create(input)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            let issue = payload.get("issue").cloned().unwrap_or_default();
+            output::print_one(&issue, format);
+        }
+        IssuesAction::Update {
+            identifier,
+            status,
+            priority,
+            labels,
+            label_by,
+            clear_labels,
+            assignee,
+            parent,
+            title,
+            description,
+        } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+
+            // For status resolution, we need the team ID. Read the issue to get it.
+            let state_id = match status {
+                Some(ref name) => {
+                    let issue_detail = read_issue(client, &identifier).await?;
+                    let team_id = issue_detail
+                        .team
+                        .as_ref()
+                        .and_then(|t| t.id.clone())
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("Could not determine team for issue '{}'", identifier)
+                        })?;
+                    Some(resolve_state_id(client, &team_id, name).await?)
+                }
+                None => None,
+            };
+
+            let parent_id = match parent {
+                Some(ref p) => Some(resolve_issue_id(client, p).await?),
+                None => None,
+            };
+
+            // Build label fields based on mode.
+            let (label_ids, added_label_ids, removed_label_ids) = if clear_labels {
+                (Some(vec![]), None, None)
+            } else if let Some(ids) = labels {
+                match label_by {
+                    LabelMode::Replacing => (Some(ids), None, None),
+                    LabelMode::Adding => (None, Some(ids), None),
+                    LabelMode::Removing => (None, None, Some(ids)),
+                }
+            } else {
+                (None, None, None)
+            };
+
+            let input = IssueUpdateInput {
+                title,
+                description,
+                assignee_id: assignee,
+                priority,
+                state_id,
+                parent_id,
+                label_ids,
+                added_label_ids,
+                removed_label_ids,
+                ..Default::default()
+            };
+
+            let payload = client
+                .issue_update(input, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            let issue = payload.get("issue").cloned().unwrap_or_default();
+            output::print_one(&issue, format);
+        }
     }
     Ok(())
 }
@@ -368,4 +560,81 @@ async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<Stri
         }
     }
     Err(anyhow::anyhow!("Team '{}' not found", team_key))
+}
+
+/// Resolve a workflow state name to its UUID for a given team.
+async fn resolve_state_id(
+    client: &Client,
+    team_id: &str,
+    state_name: &str,
+) -> anyhow::Result<String> {
+    let filter = serde_json::json!({ "team": { "id": { "eq": team_id } } });
+    let variables = serde_json::json!({ "first": 50, "filter": filter });
+    let conn = client
+        .execute_connection::<serde_json::Value>(
+            "query WorkflowStates($first: Int, $filter: WorkflowStateFilter) { workflowStates(first: $first, filter: $filter) { nodes { id name } pageInfo { hasNextPage endCursor } } }",
+            variables,
+            "workflowStates",
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    for node in &conn.nodes {
+        let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if name.eq_ignore_ascii_case(state_name) {
+            return Ok(node
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string());
+        }
+    }
+    let available: Vec<String> = conn
+        .nodes
+        .iter()
+        .filter_map(|n| n.get("name").and_then(|v| v.as_str()).map(String::from))
+        .collect();
+    Err(anyhow::anyhow!(
+        "Status '{}' not found for this team. Available: {}",
+        state_name,
+        available.join(", ")
+    ))
+}
+
+/// Resolve an issue identifier (e.g., ENG-123) to a UUID.
+/// If the input already looks like a UUID, return it as-is.
+async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Result<String> {
+    if uuid::Uuid::parse_str(identifier).is_ok() {
+        return Ok(identifier.to_string());
+    }
+    let variables = serde_json::json!({ "term": identifier, "first": 5 });
+    let conn: lineark_sdk::Connection<serde_json::Value> = client
+        .execute_connection(
+            "query IssueIdResolve($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { id identifier } pageInfo { hasNextPage endCursor } } }",
+            variables,
+            "searchIssues",
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    conn.nodes
+        .iter()
+        .find(|n| {
+            n.get("identifier")
+                .and_then(|v| v.as_str())
+                .is_some_and(|id| id.eq_ignore_ascii_case(identifier))
+        })
+        .and_then(|n| n.get("id").and_then(|v| v.as_str()).map(String::from))
+        .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
+}
+
+/// Check the `success` field in a mutation payload.
+fn check_success(payload: &serde_json::Value) -> anyhow::Result<()> {
+    if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
+        return Err(anyhow::anyhow!(
+            "Mutation failed: {}",
+            serde_json::to_string_pretty(payload).unwrap_or_default()
+        ));
+    }
+    Ok(())
 }

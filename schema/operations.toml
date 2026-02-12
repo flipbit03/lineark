@@ -15,4 +15,9 @@ searchIssues = true
 workflowStates = true
 
 [mutations]
-# Phase 2 — Core writes (infrastructure exists, no operations yet)
+# Phase 2 — Core writes
+issueCreate = true
+issueUpdate = true
+issueArchive = true
+issueDelete = true
+commentCreate = true

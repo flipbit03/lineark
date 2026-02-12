@@ -147,7 +147,7 @@ const EXCLUDED_FIELDS: &[&str] = &[
 ];
 
 /// Build the scalar/enum field selection string for a type.
-fn build_field_selection(
+pub fn build_field_selection(
     type_name: &str,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
@@ -215,7 +215,7 @@ fn build_args(
 }
 
 /// Convert GqlType back to a GraphQL type string (e.g., "String!", "[String!]").
-fn gql_type_string(ty: &GqlType) -> String {
+pub fn gql_type_string(ty: &GqlType) -> String {
     match ty {
         GqlType::Named(name) => name.clone(),
         GqlType::NonNull(inner) => format!("{}!", gql_type_string(inner)),
