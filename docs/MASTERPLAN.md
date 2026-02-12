@@ -62,7 +62,7 @@ lineark/
 │       ├── Cargo.toml
 │       └── src/
 │           ├── main.rs           # CLI: reads schema.graphql, writes generated/*.rs
-│           ├── parser.rs         # Wraps graphql-parser, extracts type info
+│           ├── parser.rs         # Wraps apollo-parser, extracts type info
 │           ├── emit_types.rs     # Generates types.rs
 │           ├── emit_inputs.rs    # Generates inputs.rs
 │           ├── emit_enums.rs     # Generates enums.rs
@@ -227,16 +227,16 @@ Every command supports `--help` with full descriptions, argument docs, and examp
 **Purpose:** Read `schema/schema.graphql` -> emit `crates/lineark-sdk/src/generated/*.rs`
 
 **Approach:**
-1. Parse schema using the `graphql-parser` crate (gives us a full typed Rust AST of the GraphQL schema)
-2. Walk all `TypeDefinition::Object` -> emit Rust structs with `#[derive(Debug, Clone, Serialize, Deserialize)]`
-3. Walk all `TypeDefinition::InputObject` -> emit input structs with `Default` impl
-4. Walk all `TypeDefinition::Enum` -> emit Rust enums with serde rename
-5. Walk all `TypeDefinition::Scalar` -> emit type aliases (DateTime->chrono::DateTime, JSON->serde_json::Value, etc.)
+1. Parse schema using the `apollo-parser` crate (modern, error-resilient GraphQL parser that produces a CST)
+2. Walk all `ObjectTypeDefinition` -> emit Rust structs with `#[derive(Debug, Clone, Serialize, Deserialize)]`
+3. Walk all `InputObjectTypeDefinition` -> emit input structs with `Default` impl
+4. Walk all `EnumTypeDefinition` -> emit Rust enums with serde rename
+5. Walk all `ScalarTypeDefinition` -> emit type aliases (DateTime->chrono::DateTime, JSON->serde_json::Value, etc.)
 6. Walk `Query` type fields -> emit async query functions with builder pattern
 7. Walk `Mutation` type fields -> emit async mutation functions
 8. Format output with `prettyplease` (Rust code formatter crate, no need for external rustfmt)
 
-**Key dependency:** `graphql-parser` — parses GraphQL SDL into typed AST with ObjectType, Field, InputValue, EnumType, etc. Already battle-tested, no need to write our own parser.
+**Key dependency:** `apollo-parser` — modern, actively maintained GraphQL parser from Apollo. Produces a lossless CST with error recovery. Replaces `apollo-parser` which is less maintained.
 
 **Run as:**
 ```bash
@@ -420,60 +420,60 @@ and ensure all tests pass."
 **Goal:** Working codegen, SDK with read operations, CLI that can list/read the most important entities.
 
 **Workspace setup (#1):**
-- [ ] Create root `Cargo.toml` with `[workspace]` and `members = ["crates/*"]` (#1)
-- [ ] Create `crates/lineark-sdk/Cargo.toml` with dependencies (reqwest, tokio, serde, serde_json, chrono) (#1)
-- [ ] Create `crates/lineark/Cargo.toml` with dependencies (lineark-sdk, clap, tokio, serde_json, tabled, colored) (#1)
-- [ ] Create `crates/lineark-codegen/Cargo.toml` with dependencies (graphql-parser, prettyplease, toml) (#1)
-- [ ] Verify `cargo build --workspace` compiles with empty lib.rs/main.rs stubs (#1)
+- [x] Create root `Cargo.toml` with `[workspace]` and `members = ["crates/*"]` (#1)
+- [x] Create `crates/lineark-sdk/Cargo.toml` with dependencies (reqwest, tokio, serde, serde_json, chrono) (#1)
+- [x] Create `crates/lineark/Cargo.toml` with dependencies (lineark-sdk, clap, tokio, serde_json, tabled, colored) (#1)
+- [x] Create `crates/lineark-codegen/Cargo.toml` with dependencies (apollo-parser, prettyplease, toml) (#1)
+- [x] Verify `cargo build --workspace` compiles with empty lib.rs/main.rs stubs (#1)
 
 **Schema acquisition (#2):**
-- [ ] Fetch Linear's public GraphQL schema via introspection query (#2)
-- [ ] Save as `schema/schema.graphql` (#2)
-- [ ] Create initial `schema/operations.toml` with Phase 1 query allowlist (viewer, teams, team, users, issues, issue, projects, project, cycles, cycle, labels) (#2)
+- [x] Fetch Linear's public GraphQL schema via introspection query (#2)
+- [x] Save as `schema/schema.graphql` (#2)
+- [x] Create initial `schema/operations.toml` with Phase 1 query allowlist (viewer, teams, team, users, issues, issue, projects, project, cycles, cycle, labels) (#2)
 
 **Codegen — type generation (#3):**
-- [ ] Implement `parser.rs`: parse `schema.graphql` with `graphql-parser`, extract all type definitions into a structured intermediate representation (#3)
-- [ ] Implement `emit_scalars.rs`: map GraphQL custom scalars to Rust types (DateTime->chrono, JSON->serde_json::Value, etc.) (#3)
-- [ ] Implement `emit_enums.rs`: generate Rust enums with `#[derive(Debug, Clone, Serialize, Deserialize)]` and serde rename for all 72 GraphQL enums (#3)
-- [ ] Implement `emit_types.rs`: generate Rust structs for all ~485 object types (scalar + enum fields only, skip nested objects) (#3)
-- [ ] Implement `emit_inputs.rs`: generate Rust input structs for all ~337 input types with `Default` impl and `Option<T>` for optional fields (#3)
-- [ ] Implement `main.rs` for codegen: wire up parser + emitters, read schema file, write `crates/lineark-sdk/src/generated/*.rs` (#3)
-- [ ] Format generated output with `prettyplease` (#3)
-- [ ] Run codegen and verify generated code compiles: `cargo run -p lineark-codegen && cargo build -p lineark-sdk` (#3)
+- [x] Implement `parser.rs`: parse `schema.graphql` with `apollo-parser`, extract all type definitions into a structured intermediate representation (#3)
+- [x] Implement `emit_scalars.rs`: map GraphQL custom scalars to Rust types (DateTime->chrono, JSON->serde_json::Value, etc.) (#3)
+- [x] Implement `emit_enums.rs`: generate Rust enums with `#[derive(Debug, Clone, Serialize, Deserialize)]` and serde rename for all 72 GraphQL enums (#3)
+- [x] Implement `emit_types.rs`: generate Rust structs for all ~485 object types (scalar + enum fields only, skip nested objects) (#3)
+- [x] Implement `emit_inputs.rs`: generate Rust input structs for all ~337 input types with `Default` impl and `Option<T>` for optional fields (#3)
+- [x] Implement `main.rs` for codegen: wire up parser + emitters, read schema file, write `crates/lineark-sdk/src/generated/*.rs` (#3)
+- [x] Format generated output with `prettyplease` (#3)
+- [x] Run codegen and verify generated code compiles: `cargo run -p lineark-codegen && cargo build -p lineark-sdk` (#3)
 
 **Codegen — query generation (#4):**
-- [ ] Implement `emit_queries.rs`: for each allowed query in `operations.toml`, generate an async function on `Client` that embeds the GraphQL query string and deserializes the response (#4)
-- [ ] Implement `emit_mutations.rs`: same pattern for mutations (empty for Phase 1, but the infrastructure must exist) (#4)
-- [ ] Generate GraphQL query strings that select scalar + enum fields of the return type, plus `pageInfo` for connection types (#4)
-- [ ] Re-run codegen, verify everything compiles (#4)
+- [x] Implement `emit_queries.rs`: for each allowed query in `operations.toml`, generate an async function on `Client` that embeds the GraphQL query string and deserializes the response (#4)
+- [x] Implement `emit_mutations.rs`: same pattern for mutations (empty for Phase 1, but the infrastructure must exist) (#4)
+- [x] Generate GraphQL query strings that select scalar + enum fields of the return type, plus `pageInfo` for connection types (#4)
+- [x] Re-run codegen, verify everything compiles (#4)
 
 **SDK core — hand-written (#5):**
-- [ ] Implement `auth.rs`: token resolution — read `~/.linear_api_token` file, `$LINEAR_API_TOKEN` env var, or accept token directly (#5)
-- [ ] Implement `client.rs`: `Client` struct wrapping `reqwest::Client`, with `from_token()`, `from_env()`, `from_file()`, `auto()` constructors (#5)
-- [ ] Implement HTTP transport: POST to `https://api.linear.app/graphql` with JSON body `{ query, variables }`, parse response `{ data, errors }` (#5)
-- [ ] Implement `error.rs`: `LinearError` enum with variants for Authentication, RateLimited, InvalidInput, Forbidden, Network, GraphQL (#5)
-- [ ] Implement rate limit handling: parse `retry-after`, `x-ratelimit-*` headers from error responses (#5)
-- [ ] Implement `pagination.rs`: `Connection<T>` struct with `nodes: Vec<T>`, `PageInfo { has_next_page, end_cursor }`, and `.all()` auto-paginator (#5)
-- [ ] Implement `lib.rs`: public re-exports of Client, error types, generated types/enums/inputs, pagination types (#5)
-- [ ] Verify SDK compiles and public API surface is clean (#5)
+- [x] Implement `auth.rs`: token resolution — read `~/.linear_api_token` file, `$LINEAR_API_TOKEN` env var, or accept token directly (#5)
+- [x] Implement `client.rs`: `Client` struct wrapping `reqwest::Client`, with `from_token()`, `from_env()`, `from_file()`, `auto()` constructors (#5)
+- [x] Implement HTTP transport: POST to `https://api.linear.app/graphql` with JSON body `{ query, variables }`, parse response `{ data, errors }` (#5)
+- [x] Implement `error.rs`: `LinearError` enum with variants for Authentication, RateLimited, InvalidInput, Forbidden, Network, GraphQL (#5)
+- [x] Implement rate limit handling: parse `retry-after`, `x-ratelimit-*` headers from error responses (#5)
+- [x] Implement `pagination.rs`: `Connection<T>` struct with `nodes: Vec<T>`, `PageInfo { has_next_page, end_cursor }` (#5) — note: `.all()` auto-paginator deferred to Phase 2
+- [x] Implement `lib.rs`: public re-exports of Client, error types, generated types/enums/inputs, pagination types (#5)
+- [x] Verify SDK compiles and public API surface is clean (#5)
 
 **CLI skeleton (#6):**
-- [ ] Implement `main.rs`: tokio async main, clap derive for top-level args (`--api-token`, `--format`) (#6)
-- [ ] Implement `output.rs`: detect `std::io::stdout().is_terminal()`, format as human tables or JSON accordingly; support `--format human|json` override (#6)
-- [ ] Implement auth resolution in CLI: `--api-token` flag > `$LINEAR_API_TOKEN` env > `~/.linear_api_token` file (#6)
+- [x] Implement `main.rs`: tokio async main, clap derive for top-level args (`--api-token`, `--format`) (#6)
+- [x] Implement `output.rs`: detect `std::io::stdout().is_terminal()`, format as human tables or JSON accordingly; support `--format human|json` override (#6)
+- [x] Implement auth resolution in CLI: `--api-token` flag > `$LINEAR_API_TOKEN` env > `~/.linear_api_token` file (#6)
 
 **CLI commands:**
-- [ ] Implement `commands/teams.rs`: `lineark teams list` (#7)
-- [ ] Implement `commands/users.rs`: `lineark users list [--active]` (#8)
-- [ ] Implement `commands/projects.rs`: `lineark projects list` (#9)
-- [ ] Implement `commands/labels.rs`: `lineark labels list [--team NAME]` (#10)
-- [ ] Implement `commands/cycles.rs`: `lineark cycles list [--team NAME] [--active] [--limit N]` and `lineark cycles read <ID-OR-NAME> [--team NAME]` (#11)
-- [ ] Implement `commands/issues.rs`: `lineark issues list [--team NAME] [--status NAME] [--assignee NAME] [--limit N]` (#12)
-- [ ] Implement `commands/issues.rs`: `lineark issues read <IDENTIFIER>` (supports ABC-123 smart identifier resolution) (#12)
-- [ ] Implement `commands/issues.rs`: `lineark issues search <QUERY> [--team NAME] [--project NAME]` (#12)
-- [ ] Implement viewer command: `lineark viewer` (who am I) (#13)
-- [ ] Implement `commands/usage.rs`: compact LLM-friendly command reference (<1000 tokens) (#14)
-- [ ] Ensure every command and subcommand has comprehensive `--help` text via clap doc comments (#15)
+- [x] Implement `commands/teams.rs`: `lineark teams list` (#7)
+- [x] Implement `commands/users.rs`: `lineark users list [--active]` (#8)
+- [x] Implement `commands/projects.rs`: `lineark projects list` (#9)
+- [x] Implement `commands/labels.rs`: `lineark labels list` (#10)
+- [x] Implement `commands/cycles.rs`: `lineark cycles list [--limit N]` and `lineark cycles read <ID>` (#11)
+- [x] Implement `commands/issues.rs`: `lineark issues list [--team KEY] [--mine] [--limit N] [--show-done]` (#12)
+- [x] Implement `commands/issues.rs`: `lineark issues read <IDENTIFIER>` (supports ABC-123 smart identifier resolution) (#12)
+- [x] Implement `commands/issues.rs`: `lineark issues search <QUERY> [--limit N] [--show-done]` (#12)
+- [x] Implement viewer command: `lineark whoami` (who am I) (#13)
+- [x] Implement `commands/usage.rs`: compact LLM-friendly command reference (<1000 tokens) (#14)
+- [x] Ensure every command and subcommand has comprehensive `--help` text via clap doc comments (#15)
 
 **Testing (#16):**
 - [ ] Unit tests for codegen: verify generated Rust code for a small test schema matches expected output (#16)
@@ -483,14 +483,14 @@ and ensure all tests pass."
 - [ ] CLI output tests: verify JSON output structure, verify human output is reasonable (#16)
 
 **Phase 1 acceptance criteria (#17):**
-- [ ] `cargo install lineark` works (or `cargo run -p lineark --`) (#17)
-- [ ] `lineark viewer` returns current user info (#17)
-- [ ] `lineark teams list` returns all teams (#17)
-- [ ] `lineark issues list --team X` returns issues (#17)
-- [ ] `lineark issues read ENG-123` returns issue details (#17)
-- [ ] JSON output when piped (`lineark teams list | jq .`) (#17)
-- [ ] Human table output when interactive (#17)
-- [ ] Auth from `~/.linear_api_token` with no flags needed (#17)
+- [x] `cargo install lineark` works (or `cargo run -p lineark --`) (#17)
+- [x] `lineark whoami` returns current user info (#17) — renamed from `lineark viewer`
+- [x] `lineark teams list` returns all teams (#17)
+- [x] `lineark issues list --team X` returns issues (#17)
+- [x] `lineark issues read E-931` returns issue details (#17)
+- [x] JSON output when piped (`lineark teams list | jq .`) (#17)
+- [x] Human table output when interactive (#17)
+- [x] Auth from `~/.linear_api_token` with no flags needed (#17)
 
 ---
 

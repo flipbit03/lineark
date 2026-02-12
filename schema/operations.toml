@@ -1,0 +1,18 @@
+[queries]
+# Phase 1 — Core reads
+viewer = true
+teams = true
+team = true
+users = true
+issues = true
+issue = true
+projects = true
+project = true
+cycles = true
+cycle = true
+issueLabels = true
+searchIssues = true
+workflowStates = true
+
+[mutations]
+# Phase 2 — Core writes (infrastructure exists, no operations yet)
