@@ -758,7 +758,7 @@ checksum = "459427e2af2b9c839b132acb702a1c654d95e10f8c326bfc2ad11310e458b1c5"
 
 [[package]]
 name = "lineark"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -772,7 +772,7 @@ dependencies = [
 
 [[package]]
 name = "lineark-codegen"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "apollo-parser",
  "heck 0.5.0",
@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "lineark-sdk"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "chrono",
  "reqwest",
