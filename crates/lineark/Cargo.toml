@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "CLI for Linear issue tracker — for humans and LLMs"
+readme = "README.md"
 
 [dependencies]
 lineark-sdk = { path = "../lineark-sdk", version = "0.0.0" }
