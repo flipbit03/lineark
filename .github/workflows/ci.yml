@@ -62,14 +62,16 @@ jobs:
         run: cargo test --workspace
 
       - name: Set up test API token
-        if: ${{ secrets.LINEAR_TEST_TOKEN != '' }}
+        if: env.LINEAR_TEST_TOKEN != ''
         run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
       - name: Integration tests (real API)
-        if: ${{ secrets.LINEAR_TEST_TOKEN != '' }}
+        if: env.LINEAR_TEST_TOKEN != ''
         run: cargo test --workspace -- --ignored
+        env:
+          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
   build:
     name: Build (${{ matrix.name }})
