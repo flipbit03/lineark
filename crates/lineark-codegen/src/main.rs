@@ -4,12 +4,15 @@ mod emit_mutations;
 mod emit_queries;
 mod emit_scalars;
 mod emit_types;
+mod fetch_schema;
 mod parser;
 
 use std::collections::HashSet;
 use std::path::Path;
 
 fn main() {
+    let fetch = std::env::args().any(|a| a == "--fetch");
+
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
@@ -19,6 +22,15 @@ fn main() {
     let schema_path = workspace_root.join("schema/schema.graphql");
     let operations_path = workspace_root.join("schema/operations.toml");
     let generated_dir = workspace_root.join("crates/lineark-sdk/src/generated");
+
+    // Optionally fetch the latest schema from Linear's introspection endpoint.
+    if fetch {
+        let sdl = fetch_schema::fetch_and_convert()
+            .unwrap_or_else(|e| panic!("Failed to fetch schema: {}", e));
+        std::fs::write(&schema_path, &sdl)
+            .unwrap_or_else(|e| panic!("Failed to write {}: {}", schema_path.display(), e));
+        println!("Schema written to {}", schema_path.display());
+    }
 
     println!("Reading schema from {}", schema_path.display());
     let schema_text = std::fs::read_to_string(&schema_path).expect("Failed to read schema file");

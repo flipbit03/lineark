@@ -5,6 +5,16 @@ use super::enums::*;
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+pub struct AccessKey {
+    pub id: Option<String>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_used_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub revoked_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct ActorBot {
     pub id: Option<String>,
     pub r#type: Option<String>,
@@ -785,6 +795,25 @@ pub struct DocumentContent {
     pub content: Option<String>,
     pub content_state: Option<String>,
     pub restored_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistory {
+    pub id: Option<String>,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub content_data: Option<serde_json::Value>,
+    pub actor_ids: Option<Vec<String>>,
+    pub content_data_snapshot_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistoryConnection {}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistoryEdge {
+    pub cursor: Option<String>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -1938,6 +1967,8 @@ pub struct IssueSuggestion {
     pub suggested_issue_id: Option<String>,
     pub suggested_user_id: Option<String>,
     pub suggested_label_id: Option<String>,
+    pub reasons: Option<Vec<String>>,
+    pub is_visible: Option<bool>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -2349,6 +2380,8 @@ pub struct Post {
     pub r#type: Option<PostType>,
     pub eval_log_id: Option<String>,
     pub feed_summary_schedule_at_create: Option<FeedSummarySchedule>,
+    pub audio_summary_url: Option<String>,
+    pub comment_count: Option<i64>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -2451,6 +2484,7 @@ pub struct ProjectAttachment {
     pub metadata: Option<serde_json::Value>,
     pub source: Option<serde_json::Value>,
     pub source_type: Option<String>,
+    pub body_data: Option<String>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -2808,6 +2842,8 @@ pub struct PullRequest {
     pub target_branch: Option<String>,
     pub url: Option<String>,
     pub status: Option<PullRequestStatus>,
+    pub app_url: Option<String>,
+    pub integration_source_type: Option<IntegrationService>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -2831,6 +2867,14 @@ pub struct PullRequestCommit {
     pub changed_files: Option<f64>,
     pub author_user_ids: Option<Vec<String>>,
     pub author_external_user_ids: Option<Vec<String>>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PullRequestDiffStats {
+    pub file_count: Option<f64>,
+    pub additions: Option<f64>,
+    pub changes: Option<f64>,
+    pub deletions: Option<f64>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -3445,6 +3489,7 @@ pub struct User {
     pub is_mentionable: Option<bool>,
     pub is_assignable: Option<bool>,
     pub active: Option<bool>,
+    pub feature_flags: Option<Vec<String>>,
     pub url: Option<String>,
     pub created_issue_count: Option<i64>,
     pub can_access_any_public_team: Option<bool>,

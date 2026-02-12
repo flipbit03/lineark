@@ -33,7 +33,28 @@ cargo run -p lineark-codegen             # regenerate SDK types from schema
 cargo run -p lineark -- <args>           # run the CLI
 cargo clippy --workspace -- -D warnings  # lint
 cargo fmt --check                        # format check
+make check                               # run all CI checks locally
 ```
+
+## Updating the schema
+
+`schema/schema.graphql` is a vendored copy of Linear's public GraphQL schema (SDL). It's checked in for reproducible builds and reviewable diffs. To update it:
+
+```bash
+make update-schema    # fetch latest schema + regenerate SDK types
+# or equivalently:
+cargo run -p lineark-codegen -- --fetch
+```
+
+This fetches the schema via introspection (no API key needed — Linear's endpoint is public), writes `schema/schema.graphql`, then runs codegen to regenerate `crates/lineark-sdk/src/generated/`. Pure Rust, no external tools.
+
+To regenerate without fetching (e.g. after editing `operations.toml`):
+
+```bash
+make codegen
+```
+
+After updating, fix any compilation errors caused by schema changes, then `make check`.
 
 ## Conventions
 

@@ -1275,6 +1275,16 @@ pub struct DeleteOrganizationInput {
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DocumentContentHistoryFilter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<Box<IDComparator>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<Box<DateComparator>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<Box<DateComparator>>,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DocumentCreateInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,

@@ -151,6 +151,7 @@ fn emit_connection_method(
 /// Fields to exclude from query selection (noisy/internal, waste LLM context).
 const EXCLUDED_FIELDS: &[&str] = &[
     "descriptionState", // Yjs CRDT binary blob, useless for display
+    "featureFlags",     // exposed in introspection but not queryable
 ];
 
 /// Build the scalar/enum field selection string for a type.
