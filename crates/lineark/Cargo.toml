@@ -1,0 +1,18 @@
+[package]
+name = "lineark"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "CLI for Linear issue tracker — for humans and LLMs"
+
+[dependencies]
+lineark-sdk = { path = "../lineark-sdk", version = "0.1" }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde_json = "1"
+tabled = "0.17"
+colored = "2"
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
