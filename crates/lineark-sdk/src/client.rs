@@ -10,6 +10,7 @@ const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
 pub struct Client {
     http: reqwest::Client,
     token: String,
+    base_url: String,
 }
 
 /// Raw GraphQL response shape.
@@ -29,6 +30,7 @@ impl Client {
         Ok(Self {
             http: reqwest::Client::new(),
             token,
+            base_url: LINEAR_API_URL.to_string(),
         })
     }
 
@@ -61,7 +63,7 @@ impl Client {
 
         let response = self
             .http
-            .post(LINEAR_API_URL)
+            .post(&self.base_url)
             .header("Authorization", &self.token)
             .header("Content-Type", "application/json")
             .header(
@@ -139,5 +141,348 @@ impl Client {
     ) -> Result<Connection<T>, LinearError> {
         self.execute::<Connection<T>>(query, variables, data_path)
             .await
+    }
+
+    /// Override the base URL (for testing against mock servers).
+    #[cfg(test)]
+    pub(crate) fn with_base_url(mut self, url: String) -> Self {
+        self.base_url = url;
+        self
+    }
+}
+
+/// Allow integration tests (in tests/ directory) to set base URL.
+impl Client {
+    #[doc(hidden)]
+    pub fn set_base_url(&mut self, url: String) {
+        self.base_url = url;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::{header, method};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[test]
+    fn from_token_valid() {
+        let client = Client::from_token("lin_api_test123").unwrap();
+        assert_eq!(client.token, "lin_api_test123");
+        assert_eq!(client.base_url, LINEAR_API_URL);
+    }
+
+    #[test]
+    fn from_token_empty_fails() {
+        let err = Client::from_token("").unwrap_err();
+        assert!(matches!(err, LinearError::AuthConfig(_)));
+        assert!(err.to_string().contains("empty"));
+    }
+
+    #[tokio::test]
+    async fn execute_returns_401_as_authentication_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("bad-token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        assert!(matches!(result, Err(LinearError::Authentication(_))));
+    }
+
+    #[tokio::test]
+    async fn execute_returns_403_as_forbidden_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(403).set_body_string("Forbidden"))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        assert!(matches!(result, Err(LinearError::Forbidden(_))));
+    }
+
+    #[tokio::test]
+    async fn execute_returns_429_as_rate_limited_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(
+                ResponseTemplate::new(429)
+                    .append_header("retry-after", "30")
+                    .set_body_string("Too Many Requests"),
+            )
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        match result {
+            Err(LinearError::RateLimited {
+                retry_after,
+                message,
+            }) => {
+                assert_eq!(retry_after, Some(30.0));
+                assert_eq!(message, "Too Many Requests");
+            }
+            other => panic!("Expected RateLimited, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn execute_returns_500_as_http_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        match result {
+            Err(LinearError::HttpError { status, body }) => {
+                assert_eq!(status, 500);
+                assert_eq!(body, "Internal Server Error");
+            }
+            other => panic!("Expected HttpError, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn execute_returns_graphql_errors() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": null,
+                "errors": [{"message": "Field 'foo' not found"}]
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>("query { foo }", serde_json::json!({}), "foo")
+            .await;
+
+        assert!(matches!(result, Err(LinearError::GraphQL(_))));
+    }
+
+    #[tokio::test]
+    async fn execute_graphql_auth_error_detected() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": null,
+                "errors": [{"message": "Authentication required"}]
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        assert!(matches!(result, Err(LinearError::Authentication(_))));
+    }
+
+    #[tokio::test]
+    async fn execute_missing_data_path() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"other": {"id": "123"}}
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        match result {
+            Err(LinearError::MissingData(msg)) => {
+                assert!(msg.contains("viewer"));
+            }
+            other => panic!("Expected MissingData, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn execute_no_data_in_response() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": null
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result = client
+            .execute::<serde_json::Value>(
+                "query { viewer { id } }",
+                serde_json::json!({}),
+                "viewer",
+            )
+            .await;
+
+        assert!(matches!(result, Err(LinearError::MissingData(_))));
+    }
+
+    #[tokio::test]
+    async fn execute_success_deserializes() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "viewer": {
+                        "id": "user-123",
+                        "name": "Test User",
+                        "email": "test@example.com",
+                        "active": true
+                    }
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result: serde_json::Value = client
+            .execute("query { viewer { id } }", serde_json::json!({}), "viewer")
+            .await
+            .unwrap();
+
+        assert_eq!(result["id"], "user-123");
+        assert_eq!(result["name"], "Test User");
+    }
+
+    #[tokio::test]
+    async fn execute_connection_deserializes() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "teams": {
+                        "nodes": [
+                            {"id": "team-1", "name": "Engineering", "key": "ENG"},
+                            {"id": "team-2", "name": "Design", "key": "DES"}
+                        ],
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": "cursor-abc"
+                        }
+                    }
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let conn: Connection<serde_json::Value> = client
+            .execute_connection(
+                "query { teams { nodes { id } pageInfo { hasNextPage endCursor } } }",
+                serde_json::json!({}),
+                "teams",
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(conn.nodes.len(), 2);
+        assert_eq!(conn.nodes[0]["id"], "team-1");
+        assert!(!conn.page_info.has_next_page);
+        assert_eq!(conn.page_info.end_cursor, Some("cursor-abc".to_string()));
+    }
+
+    #[tokio::test]
+    async fn execute_sends_authorization_header() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(header("Authorization", "my-secret-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"viewer": {"id": "1"}}
+            })))
+            .mount(&server)
+            .await;
+
+        let client = Client::from_token("my-secret-token")
+            .unwrap()
+            .with_base_url(server.uri());
+
+        let result: serde_json::Value = client
+            .execute("query { viewer { id } }", serde_json::json!({}), "viewer")
+            .await
+            .unwrap();
+
+        assert_eq!(result["id"], "1");
     }
 }

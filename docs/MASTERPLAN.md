@@ -476,11 +476,11 @@ and ensure all tests pass."
 - [x] Ensure every command and subcommand has comprehensive `--help` text via clap doc comments (#15)
 
 **Testing (#16):**
-- [ ] Unit tests for codegen: verify generated Rust code for a small test schema matches expected output (#16)
-- [ ] Unit tests for auth: token file reading, env var reading, precedence (#16)
-- [ ] Unit tests for error parsing: verify LinearError is correctly constructed from various API error shapes (#16)
-- [ ] Integration tests for SDK: mock HTTP responses, verify deserialization of teams/issues/users/etc. (#16)
-- [ ] CLI output tests: verify JSON output structure, verify human output is reasonable (#16)
+- [x] Unit tests for codegen: verify generated Rust code for a small test schema matches expected output (#16)
+- [x] Unit tests for auth: token file reading, env var reading, precedence (#16)
+- [x] Unit tests for error parsing: verify LinearError is correctly constructed from various API error shapes (#16)
+- [x] Integration tests for SDK: mock HTTP responses, verify deserialization of teams/issues/users/etc. (#16)
+- [x] CLI output tests: verify JSON output structure, verify human output is reasonable (#16)
 
 **Phase 1 acceptance criteria (#17):**
 - [x] `cargo install lineark` works (or `cargo run -p lineark --`) (#17)
@@ -599,7 +599,7 @@ and ensure all tests pass."
 - [ ] Ensure all CLI commands have thorough `--help` text (#34)
 
 **CI workflow (#35):**
-- [ ] Create `.github/workflows/ci.yml` with fmt, clippy, test, build (#35)
+- [x] Create `.github/workflows/ci.yml` with fmt, clippy, test, build (#35)
 
 **Publish (#36):**
 - [ ] Publish `lineark-sdk` to crates.io (#36)

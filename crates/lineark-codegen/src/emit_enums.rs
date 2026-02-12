@@ -71,3 +71,93 @@ fn to_variant_name(name: &str) -> String {
         pascal
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::{EnumDef, EnumValueDef};
+
+    #[test]
+    fn emit_generates_enum_with_variants() {
+        let enums = vec![EnumDef {
+            name: "Color".to_string(),
+            values: vec![
+                EnumValueDef {
+                    name: "RED".to_string(),
+                },
+                EnumValueDef {
+                    name: "GREEN".to_string(),
+                },
+                EnumValueDef {
+                    name: "BLUE".to_string(),
+                },
+            ],
+        }];
+        let output = emit(&enums).to_string();
+        assert!(output.contains("Color"));
+        assert!(output.contains("Unknown"));
+        // SCREAMING_SNAKE values get serde(rename)
+        assert!(output.contains("serde"));
+    }
+
+    #[test]
+    fn emit_includes_unknown_variant() {
+        let enums = vec![EnumDef {
+            name: "Status".to_string(),
+            values: vec![EnumValueDef {
+                name: "ACTIVE".to_string(),
+            }],
+        }];
+        let output = emit(&enums).to_string();
+        assert!(output.contains("Unknown"));
+        assert!(output.contains("other"));
+    }
+
+    #[test]
+    fn to_variant_name_screaming_snake() {
+        assert_eq!(to_variant_name("IN_PROGRESS"), "InProgress");
+        assert_eq!(to_variant_name("TODO"), "Todo");
+    }
+
+    #[test]
+    fn to_variant_name_pascal_case_passthrough() {
+        assert_eq!(to_variant_name("Active"), "Active");
+    }
+
+    #[test]
+    fn to_variant_name_digit_prefix() {
+        assert_eq!(to_variant_name("3dModel"), "_3dModel");
+    }
+
+    #[test]
+    fn emit_skips_empty_names() {
+        let enums = vec![EnumDef {
+            name: "".to_string(),
+            values: vec![],
+        }];
+        let output = emit(&enums).to_string();
+        // Should not contain "pub enum" since the name is empty
+        assert!(!output.contains("pub enum"));
+    }
+
+    #[test]
+    fn emit_generated_code_parses() {
+        let enums = vec![EnumDef {
+            name: "Priority".to_string(),
+            values: vec![
+                EnumValueDef {
+                    name: "noPriority".to_string(),
+                },
+                EnumValueDef {
+                    name: "urgent".to_string(),
+                },
+                EnumValueDef {
+                    name: "high".to_string(),
+                },
+            ],
+        }];
+        let output = emit(&enums).to_string();
+        // Verify it parses as valid Rust
+        syn::parse_file(&output).expect("Generated enum code should be valid Rust");
+    }
+}
