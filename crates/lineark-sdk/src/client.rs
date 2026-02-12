@@ -64,6 +64,10 @@ impl Client {
             .post(LINEAR_API_URL)
             .header("Authorization", &self.token)
             .header("Content-Type", "application/json")
+            .header(
+                "User-Agent",
+                format!("lineark-sdk/{}", env!("CARGO_PKG_VERSION")),
+            )
             .json(&body)
             .send()
             .await?;
@@ -86,6 +90,13 @@ impl Client {
             return Err(LinearError::RateLimited {
                 retry_after,
                 message: text,
+            });
+        }
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(LinearError::HttpError {
+                status: status.as_u16(),
+                body,
             });
         }
 
@@ -120,7 +131,7 @@ impl Client {
     }
 
     /// Execute a GraphQL query and extract a Connection from the response.
-    pub async fn execute_connection<T: DeserializeOwned + Default>(
+    pub async fn execute_connection<T: DeserializeOwned>(
         &self,
         query: &str,
         variables: serde_json::Value,

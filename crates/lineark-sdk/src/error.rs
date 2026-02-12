@@ -29,6 +29,8 @@ pub enum LinearError {
     GraphQL(Vec<GraphQLError>),
     /// The requested data path was not found in the response.
     MissingData(String),
+    /// Non-2xx HTTP response not covered by a more specific variant.
+    HttpError { status: u16, body: String },
     /// Auth configuration error (no token found).
     AuthConfig(String),
 }
@@ -53,6 +55,9 @@ impl fmt::Display for LinearError {
                     })
                     .collect();
                 write!(f, "GraphQL errors: {}", msgs.join("; "))
+            }
+            Self::HttpError { status, body } => {
+                write!(f, "HTTP error {}: {}", status, body)
             }
             Self::MissingData(path) => write!(f, "Missing data at path: {}", path),
             Self::AuthConfig(msg) => write!(f, "Auth configuration error: {}", msg),

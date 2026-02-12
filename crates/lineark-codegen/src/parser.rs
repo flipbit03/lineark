@@ -196,7 +196,7 @@ fn extract_type(ty: &Option<cst::Type>) -> GqlType {
                     let inner = extract_type(&list.ty());
                     GqlType::NonNull(Box::new(GqlType::List(Box::new(inner))))
                 } else {
-                    GqlType::Named("String".to_string())
+                    GqlType::NonNull(Box::new(GqlType::Named("String".to_string())))
                 }
             }
         },

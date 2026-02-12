@@ -87,7 +87,7 @@ Every PR must pass CI before merge. The checks are:
 3. `cargo build --workspace` — compilation
 4. `cargo test --workspace` — tests
 
-These run on three targets: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `aarch64-apple-darwin`.
+These run on five targets: `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-gnu`, `aarch64-unknown-linux-musl`, `aarch64-apple-darwin`.
 
 When opening a PR, include a summary of changes and a test plan. If codegen was modified, verify with `cargo run -p lineark-codegen` that the generated output is clean (codegen runs `cargo fmt` as a post-step).
 

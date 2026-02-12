@@ -1,3 +1,4 @@
+use colored::Colorize;
 use serde::Serialize;
 use std::io::IsTerminal;
 use tabled::{Table, Tabled};
@@ -48,9 +49,41 @@ pub fn print_one<T: Serialize>(item: &T, format: Format) {
             println!("{}", serde_json::to_string_pretty(item).unwrap());
         }
         Format::Human => {
-            // For single items, pretty-print as JSON even in human mode.
-            // This is the most readable format for detailed views.
-            println!("{}", serde_json::to_string_pretty(item).unwrap());
+            let value = serde_json::to_value(item).unwrap();
+            print_value_human(&value, 0);
         }
+    }
+}
+
+fn print_value_human(value: &serde_json::Value, indent: usize) {
+    let pad = "  ".repeat(indent);
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, val) in map {
+                match val {
+                    serde_json::Value::Null => {}
+                    serde_json::Value::Object(_) => {
+                        println!("{}{}:", pad, key.bold().cyan());
+                        print_value_human(val, indent + 1);
+                    }
+                    serde_json::Value::Array(arr) => {
+                        println!("{}{}:", pad, key.bold().cyan());
+                        for item in arr {
+                            print_value_human(item, indent + 1);
+                            println!("{}  ---", pad);
+                        }
+                    }
+                    _ => {
+                        let display = match val {
+                            serde_json::Value::String(s) => s.clone(),
+                            other => other.to_string(),
+                        };
+                        println!("{}{}: {}", pad, key.bold().cyan(), display);
+                    }
+                }
+            }
+        }
+        serde_json::Value::String(s) => println!("{}{}", pad, s),
+        other => println!("{}{}", pad, other),
     }
 }

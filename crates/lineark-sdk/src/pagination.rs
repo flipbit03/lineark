@@ -11,10 +11,12 @@ pub struct PageInfo {
 }
 
 /// A paginated collection of nodes with page info.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(deserialize = "T: serde::de::DeserializeOwned"))]
 pub struct Connection<T> {
+    #[serde(default)]
     pub nodes: Vec<T>,
-    #[serde(rename = "pageInfo")]
+    #[serde(rename = "pageInfo", default)]
     pub page_info: PageInfo,
 }
