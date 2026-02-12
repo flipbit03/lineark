@@ -32,7 +32,7 @@ jobs:
           cargo update --workspace
 
       - name: Publish lineark-sdk
-        run: cargo publish -p lineark-sdk --no-verify
+        run: cargo publish -p lineark-sdk --no-verify --allow-dirty
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -50,7 +50,7 @@ jobs:
           echo "Timed out waiting for indexing, proceeding anyway"
 
       - name: Publish lineark
-        run: cargo publish -p lineark --no-verify
+        run: cargo publish -p lineark --no-verify --allow-dirty
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
