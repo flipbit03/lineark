@@ -27,11 +27,8 @@ jobs:
       - name: Patch version in Cargo.toml files
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          # Workspace version
           sed -i "s/^version = \"0.0.0\"/version = \"${VERSION}\"/" Cargo.toml
-          # lineark's dependency on lineark-sdk
           sed -i "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark/Cargo.toml
-          # Update Cargo.lock
           cargo update --workspace
 
       - name: Publish lineark-sdk
@@ -67,18 +64,15 @@ jobs:
           - name: Linux x86_64
             runner: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            binary: lineark
-            asset: lineark-x86_64-unknown-linux-musl.tar.gz
+            asset: lineark_linux_x86_64
           - name: Linux aarch64
             runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            binary: lineark
-            asset: lineark-aarch64-unknown-linux-musl.tar.gz
+            asset: lineark_linux_aarch64
           - name: macOS aarch64
             runner: macos-latest
             target: aarch64-apple-darwin
-            binary: lineark
-            asset: lineark-aarch64-apple-darwin.tar.gz
+            asset: lineark_macos_aarch64
     steps:
       - uses: actions/checkout@v4
 
@@ -101,25 +95,19 @@ jobs:
           sed -i'' -e "s/^version = \"0.0.0\"/version = \"${VERSION}\"/" Cargo.toml
           sed -i'' -e "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark/Cargo.toml
 
-      - name: Build static binary
+      - name: Build binary
         run: cargo build --release --target ${{ matrix.target }} -p lineark
         env:
           RUSTFLAGS: -Dwarnings
 
-      - name: Package binary
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../${{ matrix.asset }} ${{ matrix.binary }}
-          cd ../../..
-          shasum -a 256 ${{ matrix.asset }} > ${{ matrix.asset }}.sha256
+      - name: Rename binary
+        run: cp target/${{ matrix.target }}/release/lineark ${{ matrix.asset }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: |
-            ${{ matrix.asset }}
-            ${{ matrix.asset }}.sha256
+          path: ${{ matrix.asset }}
 
   release:
     name: Create GitHub Release
@@ -138,6 +126,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            artifacts/*.tar.gz
-            artifacts/*.sha256
+          files: artifacts/lineark_*

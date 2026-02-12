@@ -24,13 +24,13 @@ cargo install lineark
 
 ### Download binary manually
 
-Grab a tarball from the [latest release](https://github.com/flipbit03/lineark/releases/latest):
+Grab a binary from the [latest release](https://github.com/flipbit03/lineark/releases/latest):
 
 | Platform | Asset |
 |---|---|
-| Linux x86_64 | `lineark-x86_64-unknown-linux-musl.tar.gz` |
-| Linux aarch64 | `lineark-aarch64-unknown-linux-musl.tar.gz` |
-| macOS aarch64 (Apple Silicon) | `lineark-aarch64-apple-darwin.tar.gz` |
+| Linux x86_64 | `lineark_linux_x86_64` |
+| Linux aarch64 | `lineark_linux_aarch64` |
+| macOS aarch64 (Apple Silicon) | `lineark_macos_aarch64` |
 
 ## Auth
 

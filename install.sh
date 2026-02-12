@@ -11,25 +11,24 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "${OS}" in
-  Linux)  PLATFORM="unknown-linux-musl" ;;
-  Darwin) PLATFORM="apple-darwin" ;;
+  Linux)  OS_TAG="linux" ;;
+  Darwin) OS_TAG="macos" ;;
   *) echo "Unsupported OS: ${OS}" >&2; exit 1 ;;
 esac
 
 case "${ARCH}" in
-  x86_64|amd64)  ARCH="x86_64" ;;
-  aarch64|arm64) ARCH="aarch64" ;;
+  x86_64|amd64)  ARCH_TAG="x86_64" ;;
+  aarch64|arm64) ARCH_TAG="aarch64" ;;
   *) echo "Unsupported architecture: ${ARCH}" >&2; exit 1 ;;
 esac
 
-TARGET="${ARCH}-${PLATFORM}"
-ASSET="lineark-${TARGET}.tar.gz"
-
-# macOS aarch64 doesn't have a musl variant.
-if [ "${OS}" = "Darwin" ] && [ "${ARCH}" = "x86_64" ]; then
+# macOS x86_64 binaries are not provided.
+if [ "${OS}" = "Darwin" ] && [ "${ARCH_TAG}" = "x86_64" ]; then
   echo "macOS x86_64 binaries are not provided. Use: cargo install lineark" >&2
   exit 1
 fi
+
+ASSET="lineark_${OS_TAG}_${ARCH_TAG}"
 
 # Get latest release tag.
 echo "Fetching latest release..."
@@ -40,14 +39,13 @@ if [ -z "${TAG}" ]; then
 fi
 echo "Latest release: ${TAG}"
 
-# Download and extract.
+# Download binary.
 URL="https://github.com/${REPO}/releases/download/${TAG}/${ASSET}"
 echo "Downloading ${ASSET}..."
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "${TMPDIR}"' EXIT
 
-curl -fsSL "${URL}" -o "${TMPDIR}/${ASSET}"
-tar xzf "${TMPDIR}/${ASSET}" -C "${TMPDIR}"
+curl -fsSL "${URL}" -o "${TMPDIR}/lineark"
 
 # Install.
 mkdir -p "${INSTALL_DIR}"
