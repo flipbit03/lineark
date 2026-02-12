@@ -58,20 +58,14 @@ jobs:
           key: test-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: test-cargo-
 
-      - name: Unit tests
-        run: cargo test --workspace
-
       - name: Set up test API token
         if: env.LINEAR_TEST_TOKEN != ''
         run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Integration tests (real API)
-        if: env.LINEAR_TEST_TOKEN != ''
-        run: cargo test --workspace -- --ignored
-        env:
-          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
+      - name: Tests
+        run: cargo test --workspace
 
   build:
     name: Build (${{ matrix.name }})

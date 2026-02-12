@@ -321,6 +321,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "escape8259"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5692dd7b5a1978a5aeb0ce83b7655c58ca8efdcb79d21036ea249da95afec2c6"
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -825,6 +831,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "459427e2af2b9c839b132acb702a1c654d95e10f8c326bfc2ad11310e458b1c5"
 
 [[package]]
+name = "libtest-with"
+version = "0.8.1-13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6834c2d26ad60f05ddcbd4af360ed6da19ff8054091e55d8ab501f748ad84d8f"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "clap",
+ "escape8259",
+]
+
+[[package]]
 name = "lineark"
 version = "0.0.0"
 dependencies = [
@@ -833,11 +851,13 @@ dependencies = [
  "clap",
  "colored",
  "home",
+ "libtest-with",
  "lineark-sdk",
  "predicates",
  "serde",
  "serde_json",
  "tabled",
+ "test-with",
  "tokio",
  "uuid",
 ]
@@ -863,10 +883,12 @@ version = "0.0.0"
 dependencies = [
  "chrono",
  "home",
+ "libtest-with",
  "reqwest",
  "serde",
  "serde_json",
  "tempfile",
+ "test-with",
  "tokio",
  "wiremock",
 ]
@@ -1526,6 +1548,19 @@ name = "termtree"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
+
+[[package]]
+name = "test-with"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d12b38781f6705ffaea00c4463a4ae8fdd4174eb8cefb81a047f7f61cba5179"
+dependencies = [
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.114",
+]
 
 [[package]]
 name = "text-size"

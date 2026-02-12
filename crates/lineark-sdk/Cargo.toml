@@ -19,6 +19,12 @@ home = "0.5"
 wiremock = "0.6"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "test-util"] }
 tempfile = "3"
+test-with = { version = "0.15", default-features = false, features = ["runtime"] }
+libtest-with = "0.8.1-13"
+
+[[test]]
+name = "online"
+harness = false
 
 [features]
 default = []
