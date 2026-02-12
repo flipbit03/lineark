@@ -86,3 +86,160 @@ fn resolve_inner_type(ty: &GqlType) -> TokenStream {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::FieldDef;
+
+    fn make_type_kind_map() -> HashMap<String, TypeKind> {
+        let mut map = HashMap::new();
+        map.insert("String".to_string(), TypeKind::Scalar);
+        map.insert("Int".to_string(), TypeKind::Scalar);
+        map.insert("Float".to_string(), TypeKind::Scalar);
+        map.insert("Boolean".to_string(), TypeKind::Scalar);
+        map.insert("ID".to_string(), TypeKind::Scalar);
+        map.insert("DateTime".to_string(), TypeKind::Scalar);
+        map.insert("Status".to_string(), TypeKind::Enum);
+        map.insert("Team".to_string(), TypeKind::Object);
+        map
+    }
+
+    #[test]
+    fn emit_struct_with_scalar_fields() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "User".to_string(),
+            fields: vec![
+                FieldDef {
+                    name: "id".to_string(),
+                    ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
+                    arguments: vec![],
+                },
+                FieldDef {
+                    name: "name".to_string(),
+                    ty: GqlType::NonNull(Box::new(GqlType::Named("String".to_string()))),
+                    arguments: vec![],
+                },
+                FieldDef {
+                    name: "active".to_string(),
+                    ty: GqlType::Named("Boolean".to_string()),
+                    arguments: vec![],
+                },
+            ],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(output.contains("pub struct User"));
+        assert!(output.contains("pub id"));
+        assert!(output.contains("pub name"));
+        assert!(output.contains("pub active"));
+        assert!(output.contains("Option"));
+    }
+
+    #[test]
+    fn emit_filters_out_object_fields() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "Issue".to_string(),
+            fields: vec![
+                FieldDef {
+                    name: "id".to_string(),
+                    ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
+                    arguments: vec![],
+                },
+                FieldDef {
+                    name: "team".to_string(),
+                    ty: GqlType::Named("Team".to_string()),
+                    arguments: vec![],
+                },
+            ],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(output.contains("pub id"));
+        // "team" field should be filtered out (Team is an Object, not Scalar/Enum)
+        assert!(!output.contains("pub team"));
+    }
+
+    #[test]
+    fn emit_includes_enum_fields() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "Issue".to_string(),
+            fields: vec![FieldDef {
+                name: "status".to_string(),
+                ty: GqlType::Named("Status".to_string()),
+                arguments: vec![],
+            }],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(output.contains("pub status"));
+    }
+
+    #[test]
+    fn emit_uses_camel_case_serde() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "User".to_string(),
+            fields: vec![FieldDef {
+                name: "createdAt".to_string(),
+                ty: GqlType::Named("DateTime".to_string()),
+                arguments: vec![],
+            }],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(output.contains("rename_all = \"camelCase\""));
+        // Field name should be snake_case in Rust
+        assert!(output.contains("created_at"));
+    }
+
+    #[test]
+    fn emit_generated_code_parses() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "Team".to_string(),
+            fields: vec![
+                FieldDef {
+                    name: "id".to_string(),
+                    ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
+                    arguments: vec![],
+                },
+                FieldDef {
+                    name: "name".to_string(),
+                    ty: GqlType::Named("String".to_string()),
+                    arguments: vec![],
+                },
+            ],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        syn::parse_file(&output).expect("Generated type code should be valid Rust");
+    }
+
+    #[test]
+    fn emit_skips_empty_object_names() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "".to_string(),
+            fields: vec![],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(!output.contains("pub struct"));
+    }
+
+    #[test]
+    fn emit_handles_list_fields() {
+        let type_kind_map = make_type_kind_map();
+        let objects = vec![ObjectDef {
+            name: "User".to_string(),
+            fields: vec![FieldDef {
+                name: "labelIds".to_string(),
+                ty: GqlType::List(Box::new(GqlType::NonNull(Box::new(GqlType::Named(
+                    "String".to_string(),
+                ))))),
+                arguments: vec![],
+            }],
+        }];
+        let output = emit(&objects, &type_kind_map).to_string();
+        assert!(output.contains("Vec"));
+        assert!(output.contains("label_ids"));
+    }
+}

@@ -38,6 +38,39 @@ jobs:
         env:
           RUSTFLAGS: -Dwarnings
 
+  test:
+    name: Test
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: test-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: test-cargo-
+
+      - name: Unit tests
+        run: cargo test --workspace
+
+      - name: Set up test API token
+        if: ${{ secrets.LINEAR_TEST_TOKEN != '' }}
+        run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
+        env:
+          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
+
+      - name: Integration tests (real API)
+        if: ${{ secrets.LINEAR_TEST_TOKEN != '' }}
+        run: cargo test --workspace -- --ignored
+
   build:
     name: Build (${{ matrix.name }})
     needs: lint
@@ -85,6 +118,3 @@ jobs:
 
       - name: Build
         run: cargo build --workspace --target ${{ matrix.target }}
-
-      - name: Test
-        run: cargo test --workspace --target ${{ matrix.target }}

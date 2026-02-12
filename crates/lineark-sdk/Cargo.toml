@@ -15,6 +15,11 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 home = "0.5"
 
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "test-util"] }
+tempfile = "3"
+
 [features]
 default = []
 blocking = ["reqwest/blocking"]

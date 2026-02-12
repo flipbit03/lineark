@@ -63,3 +63,80 @@ pub fn graphql_type_to_rust(name: &str) -> TokenStream {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::ScalarDef;
+
+    #[test]
+    fn graphql_builtins_map_correctly() {
+        assert_eq!(graphql_type_to_rust("String").to_string(), "String");
+        assert_eq!(graphql_type_to_rust("ID").to_string(), "String");
+        assert_eq!(graphql_type_to_rust("UUID").to_string(), "String");
+        assert_eq!(graphql_type_to_rust("Int").to_string(), "i64");
+        assert_eq!(graphql_type_to_rust("Float").to_string(), "f64");
+        assert_eq!(graphql_type_to_rust("Boolean").to_string(), "bool");
+    }
+
+    #[test]
+    fn graphql_datetime_maps_to_chrono() {
+        let ts = graphql_type_to_rust("DateTime").to_string();
+        assert!(ts.contains("chrono"));
+        assert!(ts.contains("DateTime"));
+        assert!(ts.contains("Utc"));
+    }
+
+    #[test]
+    fn graphql_json_maps_to_serde_value() {
+        let ts = graphql_type_to_rust("JSON").to_string();
+        assert!(ts.contains("serde_json"));
+        assert!(ts.contains("Value"));
+    }
+
+    #[test]
+    fn graphql_unknown_maps_to_ident() {
+        let ts = graphql_type_to_rust("IssueStatus").to_string();
+        assert_eq!(ts, "IssueStatus");
+    }
+
+    #[test]
+    fn scalar_to_rust_known() {
+        assert!(scalar_to_rust_type("DateTime").is_some());
+        assert!(scalar_to_rust_type("JSON").is_some());
+        assert!(scalar_to_rust_type("UUID").is_some());
+        assert!(scalar_to_rust_type("TimelessDate").is_some());
+    }
+
+    #[test]
+    fn scalar_to_rust_unknown() {
+        assert!(scalar_to_rust_type("CustomScalar").is_none());
+        assert!(scalar_to_rust_type("String").is_none());
+    }
+
+    #[test]
+    fn emit_generates_type_aliases() {
+        let scalars = vec![
+            ScalarDef {
+                name: "DateTime".to_string(),
+            },
+            ScalarDef {
+                name: "JSON".to_string(),
+            },
+        ];
+        let output = emit(&scalars).to_string();
+        assert!(output.contains("DateTime"));
+        assert!(output.contains("JSON"));
+        assert!(output.contains("pub type"));
+    }
+
+    #[test]
+    fn emit_skips_unknown_scalars() {
+        let scalars = vec![ScalarDef {
+            name: "SomeCustomThing".to_string(),
+        }];
+        let output = emit(&scalars).to_string();
+        // Unknown scalars are skipped (no type alias generated)
+        assert!(!output.contains("SomeCustomThing"));
+    }
+}

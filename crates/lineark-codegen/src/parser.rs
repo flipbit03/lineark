@@ -293,3 +293,263 @@ pub fn safe_ident(name: &str) -> String {
         name.to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MINI_SCHEMA: &str = r#"
+        scalar DateTime
+        scalar JSON
+
+        enum IssueStatus {
+            BACKLOG
+            TODO
+            IN_PROGRESS
+            DONE
+        }
+
+        type User {
+            id: ID!
+            name: String!
+            email: String
+            active: Boolean
+            createdAt: DateTime
+        }
+
+        type Team {
+            id: ID!
+            key: String!
+            name: String!
+            description: String
+        }
+
+        input UserFilter {
+            name: String
+            active: Boolean
+        }
+
+        type Query {
+            viewer: User!
+            users(first: Int, after: String): UserConnection!
+            team(id: String!): Team!
+        }
+
+        type UserConnection {
+            nodes: [User!]!
+            pageInfo: PageInfo!
+        }
+
+        type PageInfo {
+            hasNextPage: Boolean!
+            endCursor: String
+        }
+    "#;
+
+    #[test]
+    fn parse_scalars() {
+        let schema = parse(MINI_SCHEMA);
+        let names: Vec<&str> = schema.scalars.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"DateTime"));
+        assert!(names.contains(&"JSON"));
+    }
+
+    #[test]
+    fn parse_enums() {
+        let schema = parse(MINI_SCHEMA);
+        assert_eq!(schema.enums.len(), 1);
+        let e = &schema.enums[0];
+        assert_eq!(e.name, "IssueStatus");
+        let values: Vec<&str> = e.values.iter().map(|v| v.name.as_str()).collect();
+        assert_eq!(values, vec!["BACKLOG", "TODO", "IN_PROGRESS", "DONE"]);
+    }
+
+    #[test]
+    fn parse_objects() {
+        let schema = parse(MINI_SCHEMA);
+        let obj_names: Vec<&str> = schema.objects.iter().map(|o| o.name.as_str()).collect();
+        assert!(obj_names.contains(&"User"));
+        assert!(obj_names.contains(&"Team"));
+        assert!(obj_names.contains(&"UserConnection"));
+        assert!(obj_names.contains(&"PageInfo"));
+        // Query should NOT appear as a regular object
+        assert!(!obj_names.contains(&"Query"));
+    }
+
+    #[test]
+    fn parse_query_fields() {
+        let schema = parse(MINI_SCHEMA);
+        let query_names: Vec<&str> = schema
+            .query_fields
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect();
+        assert!(query_names.contains(&"viewer"));
+        assert!(query_names.contains(&"users"));
+        assert!(query_names.contains(&"team"));
+    }
+
+    #[test]
+    fn parse_inputs() {
+        let schema = parse(MINI_SCHEMA);
+        assert_eq!(schema.inputs.len(), 1);
+        let input = &schema.inputs[0];
+        assert_eq!(input.name, "UserFilter");
+        assert_eq!(input.fields.len(), 2);
+    }
+
+    #[test]
+    fn parse_type_kind_map() {
+        let schema = parse(MINI_SCHEMA);
+        assert_eq!(
+            schema.type_kind_map.get("DateTime"),
+            Some(&TypeKind::Scalar)
+        );
+        assert_eq!(
+            schema.type_kind_map.get("IssueStatus"),
+            Some(&TypeKind::Enum)
+        );
+        assert_eq!(schema.type_kind_map.get("User"), Some(&TypeKind::Object));
+        assert_eq!(
+            schema.type_kind_map.get("UserFilter"),
+            Some(&TypeKind::InputObject)
+        );
+        // Built-in scalars
+        assert_eq!(schema.type_kind_map.get("String"), Some(&TypeKind::Scalar));
+        assert_eq!(schema.type_kind_map.get("Int"), Some(&TypeKind::Scalar));
+        assert_eq!(schema.type_kind_map.get("Boolean"), Some(&TypeKind::Scalar));
+    }
+
+    #[test]
+    fn parse_field_types() {
+        let schema = parse(MINI_SCHEMA);
+        let user = schema.objects.iter().find(|o| o.name == "User").unwrap();
+
+        // id: ID! -> NonNull(Named("ID"))
+        let id_field = user.fields.iter().find(|f| f.name == "id").unwrap();
+        assert!(matches!(
+            &id_field.ty,
+            GqlType::NonNull(inner) if matches!(inner.as_ref(), GqlType::Named(n) if n == "ID")
+        ));
+
+        // email: String -> Named("String")
+        let email_field = user.fields.iter().find(|f| f.name == "email").unwrap();
+        assert!(matches!(&email_field.ty, GqlType::Named(n) if n == "String"));
+
+        // createdAt: DateTime -> Named("DateTime")
+        let created_field = user.fields.iter().find(|f| f.name == "createdAt").unwrap();
+        assert_eq!(created_field.ty.base_name(), "DateTime");
+    }
+
+    #[test]
+    fn parse_query_arguments() {
+        let schema = parse(MINI_SCHEMA);
+        let users_query = schema
+            .query_fields
+            .iter()
+            .find(|f| f.name == "users")
+            .unwrap();
+        assert_eq!(users_query.arguments.len(), 2);
+
+        let first_arg = users_query
+            .arguments
+            .iter()
+            .find(|a| a.name == "first")
+            .unwrap();
+        assert_eq!(first_arg.ty.base_name(), "Int");
+
+        let after_arg = users_query
+            .arguments
+            .iter()
+            .find(|a| a.name == "after")
+            .unwrap();
+        assert_eq!(after_arg.ty.base_name(), "String");
+    }
+
+    #[test]
+    fn safe_ident_keywords() {
+        assert_eq!(safe_ident("type"), "r#type");
+        assert_eq!(safe_ident("match"), "r#match");
+        assert_eq!(safe_ident("async"), "r#async");
+        assert_eq!(safe_ident("self"), "r#self");
+    }
+
+    #[test]
+    fn safe_ident_non_keywords() {
+        assert_eq!(safe_ident("name"), "name");
+        assert_eq!(safe_ident("id"), "id");
+        assert_eq!(safe_ident("user_name"), "user_name");
+    }
+
+    #[test]
+    fn gql_type_base_name() {
+        let named = GqlType::Named("User".to_string());
+        assert_eq!(named.base_name(), "User");
+
+        let non_null = GqlType::NonNull(Box::new(GqlType::Named("String".to_string())));
+        assert_eq!(non_null.base_name(), "String");
+
+        let list = GqlType::List(Box::new(GqlType::NonNull(Box::new(GqlType::Named(
+            "Int".to_string(),
+        )))));
+        assert_eq!(list.base_name(), "Int");
+    }
+
+    #[test]
+    fn parse_empty_schema() {
+        let schema = parse("");
+        assert!(schema.scalars.is_empty());
+        assert!(schema.enums.is_empty());
+        assert!(schema.objects.is_empty());
+        assert!(schema.inputs.is_empty());
+        assert!(schema.query_fields.is_empty());
+        assert!(schema.mutation_fields.is_empty());
+        // Built-in scalars should still be in the map
+        assert_eq!(schema.type_kind_map.len(), 5);
+    }
+
+    #[test]
+    fn parse_interface_and_union() {
+        let schema_text = r#"
+            interface Node {
+                id: ID!
+            }
+            union SearchResult = User | Team
+            type User {
+                id: ID!
+            }
+            type Team {
+                id: ID!
+            }
+        "#;
+        let schema = parse(schema_text);
+        assert_eq!(schema.type_kind_map.get("Node"), Some(&TypeKind::Interface));
+        assert_eq!(
+            schema.type_kind_map.get("SearchResult"),
+            Some(&TypeKind::Union)
+        );
+    }
+
+    #[test]
+    fn parse_mutation_fields() {
+        let schema_text = r#"
+            type User {
+                id: ID!
+                name: String
+            }
+            type Mutation {
+                createUser(name: String!): User!
+                deleteUser(id: ID!): Boolean!
+            }
+        "#;
+        let schema = parse(schema_text);
+        assert_eq!(schema.mutation_fields.len(), 2);
+        let names: Vec<&str> = schema
+            .mutation_fields
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect();
+        assert!(names.contains(&"createUser"));
+        assert!(names.contains(&"deleteUser"));
+    }
+}

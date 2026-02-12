@@ -34,3 +34,41 @@ fn token_file_path() -> Result<PathBuf, LinearError> {
         .ok_or_else(|| LinearError::AuthConfig("Could not determine home directory".to_string()))?;
     Ok(home.join(".linear_api_token"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_from_env_success() {
+        // Temporarily set the env var. Use a unique test name to avoid races.
+        std::env::set_var("LINEAR_API_TOKEN", "test-token-12345");
+        let result = token_from_env();
+        std::env::remove_var("LINEAR_API_TOKEN");
+        assert_eq!(result.unwrap(), "test-token-12345");
+    }
+
+    #[test]
+    fn token_from_env_missing() {
+        std::env::remove_var("LINEAR_API_TOKEN");
+        let result = token_from_env();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("LINEAR_API_TOKEN"));
+    }
+
+    #[test]
+    fn auto_token_prefers_env() {
+        std::env::set_var("LINEAR_API_TOKEN", "env-token-auto");
+        let result = auto_token();
+        std::env::remove_var("LINEAR_API_TOKEN");
+        // Should use env var, not file
+        assert_eq!(result.unwrap(), "env-token-auto");
+    }
+
+    #[test]
+    fn token_file_path_is_home_based() {
+        let path = token_file_path().unwrap();
+        assert!(path.to_str().unwrap().contains(".linear_api_token"));
+        assert!(path.to_str().unwrap().starts_with("/"));
+    }
+}
