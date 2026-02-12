@@ -14,9 +14,19 @@ COMMANDS:
   lineark issues list [--limit N] [--team KEY]     Active issues (done/canceled hidden), newest first
     [--mine]                                       Only issues assigned to me
     [--show-done]                                  Include done/canceled issues
-  lineark issues read <IDENTIFIER>                 Full issue detail with assignee, state, labels (e.g., E-929)
-  lineark issues search <QUERY> [--limit N]        Full-text search across titles and descriptions
+  lineark issues read <IDENTIFIER>                 Full issue detail (e.g., E-929)
+  lineark issues search <QUERY> [--limit N]        Full-text search
     [--show-done]                                  Include done/canceled results
+  lineark issues create <TITLE> --team KEY         Create an issue
+    [--priority 0-4] [--assignee ID]               0=none 1=urgent 2=high 3=medium 4=low
+    [--labels ID,...] [--description TEXT]          Comma-separated label UUIDs
+    [--status NAME] [--parent ID]                  Status resolved against team states
+  lineark issues update <IDENTIFIER>               Update an issue
+    [--status NAME] [--priority 0-4]               Status resolved against team states
+    [--assignee ID] [--parent ID]                  User UUID or issue identifier
+    [--labels ID,...] [--label-by adding|replacing|removing]
+    [--clear-labels] [--title TEXT] [--description TEXT]
+  lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token

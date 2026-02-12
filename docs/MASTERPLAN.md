@@ -499,27 +499,27 @@ and ensure all tests pass."
 **Goal:** Create and update the most important entities.
 
 **Codegen updates (#18):**
-- [ ] Add mutation operations to `operations.toml`: `issueCreate`, `issueUpdate`, `issueArchive`, `commentCreate` (#18)
-- [ ] Re-run codegen, verify mutation functions are generated and compile (#18)
+- [x] Add mutation operations to `operations.toml`: `issueCreate`, `issueUpdate`, `issueArchive`, `commentCreate` (#18)
+- [x] Re-run codegen, verify mutation functions are generated and compile (#18)
 
 **CLI write commands:**
-- [ ] Implement `lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-4] [--description TEXT]` (#19)
-- [ ] Implement `lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-4] [--labels L1,L2] [--assignee ID] [--parent ID]` (#20)
-- [ ] Implement label management: `--labels` with `--label-by adding|replacing|removing` and `--clear-labels` (#20)
-- [ ] Implement priority support: `--priority 0-4` (0=no priority, 1=urgent, 2=high, 3=medium, 4=low) (#20)
-- [ ] Implement status updates: `--status "Status Name"` (resolve status name against team's workflow states) (#20)
-- [ ] Implement parent-child linking: `--parent IDENTIFIER` (#20)
-- [ ] Implement `lineark comments create <ISSUE-ID> --body <TEXT>` (#21)
+- [x] Implement `lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-4] [--description TEXT]` (#19)
+- [x] Implement `lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-4] [--labels L1,L2] [--assignee ID] [--parent ID]` (#20)
+- [x] Implement label management: `--labels` with `--label-by adding|replacing|removing` and `--clear-labels` (#20)
+- [x] Implement priority support: `--priority 0-4` (0=no priority, 1=urgent, 2=high, 3=medium, 4=low) (#20)
+- [x] Implement status updates: `--status "Status Name"` (resolve status name against team's workflow states) (#20)
+- [x] Implement parent-child linking: `--parent IDENTIFIER` (#20)
+- [x] Implement `lineark comments create <ISSUE-ID> --body <TEXT>` (#21)
 
 **Testing (#22):**
-- [ ] Integration tests for mutations: mock API, verify correct GraphQL mutation is sent with expected variables (#22)
-- [ ] CLI tests for create/update: verify output format and error handling (#22)
+- [x] Integration tests for mutations: mock API, verify correct GraphQL mutation is sent with expected variables (#22)
+- [x] CLI tests for create/update: verify output format and error handling (#22)
 
 **Phase 2 acceptance criteria (#23):**
-- [ ] Can create an issue: `lineark issues create "Fix bug" --team Engineering --priority 2` (#23)
-- [ ] Can update an issue: `lineark issues update ENG-123 --status "In Progress" --assignee user-id` (#23)
-- [ ] Can comment on an issue: `lineark comments create ENG-123 --body "Working on it"` (#23)
-- [ ] Write operations return the created/updated entity in the same JSON/human format as reads (#23)
+- [x] Can create an issue: `lineark issues create "Fix bug" --team Engineering --priority 2` (#23)
+- [x] Can update an issue: `lineark issues update ENG-123 --status "In Progress" --assignee user-id` (#23)
+- [x] Can comment on an issue: `lineark comments create ENG-123 --body "Working on it"` (#23)
+- [x] Write operations return the created/updated entity in the same JSON/human format as reads (#23)
 
 ---
 

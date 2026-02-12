@@ -1,3 +1,4 @@
+pub mod comments;
 pub mod cycles;
 pub mod issues;
 pub mod labels;
