@@ -56,6 +56,12 @@ make codegen
 
 After updating, fix any compilation errors caused by schema changes, then `make check`.
 
+There's a Claude Code command for the full workflow (fetch + codegen + fix breakage + lint):
+
+```
+/update-linear-schema
+```
+
 ## Conventions
 
 - **All generated code** lives in `crates/lineark-sdk/src/generated/`. Never hand-edit these files — they are overwritten by codegen.
