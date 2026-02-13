@@ -1112,6 +1112,8 @@ pub enum ViewType {
     Cycle,
     #[serde(rename = "release")]
     Release,
+    #[serde(rename = "continuousPipelineReleases")]
+    ContinuousPipelineReleases,
     #[serde(rename = "project")]
     Project,
     #[serde(rename = "projectDocuments")]

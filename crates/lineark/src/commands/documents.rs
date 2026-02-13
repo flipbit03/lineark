@@ -1,10 +1,11 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentUpdateInput};
+use lineark_sdk::generated::types::Document;
 use lineark_sdk::Client;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tabled::Tabled;
 
-use super::helpers::{check_success, resolve_issue_id, NestedProject, NestedUser};
+use super::helpers::{check_success, resolve_issue_id};
 use crate::output::{self, Format};
 
 /// Manage documents.
@@ -74,17 +75,6 @@ pub enum DocumentsAction {
 
 // ── List row ─────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct DocumentListItem {
-    id: Option<String>,
-    title: Option<String>,
-    slug_id: Option<String>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
-    url: Option<String>,
-}
-
 #[derive(Debug, Serialize, Tabled)]
 struct DocumentRow {
     id: String,
@@ -93,52 +83,26 @@ struct DocumentRow {
     updated_at: String,
 }
 
-impl From<&DocumentListItem> for DocumentRow {
-    fn from(d: &DocumentListItem) -> Self {
+impl From<&Document> for DocumentRow {
+    fn from(d: &Document) -> Self {
         Self {
             id: d.id.clone().unwrap_or_default(),
             title: d.title.clone().unwrap_or_default(),
             slug: d.slug_id.clone().unwrap_or_default(),
-            updated_at: d.updated_at.clone().unwrap_or_default(),
+            updated_at: d.updated_at.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
         }
     }
 }
-
-const DOCUMENT_LIST_QUERY: &str = "query Documents($first: Int) { documents(first: $first) { \
-nodes { id title slugId createdAt updatedAt url } \
-pageInfo { hasNextPage endCursor } } }";
-
-// ── Detail ───────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct DocumentDetail {
-    id: Option<String>,
-    title: Option<String>,
-    slug_id: Option<String>,
-    content: Option<String>,
-    url: Option<String>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
-    icon: Option<String>,
-    color: Option<String>,
-    project: Option<NestedProject>,
-    creator: Option<NestedUser>,
-}
-
-const DOCUMENT_READ_QUERY: &str = "query Document($id: String!) { document(id: $id) { \
-id title slugId content url createdAt updatedAt icon color \
-project { id name } creator { id name } \
-} }";
 
 // ── Command dispatch ─────────────────────────────────────────────────────────
 
 pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
     match cmd.action {
         DocumentsAction::List { limit } => {
-            let variables = serde_json::json!({ "first": limit });
             let conn = client
-                .execute_connection::<DocumentListItem>(DOCUMENT_LIST_QUERY, variables, "documents")
+                .documents()
+                .first(limit)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -154,9 +118,8 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             }
         }
         DocumentsAction::Read { id } => {
-            let variables = serde_json::json!({ "id": id });
-            let doc: DocumentDetail = client
-                .execute(DOCUMENT_READ_QUERY, variables, "document")
+            let doc = client
+                .document(id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             output::print_one(&doc, format);

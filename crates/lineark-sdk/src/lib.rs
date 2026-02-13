@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 pub mod auth;
 #[cfg(feature = "blocking")]
 pub mod blocking_client;

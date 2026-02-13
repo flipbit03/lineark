@@ -1796,20 +1796,6 @@ pub struct DeleteOrganizationInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deletion_code: Option<String>,
 }
-/// Document content history filtering options.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DocumentContentHistoryFilter {
-    /// Comparator for the identifier.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<Box<IDComparator>>,
-    /// Comparator for the created at date.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<Box<DateComparator>>,
-    /// Comparator for the updated at date.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub updated_at: Option<Box<DateComparator>>,
-}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentCreateInput {
@@ -7445,9 +7431,6 @@ pub struct ReleaseStageUpdateInput {
     /// The UI color of the stage as a HEX string.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
-    /// The type of the stage.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub r#type: Option<ReleaseStageType>,
     /// The position of the stage.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<f64>,

@@ -31,19 +31,18 @@ fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> To
     let fields: Vec<TokenStream> = obj
         .fields
         .iter()
-        .filter(|f| !f.name.is_empty() && is_scalar_or_enum_field(&f.ty, type_kind_map))
+        .filter(|f| !f.name.is_empty() && is_includable_field(&f.ty, type_kind_map))
         .map(|f| {
             let field_name_str = f.name.to_snake_case();
             let safe_name = parser::safe_ident(&field_name_str);
             let field_ident = if safe_name.starts_with("r#") {
-                // For raw identifiers, we need to use syn to parse them.
                 let raw: TokenStream = safe_name.parse().unwrap();
                 raw
             } else {
                 let ident = quote::format_ident!("{}", safe_name);
                 quote! { #ident }
             };
-            let rust_type = resolve_type(&f.ty);
+            let rust_type = resolve_type(&f.ty, type_kind_map);
             let fdoc = parser::doc_comment_tokens(&f.description);
             quote! {
                 #fdoc
@@ -62,30 +61,47 @@ fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> To
     }
 }
 
-/// Check if a field's base type is a scalar or enum (i.e., should be included in the struct).
-fn is_scalar_or_enum_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> bool {
+/// Check if a field should be included in the struct.
+/// Includes Scalar, Enum, and Object types (for nested objects).
+/// Excludes Interface and Union types (not representable as simple structs).
+fn is_includable_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> bool {
     let base = ty.base_name();
     matches!(
         type_kind_map.get(base),
-        Some(TypeKind::Scalar) | Some(TypeKind::Enum)
+        Some(TypeKind::Scalar) | Some(TypeKind::Enum) | Some(TypeKind::Object)
     )
 }
 
 /// Resolve a GraphQL type to its Rust type tokens.
 /// All output type fields are wrapped in `Option<T>`.
-fn resolve_type(ty: &GqlType) -> TokenStream {
-    let inner = resolve_inner_type(ty);
-    // Always wrap output type fields in Option since we do partial field selection.
-    quote! { Option<#inner> }
+/// Uses `Box<T>` for Object-typed fields to avoid infinite-size types
+/// from mutual recursion (e.g., Integration <-> Organization).
+fn resolve_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    let inner = resolve_inner_type(ty, type_kind_map);
+    let base = ty.base_name();
+    if matches!(type_kind_map.get(base), Some(TypeKind::Object)) {
+        quote! { Option<Box<#inner>> }
+    } else {
+        quote! { Option<#inner> }
+    }
 }
 
 /// Resolve the inner type (without the outer Option wrapper).
-fn resolve_inner_type(ty: &GqlType) -> TokenStream {
+fn resolve_inner_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     match ty {
-        GqlType::Named(name) => graphql_type_to_rust(name),
-        GqlType::NonNull(inner) => resolve_inner_type(inner),
+        GqlType::Named(name) => {
+            let base = name.as_str();
+            match type_kind_map.get(base) {
+                Some(TypeKind::Object) => {
+                    let ident = quote::format_ident!("{}", name);
+                    quote! { #ident }
+                }
+                _ => graphql_type_to_rust(name),
+            }
+        }
+        GqlType::NonNull(inner) => resolve_inner_type(inner, type_kind_map),
         GqlType::List(inner) => {
-            let elem = resolve_inner_type(inner);
+            let elem = resolve_inner_type(inner, type_kind_map);
             quote! { Vec<#elem> }
         }
     }
@@ -145,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn emit_filters_out_object_fields() {
+    fn emit_includes_object_fields_with_box() {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "Issue".to_string(),
@@ -167,8 +183,9 @@ mod tests {
         }];
         let output = emit(&objects, &type_kind_map).to_string();
         assert!(output.contains("pub id"));
-        // "team" field should be filtered out (Team is an Object, not Scalar/Enum)
-        assert!(!output.contains("pub team"));
+        // Object fields are included and wrapped in Box to prevent infinite-size types
+        assert!(output.contains("pub team"));
+        assert!(output.contains("Box"));
     }
 
     #[test]

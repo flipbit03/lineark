@@ -168,10 +168,8 @@ impl Client {
         self.base_url = url;
         self
     }
-}
 
-/// Allow integration tests (in tests/ directory) to set base URL.
-impl Client {
+    /// Allow integration tests (in tests/ directory) to set base URL.
     #[doc(hidden)]
     pub fn set_base_url(&mut self, url: String) {
         self.base_url = url;
