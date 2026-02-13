@@ -1,5 +1,7 @@
 # lineark / lineark-sdk
 
+Unofficial [Linear](https://linear.app) CLI and Rust SDK — for humans and LLMs.
+
 [![CI](https://github.com/flipbit03/lineark/actions/workflows/ci.yml/badge.svg)](https://github.com/flipbit03/lineark/actions/workflows/ci.yml)
 [![crates.io lineark](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
 [![crates.io lineark-sdk](https://img.shields.io/crates/v/lineark-sdk?label=lineark-sdk)](https://crates.io/crates/lineark-sdk)
@@ -7,8 +9,6 @@
 [![SDK downloads](https://img.shields.io/crates/d/lineark-sdk?label=SDK%20downloads)](https://crates.io/crates/lineark-sdk)
 [![docs.rs](https://img.shields.io/docsrs/lineark-sdk?label=docs.rs)](https://docs.rs/lineark-sdk)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-Unofficial [Linear](https://linear.app) CLI and Rust SDK — for humans and LLMs.
 
 ## Getting Started
 
