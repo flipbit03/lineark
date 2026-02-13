@@ -35,7 +35,7 @@ COMMANDS:
     [--show-done]                                  Include done/canceled results
   lineark issues create <TITLE> --team KEY         Create an issue
     [--priority 0-4] [--assignee ID]               0=none 1=urgent 2=high 3=medium 4=low
-    [--labels ID,...] [--description TEXT]          Comma-separated label UUIDs
+    [--labels ID,...] [--description TEXT]         Comma-separated label UUIDs
     [--status NAME] [--parent ID]                  Status resolved against team states
   lineark issues update <IDENTIFIER>               Update an issue
     [--status NAME] [--priority 0-4]               Status resolved against team states
@@ -49,7 +49,7 @@ COMMANDS:
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark documents list [--limit N]               List documents
   lineark documents read <ID>                      Read document (includes content)
-  lineark documents create --title TEXT             Create a document
+  lineark documents create --title TEXT            Create a document
     [--content TEXT] [--project ID] [--issue ID]
   lineark documents update <ID>                    Update a document
     [--title TEXT] [--content TEXT]
