@@ -92,13 +92,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let me = client.viewer().await?;
     println!("{:?}", me);
 
-    let teams = client.teams(None, None, None, None, None).await?;
+    // Queries with optional args use a builder pattern:
+    let teams = client.teams().first(10).include_archived(false).send().await?;
     for team in &teams.nodes {
         println!("{}: {}",
             team.key.as_deref().unwrap_or("?"),
             team.name.as_deref().unwrap_or("?"),
         );
     }
+
+    // Search uses a required `term` arg + optional builder params:
+    let results = client.search_issues("bug").first(5).send().await?;
+    println!("Found {} issues", results.nodes.len());
 
     Ok(())
 }

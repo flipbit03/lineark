@@ -547,7 +547,8 @@ async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<Stri
         return Ok(team_key.to_string());
     }
     let conn = client
-        .teams(None, None, None, None, None)
+        .teams()
+        .send()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     for team in &conn.nodes {

@@ -29,7 +29,9 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
     match cmd.action {
         LabelsAction::List => {
             let conn = client
-                .issue_labels(None, None, Some(250), None, None)
+                .issue_labels()
+                .first(250)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

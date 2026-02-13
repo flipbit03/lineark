@@ -58,10 +58,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn teams_returns_at_least_one_team() {
         let client = test_client();
-        let conn = client
-            .teams(None, None, Some(10), None, None)
-            .await
-            .unwrap();
+        let conn = client.teams().first(10).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
             "workspace should have at least one team"
@@ -75,7 +72,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_by_id() {
         let client = test_client();
-        let conn = client.teams(None, None, Some(1), None, None).await.unwrap();
+        let conn = client.teams().first(1).send().await.unwrap();
         assert!(!conn.nodes.is_empty());
         let team_id = conn.nodes[0].id.clone().unwrap();
         let team = client.team(team_id.clone()).await.unwrap();
@@ -85,7 +82,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_fields_deserialize_correctly() {
         let client = test_client();
-        let conn = client.teams(None, None, Some(1), None, None).await.unwrap();
+        let conn = client.teams().first(1).send().await.unwrap();
         assert!(!conn.nodes.is_empty());
         let team = &conn.nodes[0];
         assert!(team.id.is_some());
@@ -100,10 +97,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn users_returns_at_least_one_user() {
         let client = test_client();
-        let conn = client
-            .users(None, None, None, Some(10), None, None)
-            .await
-            .unwrap();
+        let conn = client.users().last(10).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
             "workspace should have at least one user"
@@ -118,10 +112,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn projects_returns_connection() {
         let client = test_client();
-        let conn = client
-            .projects(None, None, Some(10), None, None)
-            .await
-            .unwrap();
+        let conn = client.projects().first(10).send().await.unwrap();
         assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
     }
 
@@ -130,10 +121,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn issues_returns_connection() {
         let client = test_client();
-        let conn = client
-            .issues(None, None, Some(5), None, None)
-            .await
-            .unwrap();
+        let conn = client.issues().first(5).send().await.unwrap();
         for issue in &conn.nodes {
             assert!(issue.id.is_some());
         }
@@ -144,10 +132,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn issue_labels_returns_connection() {
         let client = test_client();
-        let conn = client
-            .issue_labels(None, None, Some(10), None, None)
-            .await
-            .unwrap();
+        let conn = client.issue_labels().first(10).send().await.unwrap();
         for label in &conn.nodes {
             assert!(label.id.is_some());
             assert!(label.name.is_some());
@@ -159,10 +144,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn cycles_returns_connection() {
         let client = test_client();
-        let conn = client
-            .cycles(None, None, Some(10), None, None)
-            .await
-            .unwrap();
+        let conn = client.cycles().first(10).send().await.unwrap();
         for cycle in &conn.nodes {
             assert!(cycle.id.is_some());
         }
@@ -173,10 +155,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn workflow_states_returns_connection() {
         let client = test_client();
-        let conn = client
-            .workflow_states(None, None, Some(50), None, None)
-            .await
-            .unwrap();
+        let conn = client.workflow_states().first(50).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
             "workspace should have workflow states"
@@ -191,34 +170,253 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn search_issues_returns_connection() {
         let client = test_client();
-        let conn = client
-            .search_issues(
-                None,
-                None,
-                Some(5),
-                None,
-                None,
-                "test".to_string(),
-                None,
-                None,
-            )
-            .await
-            .unwrap();
+        let conn = client.search_issues("test").first(5).send().await.unwrap();
         for issue in &conn.nodes {
             assert!(issue.id.is_some());
         }
     }
 
-    // ── Pagination ──────────────────────────────────────────────────────────
+    // ── Builder parameter stress tests ─────────────────────────────────────
+    // These verify that each builder setter actually affects the API response.
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
-    async fn pagination_respects_first_limit() {
+    async fn first_limits_result_count() {
         let client = test_client();
-        let conn = client.teams(None, None, Some(1), None, None).await.unwrap();
+        // Workflow states typically have 5+ (Triage, Backlog, Todo, In Progress, Done, Canceled).
+        let all = client.workflow_states().first(50).send().await.unwrap();
         assert!(
-            conn.nodes.len() <= 1,
-            "first=1 should return at most 1 team"
+            all.nodes.len() >= 2,
+            "need at least 2 workflow states to test first(), got {}",
+            all.nodes.len()
         );
+        let limited = client.workflow_states().first(1).send().await.unwrap();
+        assert_eq!(
+            limited.nodes.len(),
+            1,
+            "first(1) should return exactly 1 item"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn last_returns_different_item_than_first() {
+        let client = test_client();
+        let all = client.workflow_states().first(50).send().await.unwrap();
+        if all.nodes.len() < 2 {
+            // Can't distinguish first vs last with <2 items, skip.
+            return;
+        }
+        let from_first = client.workflow_states().first(1).send().await.unwrap();
+        let from_last = client.workflow_states().last(1).send().await.unwrap();
+        assert_eq!(from_first.nodes.len(), 1);
+        assert_eq!(from_last.nodes.len(), 1);
+        // first(1) and last(1) should be different items (first vs last of the list).
+        assert_ne!(
+            from_first.nodes[0].id, from_last.nodes[0].id,
+            "first(1) and last(1) should return different workflow states"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn after_cursor_paginates_to_next_page() {
+        let client = test_client();
+        let all = client.workflow_states().first(50).send().await.unwrap();
+        if all.nodes.len() < 2 {
+            return;
+        }
+        // Fetch first page of 1.
+        let page1 = client.workflow_states().first(1).send().await.unwrap();
+        assert_eq!(page1.nodes.len(), 1);
+        let cursor = page1
+            .page_info
+            .end_cursor
+            .as_ref()
+            .expect("first page should have endCursor");
+
+        // Fetch second page using after(cursor).
+        let page2 = client
+            .workflow_states()
+            .first(1)
+            .after(cursor)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(page2.nodes.len(), 1);
+        assert_ne!(
+            page1.nodes[0].id, page2.nodes[0].id,
+            "after(cursor) should return a different item than page 1"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn include_archived_does_not_error() {
+        let client = test_client();
+        // Just verify the parameter is accepted by the API without error.
+        let _ = client
+            .teams()
+            .first(1)
+            .include_archived(true)
+            .send()
+            .await
+            .unwrap();
+        let _ = client
+            .teams()
+            .first(1)
+            .include_archived(false)
+            .send()
+            .await
+            .unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn search_issues_term_filters_results() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let client = test_client();
+        let teams = client.teams().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create an issue with a unique title.
+        let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
+        let input = IssueCreateInput {
+            title: Some(unique.clone()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let payload = client.issue_create(input).await.unwrap();
+        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+
+        // Linear's search index is async — retry a few times.
+        let mut matched = false;
+        for _ in 0..6 {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let found = client.search_issues(&unique).first(5).send().await.unwrap();
+            matched = found
+                .nodes
+                .iter()
+                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+            if matched {
+                break;
+            }
+        }
+        assert!(matched, "search_issues(term) should find the created issue");
+
+        // Search for nonsense — should NOT find it.
+        let not_found = client
+            .search_issues("xyzzy_nonexistent_99999")
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+        let false_match = not_found
+            .nodes
+            .iter()
+            .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+        assert!(
+            !false_match,
+            "search with different term should not find our issue"
+        );
+
+        // Clean up.
+        client.issue_delete(Some(true), issue_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn search_issues_team_id_filters_by_team() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let client = test_client();
+        let teams = client.teams().first(10).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create an issue with a unique title in the first team.
+        let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
+        let input = IssueCreateInput {
+            title: Some(unique.clone()),
+            team_id: Some(team_id.clone()),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let payload = client.issue_create(input).await.unwrap();
+        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+
+        // Linear's search index is async — retry a few times.
+        let mut found = false;
+        for _ in 0..6 {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let with_team = client
+                .search_issues(&unique)
+                .first(5)
+                .team_id(&team_id)
+                .send()
+                .await
+                .unwrap();
+            found = with_team
+                .nodes
+                .iter()
+                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+            if found {
+                break;
+            }
+        }
+        assert!(found, "search with correct team_id should find the issue");
+
+        // Search with a fake team_id — should NOT find it.
+        let with_wrong_team = client
+            .search_issues(&unique)
+            .first(5)
+            .team_id("00000000-0000-0000-0000-000000000000")
+            .send()
+            .await
+            .unwrap();
+        let false_match = with_wrong_team
+            .nodes
+            .iter()
+            .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+        assert!(
+            !false_match,
+            "search with wrong team_id should not find the issue"
+        );
+
+        // Clean up.
+        client.issue_delete(Some(true), issue_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn users_include_disabled_accepted() {
+        let client = test_client();
+        // Verify include_disabled parameter is accepted without error.
+        let _ = client
+            .users()
+            .include_disabled(true)
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+        let _ = client
+            .users()
+            .include_disabled(false)
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn no_params_returns_defaults() {
+        let client = test_client();
+        // Calling send() with no setters should work (all params null = API defaults).
+        let conn = client.teams().send().await.unwrap();
+        assert!(
+            !conn.nodes.is_empty(),
+            "teams() with no params should return results"
+        );
+        let conn = client.issues().send().await.unwrap();
+        // issues() with no filter returns all non-archived issues.
+        // Just verify it doesn't error.
+        for issue in &conn.nodes {
+            assert!(issue.id.is_some());
+        }
     }
 
     // ── Mutations ────────────────────────────────────────────────────────────
@@ -230,7 +428,7 @@ mod online {
         let client = test_client();
 
         // Get the first team to create an issue in.
-        let teams = client.teams(None, None, Some(1), None, None).await.unwrap();
+        let teams = client.teams().first(1).send().await.unwrap();
         let team_id = teams.nodes[0].id.clone().unwrap();
 
         // Create an issue.
@@ -274,7 +472,7 @@ mod online {
         let client = test_client();
 
         // Create an issue to update.
-        let teams = client.teams(None, None, Some(1), None, None).await.unwrap();
+        let teams = client.teams().first(1).send().await.unwrap();
         let team_id = teams.nodes[0].id.clone().unwrap();
 
         let input = IssueCreateInput {
@@ -322,7 +520,7 @@ mod online {
         let client = test_client();
 
         // Create an issue to comment on.
-        let teams = client.teams(None, None, Some(1), None, None).await.unwrap();
+        let teams = client.teams().first(1).send().await.unwrap();
         let team_id = teams.nodes[0].id.clone().unwrap();
 
         let issue_input = IssueCreateInput {

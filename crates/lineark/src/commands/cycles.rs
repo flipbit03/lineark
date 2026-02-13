@@ -41,7 +41,9 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
     match cmd.action {
         CyclesAction::List { limit } => {
             let conn = client
-                .cycles(None, None, Some(limit), None, None)
+                .cycles()
+                .first(limit)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
