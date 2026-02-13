@@ -77,6 +77,34 @@ pub enum IssuesAction {
         #[arg(long)]
         status: Option<String>,
     },
+    /// Archive an issue.
+    ///
+    /// Examples:
+    ///   lineark issues archive ENG-123
+    Archive {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+    },
+    /// Unarchive a previously archived issue.
+    ///
+    /// Examples:
+    ///   lineark issues unarchive ENG-123
+    Unarchive {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+    },
+    /// Delete (trash) an issue. Use --permanently to delete permanently.
+    ///
+    /// Examples:
+    ///   lineark issues delete ENG-123
+    ///   lineark issues delete ENG-123 --permanently
+    Delete {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+        /// Permanently delete the issue instead of trashing it.
+        #[arg(long, default_value = "false")]
+        permanently: bool,
+    },
     /// Update an existing issue. Returns the updated issue.
     ///
     /// Examples:
@@ -203,6 +231,7 @@ struct IssueDetail {
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
     pub canceled_at: Option<String>,
+    pub archived_at: Option<String>,
     pub estimate: Option<f64>,
     pub labels: Option<NestedLabelConnection>,
     pub assignee: Option<NestedUser>,
@@ -212,26 +241,35 @@ struct IssueDetail {
     pub project: Option<NestedProject>,
     pub cycle: Option<NestedCycle>,
     pub parent: Option<NestedIssue>,
+    pub attachments: Option<NestedAttachmentConnection>,
+    pub relations: Option<NestedRelationConnection>,
+    pub inverse_relations: Option<NestedRelationConnection>,
 }
 
 const ISSUE_READ_QUERY: &str = "query IssueRead($id: String!) { issue(id: $id) { \
 identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt \
+createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
 estimate \
 labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
 team { id key name } project { id name } cycle { id number name } \
 parent { id identifier } \
+attachments { nodes { id title url sourceType } } \
+relations { nodes { id type relatedIssue { id identifier title } } } \
+inverseRelations { nodes { id type issue { id identifier title } } } \
 } }";
 
 const ISSUE_SEARCH_ONE_QUERY: &str = "query IssueSearchOne($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { \
 identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt \
+createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
 estimate \
 labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
 team { id key name } project { id name } cycle { id number name } \
 parent { id identifier } \
+attachments { nodes { id title url sourceType } } \
+relations { nodes { id type relatedIssue { id identifier title } } } \
+inverseRelations { nodes { id type issue { id identifier title } } } \
 } } }";
 
 // ── Shared nested types ─────────────────────────────────────────────────────
@@ -291,6 +329,38 @@ struct NestedLabel {
 struct NestedIssue {
     pub id: Option<String>,
     pub identifier: Option<String>,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct NestedAttachmentConnection {
+    pub nodes: Vec<NestedAttachment>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct NestedAttachment {
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub source_type: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct NestedRelationConnection {
+    pub nodes: Vec<NestedRelation>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct NestedRelation {
+    pub id: Option<String>,
+    #[serde(rename = "type")]
+    pub relation_type: Option<String>,
+    pub related_issue: Option<NestedIssue>,
+    pub issue: Option<NestedIssue>,
 }
 
 // ── Command dispatch ────────────────────────────────────────────────────────
@@ -404,6 +474,43 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             let issue = payload.get("issue").cloned().unwrap_or_default();
             output::print_one(&issue, format);
         }
+        IssuesAction::Archive { identifier } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+
+            let payload = client
+                .issue_archive(None, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
+        }
+        IssuesAction::Unarchive { identifier } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+
+            let payload = client
+                .issue_unarchive(issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
+        }
+        IssuesAction::Delete {
+            identifier,
+            permanently,
+        } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+            let permanently_delete = if permanently { Some(true) } else { None };
+
+            let payload = client
+                .issue_delete(permanently_delete, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
+        }
         IssuesAction::Update {
             identifier,
             status,
@@ -514,7 +621,15 @@ fn print_issue_list(items: &[&IssueListItem], format: Format) {
 
 /// Read a single issue by identifier (e.g. E-929) or UUID, with full nested details.
 async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDetail> {
-    if identifier.contains('-') && !identifier.contains("00000") {
+    if uuid::Uuid::parse_str(identifier).is_ok() {
+        // Direct query by UUID.
+        let variables = serde_json::json!({ "id": identifier });
+        return client
+            .execute(ISSUE_READ_QUERY, variables, "issue")
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e));
+    }
+    if identifier.contains('-') {
         // searchIssues is fuzzy — it may return a different issue if no exact match exists.
         // We fetch a small page and verify the identifier matches exactly.
         let variables = serde_json::json!({ "term": identifier, "first": 5 });

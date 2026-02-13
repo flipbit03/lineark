@@ -38,6 +38,10 @@ enum Command {
     Issues(commands::issues::IssuesCmd),
     /// Manage comments.
     Comments(commands::comments::CommentsCmd),
+    /// Manage documents.
+    Documents(commands::documents::DocumentsCmd),
+    /// Manage file embeds (download/upload).
+    Embeds(commands::embeds::EmbedsCmd),
     /// Print a compact LLM-friendly command reference.
     Usage,
 }
@@ -75,6 +79,8 @@ async fn main() {
         Command::Cycles(cmd) => commands::cycles::run(cmd, &client, format).await,
         Command::Issues(cmd) => commands::issues::run(cmd, &client, format).await,
         Command::Comments(cmd) => commands::comments::run(cmd, &client, format).await,
+        Command::Documents(cmd) => commands::documents::run(cmd, &client, format).await,
+        Command::Embeds(cmd) => commands::embeds::run(cmd, &client, format).await,
         Command::Usage => unreachable!(),
     };
 

@@ -514,6 +514,60 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_archive_and_unarchive() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let client = test_client();
+
+        // Create an issue to archive.
+        let teams = client.teams().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let input = IssueCreateInput {
+            title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let create_payload = client.issue_create(input).await.unwrap();
+        let issue = create_payload.get("issue").unwrap();
+        let issue_id = issue
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .to_string();
+
+        // Archive the issue.
+        let archive_payload = client.issue_archive(None, issue_id.clone()).await.unwrap();
+        assert_eq!(
+            archive_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        // Verify entity is returned with archivedAt set.
+        let entity = archive_payload.get("entity").unwrap();
+        assert!(
+            entity.get("archivedAt").and_then(|v| v.as_str()).is_some(),
+            "archived issue should have archivedAt timestamp"
+        );
+
+        // Unarchive the issue.
+        let unarchive_payload = client.issue_unarchive(issue_id.clone()).await.unwrap();
+        assert_eq!(
+            unarchive_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        // Verify entity is returned with archivedAt cleared.
+        let entity = unarchive_payload.get("entity").unwrap();
+        assert!(
+            entity.get("archivedAt").unwrap().is_null(),
+            "unarchived issue should have null archivedAt"
+        );
+
+        // Clean up: permanently delete.
+        client.issue_delete(Some(true), issue_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn comment_create() {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 
@@ -553,6 +607,239 @@ mod online {
 
         // Clean up: permanently delete the issue.
         client.issue_delete(Some(true), issue_id).await.unwrap();
+    }
+
+    // ── Documents ────────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn documents_returns_connection() {
+        let client = test_client();
+        let conn = client.documents().first(10).send().await.unwrap();
+        // Connection should deserialize; may be empty if workspace has no docs.
+        assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+        for doc in &conn.nodes {
+            assert!(doc.id.is_some());
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn document_create_update_and_delete() {
+        use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentUpdateInput};
+
+        let client = test_client();
+
+        // Get a team to associate the document with (Linear requires at least one parent).
+        let teams = client.teams().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create a document.
+        let input = DocumentCreateInput {
+            title: Some("[test] SDK document_create_update_and_delete".to_string()),
+            content: Some("Automated test document content.".to_string()),
+            team_id: Some(team_id),
+            ..Default::default()
+        };
+        let payload = client.document_create(input).await.unwrap();
+        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
+        let doc = payload.get("document").unwrap();
+        let doc_id = doc.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+        assert!(!doc_id.is_empty());
+        assert_eq!(
+            doc.get("title").and_then(|v| v.as_str()),
+            Some("[test] SDK document_create_update_and_delete")
+        );
+
+        // Read the document by ID.
+        let fetched = client.document(doc_id.clone()).await.unwrap();
+        assert_eq!(fetched.id, Some(doc_id.clone()));
+        assert_eq!(
+            fetched.title,
+            Some("[test] SDK document_create_update_and_delete".to_string())
+        );
+
+        // Update the document.
+        let update_input = DocumentUpdateInput {
+            title: Some("[test] SDK document — updated".to_string()),
+            content: Some("Updated content.".to_string()),
+            ..Default::default()
+        };
+        let update_payload = client
+            .document_update(update_input, doc_id.clone())
+            .await
+            .unwrap();
+        assert_eq!(
+            update_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let updated_doc = update_payload.get("document").unwrap();
+        assert_eq!(
+            updated_doc.get("title").and_then(|v| v.as_str()),
+            Some("[test] SDK document — updated")
+        );
+
+        // Delete the document.
+        let delete_payload = client.document_delete(doc_id).await.unwrap();
+        assert_eq!(
+            delete_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+    }
+
+    // ── Issue Relations ─────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_relations_returns_connection() {
+        let client = test_client();
+        let conn = client.issue_relations().first(10).send().await.unwrap();
+        // Connection should deserialize; may be empty.
+        assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_relation_create_between_two_issues() {
+        use lineark_sdk::generated::enums::IssueRelationType;
+        use lineark_sdk::generated::inputs::{IssueCreateInput, IssueRelationCreateInput};
+
+        let client = test_client();
+
+        // Get a team to create issues in.
+        let teams = client.teams().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create two issues to relate.
+        let input_a = IssueCreateInput {
+            title: Some("[test] relation issue A".to_string()),
+            team_id: Some(team_id.clone()),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let payload_a = client.issue_create(input_a).await.unwrap();
+        let issue_a_id = payload_a["issue"]["id"].as_str().unwrap().to_string();
+
+        let input_b = IssueCreateInput {
+            title: Some("[test] relation issue B".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let payload_b = client.issue_create(input_b).await.unwrap();
+        let issue_b_id = payload_b["issue"]["id"].as_str().unwrap().to_string();
+
+        // Create a "blocks" relation: A blocks B.
+        let relation_input = IssueRelationCreateInput {
+            issue_id: Some(issue_a_id.clone()),
+            related_issue_id: Some(issue_b_id.clone()),
+            r#type: Some(IssueRelationType::Blocks),
+            ..Default::default()
+        };
+        let relation_payload = client
+            .issue_relation_create(None, relation_input)
+            .await
+            .unwrap();
+        assert_eq!(
+            relation_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        let relation = relation_payload.get("issueRelation").unwrap();
+        assert!(
+            relation.get("id").and_then(|v| v.as_str()).is_some(),
+            "relation should have an id"
+        );
+
+        // Verify the relation is queryable.
+        let relation_id = relation.get("id").unwrap().as_str().unwrap().to_string();
+        let fetched = client.issue_relation(relation_id).await.unwrap();
+        assert!(fetched.id.is_some());
+
+        // Clean up: delete both issues (cascades the relation).
+        client.issue_delete(Some(true), issue_a_id).await.unwrap();
+        client.issue_delete(Some(true), issue_b_id).await.unwrap();
+    }
+
+    // ── File Upload ─────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn file_upload_returns_signed_url() {
+        let client = test_client();
+
+        // Request a signed upload URL for a small file.
+        let payload = client
+            .file_upload(
+                None,
+                None,
+                100,
+                "text/plain".to_string(),
+                "test.txt".to_string(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
+        let upload_file = payload.get("uploadFile").unwrap();
+        assert!(
+            upload_file
+                .get("uploadUrl")
+                .and_then(|v| v.as_str())
+                .is_some(),
+            "should have uploadUrl"
+        );
+        assert!(
+            upload_file
+                .get("assetUrl")
+                .and_then(|v| v.as_str())
+                .is_some(),
+            "should have assetUrl"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn upload_file_end_to_end() {
+        let client = test_client();
+
+        // Upload a small text file.
+        let content = b"lineark SDK test upload content".to_vec();
+        let result = client
+            .upload_file("test-upload.txt", "text/plain", content, false)
+            .await
+            .unwrap();
+
+        assert!(
+            !result.asset_url.is_empty(),
+            "asset_url should be non-empty"
+        );
+        assert!(
+            result.asset_url.starts_with("https://"),
+            "asset_url should be an HTTPS URL, got: {}",
+            result.asset_url
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn upload_then_download_round_trip() {
+        let client = test_client();
+
+        // Upload a file with known content.
+        let content = b"SDK round-trip test content 12345".to_vec();
+        let upload_result = client
+            .upload_file("round-trip.txt", "text/plain", content.clone(), false)
+            .await
+            .unwrap();
+        assert!(!upload_result.asset_url.is_empty());
+
+        // Download it back via download_url.
+        let download_result = client.download_url(&upload_result.asset_url).await.unwrap();
+        assert_eq!(
+            download_result.bytes, content,
+            "downloaded bytes should match uploaded content"
+        );
+        assert!(
+            download_result
+                .content_type
+                .as_deref()
+                .is_some_and(|ct| ct.contains("text/plain")),
+            "content type should be text/plain, got: {:?}",
+            download_result.content_type
+        );
     }
 
     // ── Error handling ──────────────────────────────────────────────────────

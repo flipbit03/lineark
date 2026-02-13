@@ -46,7 +46,7 @@ lineark/
 │   │       ├── main.rs
 │   │       ├── commands/         # One module per command group
 │   │       │   ├── mod.rs
-│   │       │   ├── issues.rs     # issues list|read|search|create|update
+│   │       │   ├── issues.rs     # issues list|read|search|create|update|delete
 │   │       │   ├── comments.rs   # comments create
 │   │       │   ├── teams.rs      # teams list
 │   │       │   ├── users.rs      # users list
@@ -195,6 +195,9 @@ lineark issues read <IDENTIFIER>        # e.g. ENG-123
 lineark issues search <QUERY> [--team NAME] [--project NAME]
 lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-3] [--description TEXT]
 lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-3] [--labels L1,L2] [--assignee ID] [--parent ID]
+lineark issues archive <IDENTIFIER>
+lineark issues unarchive <IDENTIFIER>
+lineark issues delete <IDENTIFIER> [--permanently]
 
 lineark comments create <ISSUE-ID> --body <TEXT>
 
@@ -528,39 +531,39 @@ and ensure all tests pass."
 **Goal:** File handling, documents, broader entity support.
 
 **Embeds (#24):**
-- [ ] Implement `lineark embeds download <URL> [--output PATH] [--overwrite]` (handle Linear's signed/expiring URLs) (#24)
-- [ ] Implement `lineark embeds upload <FILE>` (multipart upload, return asset URL in JSON) (#24)
-- [ ] Add embed info to issue read output (list of attachments with URLs) (#24)
+- [x] Implement `lineark embeds download <URL> [--output PATH] [--overwrite]` (handle Linear's signed/expiring URLs) (#24)
+- [x] Implement `lineark embeds upload <FILE>` (multipart upload, return asset URL in JSON) (#24)
+- [x] Add embed info to issue read output (list of attachments with URLs) (#24)
 
 **Documents (#25):**
-- [ ] Add document query/mutation operations to `operations.toml` (#25)
-- [ ] Re-run codegen (#25)
-- [ ] Implement `lineark documents list [--project NAME] [--issue ID]` (#25)
-- [ ] Implement `lineark documents read <ID>` (#25)
-- [ ] Implement `lineark documents create --title TEXT --content TEXT [--project NAME] [--attach-to ISSUE-ID]` (#25)
-- [ ] Implement `lineark documents update <ID> [--title TEXT] [--content TEXT]` (#25)
-- [ ] Implement `lineark documents delete <ID>` (#25)
+- [x] Add document query/mutation operations to `operations.toml` (#25)
+- [x] Re-run codegen (#25)
+- [x] Implement `lineark documents list [--project NAME] [--issue ID]` (#25)
+- [x] Implement `lineark documents read <ID>` (#25)
+- [x] Implement `lineark documents create --title TEXT --content TEXT [--project NAME] [--attach-to ISSUE-ID]` (#25)
+- [x] Implement `lineark documents update <ID> [--title TEXT] [--content TEXT]` (#25)
+- [x] Implement `lineark documents delete <ID>` (#25)
 
 **SDK blocking API (#26):**
-- [ ] Implement `lineark_sdk::blocking::Client` behind `blocking` feature flag (#26)
-- [ ] Mirror all async methods as blocking equivalents (#26)
-- [ ] Test blocking API independently (#26)
+- [x] Implement `lineark_sdk::blocking::Client` behind `blocking` feature flag (#26)
+- [x] Mirror all async methods as blocking equivalents (#26)
+- [x] Test blocking API independently (#26)
 
 **Additional operations — as needed (#27):**
-- [ ] Issue relations (blocking, related, duplicate) (#27)
-- [ ] Issue attachments listing (#27)
-- [ ] `cycles list --active` flag — filter to only the active cycle (#27)
-- [ ] `cycles list --around-active N` flag — return active cycle ± N neighbors (#27)
-- [ ] Surface `isActive`/`isNext`/`isPrevious`/`number` in cycle output (#27)
-- [ ] Verify/implement cycle name resolution in `cycles read` (#27)
-- [ ] Any other operations that surface as needed during real usage (#27)
+- [x] Issue relations (blocking, related, duplicate) (#27)
+- [x] Issue attachments listing (#27)
+- [x] `cycles list --active` flag — filter to only the active cycle (#27)
+- [x] `cycles list --around-active N` flag — return active cycle ± N neighbors (#27)
+- [x] Surface `isActive`/`isNext`/`isPrevious`/`number` in cycle output (#27)
+- [x] Verify/implement cycle name resolution in `cycles read` (#27)
+- [x] Any other operations that surface as needed during real usage (#27)
 
 **Phase 3 acceptance criteria (#28):**
-- [ ] Can download issue attachments to local files (#28)
-- [ ] Can upload files and reference them in comments (#28)
-- [ ] Full document CRUD works (#28)
-- [ ] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers (#28)
-- [ ] Feature parity with linearis (#28)
+- [x] Can download issue attachments to local files (#28)
+- [x] Can upload files and reference them in comments (#28)
+- [x] Full document CRUD works (#28)
+- [x] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers (#28)
+- [x] Feature parity with linearis (#28)
 
 ---
 

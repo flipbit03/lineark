@@ -28,6 +28,11 @@ uuid = { version = "1", features = ["v4"] }
 name = "online"
 harness = false
 
+[[test]]
+name = "blocking"
+harness = false
+required-features = ["blocking"]
+
 [features]
 default = []
 blocking = ["reqwest/blocking"]

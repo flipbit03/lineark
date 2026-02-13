@@ -14,10 +14,25 @@ issueLabels = true
 searchIssues = true
 workflowStates = true
 
+# Phase 3 — Rich features
+documents = true
+document = true
+issueRelations = true
+issueRelation = true
+
 [mutations]
 # Phase 2 — Core writes
 issueCreate = true
 issueUpdate = true
 issueArchive = true
+issueUnarchive = true
 issueDelete = true
 commentCreate = true
+
+# Phase 3 — Rich features
+documentCreate = true
+documentUpdate = true
+documentDelete = true
+fileUpload = true
+imageUploadFromUrl = true
+issueRelationCreate = true

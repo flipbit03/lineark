@@ -77,7 +77,10 @@ fn issues_help_shows_subcommands() {
         .stdout(predicate::str::contains("read"))
         .stdout(predicate::str::contains("search"))
         .stdout(predicate::str::contains("create"))
-        .stdout(predicate::str::contains("update"));
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("archive"))
+        .stdout(predicate::str::contains("unarchive"))
+        .stdout(predicate::str::contains("delete"));
 }
 
 #[test]
@@ -135,7 +138,174 @@ fn usage_includes_write_commands() {
         .success()
         .stdout(predicate::str::contains("issues create"))
         .stdout(predicate::str::contains("issues update"))
+        .stdout(predicate::str::contains("issues archive"))
+        .stdout(predicate::str::contains("issues unarchive"))
+        .stdout(predicate::str::contains("issues delete"))
         .stdout(predicate::str::contains("comments create"));
+}
+
+#[test]
+fn issues_archive_help_shows_identifier() {
+    lineark()
+        .args(["issues", "archive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
+}
+
+#[test]
+fn issues_unarchive_help_shows_identifier() {
+    lineark()
+        .args(["issues", "unarchive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
+}
+
+#[test]
+fn issues_delete_help_shows_flags() {
+    lineark()
+        .args(["issues", "delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--permanently"))
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
+}
+
+// ── Documents ───────────────────────────────────────────────────────────────
+
+#[test]
+fn documents_help_shows_subcommands() {
+    lineark()
+        .args(["documents", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn documents_create_help_shows_flags() {
+    lineark()
+        .args(["documents", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--content"))
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--issue"));
+}
+
+#[test]
+fn documents_update_help_shows_flags() {
+    lineark()
+        .args(["documents", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--content"));
+}
+
+// ── Embeds ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn embeds_help_shows_subcommands() {
+    lineark()
+        .args(["embeds", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("download"))
+        .stdout(predicate::str::contains("upload"));
+}
+
+#[test]
+fn embeds_download_help_shows_flags() {
+    lineark()
+        .args(["embeds", "download", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--output"))
+        .stdout(predicate::str::contains("--overwrite"));
+}
+
+#[test]
+fn embeds_upload_help_shows_flags() {
+    lineark()
+        .args(["embeds", "upload", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--public"));
+}
+
+// ── Cycles ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn cycles_help_shows_subcommands() {
+    lineark()
+        .args(["cycles", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"));
+}
+
+#[test]
+fn cycles_list_help_shows_flags() {
+    lineark()
+        .args(["cycles", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--active"))
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--around-active"))
+        .stdout(predicate::str::contains("--limit"));
+}
+
+#[test]
+fn cycles_read_help_shows_team_flag() {
+    lineark()
+        .args(["cycles", "read", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"));
+}
+
+// ── Usage includes Phase 3 commands ─────────────────────────────────────────
+
+#[test]
+fn usage_includes_documents_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("documents list"))
+        .stdout(predicate::str::contains("documents read"))
+        .stdout(predicate::str::contains("documents create"))
+        .stdout(predicate::str::contains("documents update"))
+        .stdout(predicate::str::contains("documents delete"));
+}
+
+#[test]
+fn usage_includes_embeds_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("embeds download"))
+        .stdout(predicate::str::contains("embeds upload"));
+}
+
+#[test]
+fn usage_includes_cycles_flags() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--active"))
+        .stdout(predicate::str::contains("--around-active"));
 }
 
 // ── Auth error handling ─────────────────────────────────────────────────────

@@ -6,6 +6,41 @@ use super::inputs::*;
 use crate::client::Client;
 use crate::error::LinearError;
 impl Client {
+    pub async fn file_upload(
+        &self,
+        meta_data: Option<serde_json::Value>,
+        make_public: Option<bool>,
+        size: i64,
+        content_type: String,
+        filename: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!(
+            { "metaData" : meta_data, "makePublic" : make_public, "size" : size,
+            "contentType" : content_type, "filename" : filename }
+        );
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { success uploadFile { filename contentType size uploadUrl assetUrl metaData } success } }",
+                variables,
+                "fileUpload",
+            )
+            .await
+    }
+    pub async fn image_upload_from_url(
+        &self,
+        url: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "url" : url });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { success url success } }",
+                variables,
+                "imageUploadFromUrl",
+            )
+            .await
+    }
     pub async fn comment_create(
         &self,
         input: CommentCreateInput,
@@ -64,6 +99,17 @@ impl Client {
             )
             .await
     }
+    pub async fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "id" : id });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
+                variables,
+                "issueUnarchive",
+            )
+            .await
+    }
     pub async fn issue_delete(
         &self,
         permanently_delete: Option<bool>,
@@ -78,6 +124,63 @@ impl Client {
                 "mutation IssueDelete($permanentlyDelete: Boolean, $id: String!) { issueDelete(permanentlyDelete: $permanentlyDelete, id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueDelete",
+            )
+            .await
+    }
+    pub async fn issue_relation_create(
+        &self,
+        override_created_at: Option<serde_json::Value>,
+        input: IssueRelationCreateInput,
+    ) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!(
+            { "overrideCreatedAt" : override_created_at, "input" : input }
+        );
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { id createdAt updatedAt archivedAt type } success } }",
+                variables,
+                "issueRelationCreate",
+            )
+            .await
+    }
+    pub async fn document_create(
+        &self,
+        input: DocumentCreateInput,
+    ) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "input" : input });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } success } }",
+                variables,
+                "documentCreate",
+            )
+            .await
+    }
+    pub async fn document_update(
+        &self,
+        input: DocumentUpdateInput,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "input" : input, "id" : id });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } success } }",
+                variables,
+                "documentUpdate",
+            )
+            .await
+    }
+    pub async fn document_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "id" : id });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success success entity { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
+                variables,
+                "documentDelete",
             )
             .await
     }

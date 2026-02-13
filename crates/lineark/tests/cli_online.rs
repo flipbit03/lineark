@@ -250,6 +250,883 @@ mod cli_online {
         delete_issue(issue_id);
     }
 
+    // ── Issues archive / unarchive ─────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_archive_and_unarchive_cycle() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI archive/unarchive",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)")
+            .to_string();
+
+        // Archive the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "archive",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues archive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let archived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            archived.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "archive should report success"
+        );
+
+        // Read the issue and verify archivedAt is set.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail.get("archivedAt").and_then(|v| v.as_str()).is_some(),
+            "archivedAt should be set after archiving"
+        );
+
+        // Unarchive the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "unarchive",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues unarchive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            unarchived.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "unarchive should report success"
+        );
+
+        // Read again and verify archivedAt is cleared.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail.get("archivedAt").unwrap().is_null(),
+            "archivedAt should be null after unarchiving"
+        );
+
+        // Clean up: permanently delete.
+        delete_issue(&issue_id);
+    }
+
+    // ── Issues delete ──────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_delete_permanently() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue to delete.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI issues delete",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)");
+
+        // Delete the issue permanently via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "delete",
+                issue_id,
+                "--permanently",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues delete --permanently should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let deleted: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            deleted.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "delete should report success"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_delete_trash_and_verify() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI issues trash",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)")
+            .to_string();
+
+        // Delete without --permanently (trash).
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "delete",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues delete (trash) should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let trashed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            trashed.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "trash should report success"
+        );
+
+        // Clean up: permanently delete the trashed issue.
+        delete_issue(&issue_id);
+    }
+
+    // ── Documents ─────────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn documents_list_json_returns_array() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "list",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "documents list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(json.is_array(), "documents list JSON should be an array");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn documents_create_read_update_and_delete() {
+        let token = api_token();
+
+        // Get a team key first (documents require a parent like project/issue/team).
+        // Create an issue to associate the document with.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] doc parent issue",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let issue: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = issue["id"].as_str().unwrap().to_string();
+
+        // Create a document associated with the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "create",
+                "--title",
+                "[test] CLI documents CRUD",
+                "--content",
+                "Automated CLI test document.",
+                "--issue",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "documents create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let doc_id = created["id"]
+            .as_str()
+            .expect("created document should have id");
+
+        // Read the document.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "read",
+                doc_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "documents read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let read_doc: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            read_doc["title"].as_str(),
+            Some("[test] CLI documents CRUD")
+        );
+
+        // Update the document.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "update",
+                doc_id,
+                "--title",
+                "[test] CLI documents CRUD — updated",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "documents update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            updated["title"].as_str(),
+            Some("[test] CLI documents CRUD — updated")
+        );
+
+        // Delete the document.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "delete",
+                doc_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "documents delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up the parent issue.
+        delete_issue(&issue_id);
+    }
+
+    // ── Cycles ───────────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_list_json_returns_array() {
+        let token = api_token();
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "cycles", "list"])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "cycles list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(json.is_array(), "cycles list JSON should be an array");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_list_active_json() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "list",
+                "--active",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "cycles list --active should succeed"
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(
+            json.is_array(),
+            "cycles list --active JSON should be an array"
+        );
+        // Active filter should return 0 or 1 cycle.
+        let arr = json.as_array().unwrap();
+        assert!(
+            arr.len() <= 1,
+            "cycles list --active should return at most 1 cycle, got {}",
+            arr.len()
+        );
+    }
+
+    // ── Cycles --team and --around-active ────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_list_with_team_filter() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "list",
+                "--team",
+                &team_key,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles list --team should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(json.is_array(), "cycles list --team should return an array");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_list_around_active() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "list",
+                "--team",
+                &team_key,
+                "--around-active",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles list --around-active should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = json.as_array().expect("should be an array");
+        // --around-active 1 returns at most 3 cycles (active ± 1).
+        assert!(
+            arr.len() <= 3,
+            "cycles list --around-active 1 should return at most 3 cycles, got {}",
+            arr.len()
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_read_by_uuid() {
+        let token = api_token();
+
+        // Get a cycle UUID from the list.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "cycles", "list"])
+            .output()
+            .unwrap();
+        let cycles: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let arr = cycles.as_array().unwrap();
+        if arr.is_empty() {
+            // No cycles in workspace — skip.
+            return;
+        }
+        let cycle_id = arr[0]["id"].as_str().unwrap();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "read",
+                cycle_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles read by UUID should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let read_cycle: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(read_cycle.get("id").is_some(), "cycle should have an id");
+    }
+
+    // ── Embeds upload + download ─────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn embeds_upload_and_download_round_trip() {
+        let token = api_token();
+        let dir = tempfile::tempdir().unwrap();
+
+        // Create a temp file to upload.
+        let upload_path = dir.path().join("test-upload.txt");
+        let content = "lineark CLI embeds round-trip test content";
+        std::fs::write(&upload_path, content).unwrap();
+
+        // Upload.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "upload",
+                upload_path.to_str().unwrap(),
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "embeds upload should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let upload_result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let asset_url = upload_result["assetUrl"]
+            .as_str()
+            .expect("upload result should have assetUrl");
+        assert!(
+            asset_url.starts_with("https://"),
+            "asset URL should be HTTPS, got: {asset_url}"
+        );
+
+        // Download the uploaded file.
+        let download_path = dir.path().join("downloaded.txt");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "download",
+                asset_url,
+                "--output",
+                download_path.to_str().unwrap(),
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "embeds download should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Verify the downloaded file exists and has content.
+        assert!(download_path.exists(), "downloaded file should exist");
+        let downloaded = std::fs::read_to_string(&download_path).unwrap();
+        assert_eq!(
+            downloaded, content,
+            "downloaded content should match uploaded content"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn embeds_download_overwrite_flag() {
+        let token = api_token();
+        let dir = tempfile::tempdir().unwrap();
+
+        // Create and upload a file.
+        let upload_path = dir.path().join("overwrite-test.txt");
+        std::fs::write(&upload_path, "overwrite test").unwrap();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "upload",
+                upload_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let upload_result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let asset_url = upload_result["assetUrl"].as_str().unwrap();
+
+        // Download to a path.
+        let download_path = dir.path().join("target.txt");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "download",
+                asset_url,
+                "--output",
+                download_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "first download should succeed");
+
+        // Try downloading again without --overwrite — should fail.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "download",
+                asset_url,
+                "--output",
+                download_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "download without --overwrite should fail when file exists"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("already exists"),
+            "error should mention file already exists"
+        );
+
+        // Try with --overwrite — should succeed.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "embeds",
+                "download",
+                asset_url,
+                "--output",
+                download_path.to_str().unwrap(),
+                "--overwrite",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "download with --overwrite should succeed"
+        );
+    }
+
+    // ── Issues read with relations ──────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_read_shows_relations() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create two issues.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] relation parent",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let issue_a: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_a_id = issue_a["id"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] relation child",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let issue_b: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_b_id = issue_b["id"].as_str().unwrap().to_string();
+
+        // Create a relation between them via the SDK.
+        {
+            use lineark_sdk::generated::enums::IssueRelationType;
+            use lineark_sdk::generated::inputs::IssueRelationCreateInput;
+            let client = Client::from_token(api_token()).unwrap();
+            let input = IssueRelationCreateInput {
+                issue_id: Some(issue_a_id.clone()),
+                related_issue_id: Some(issue_b_id.clone()),
+                r#type: Some(IssueRelationType::Blocks),
+                ..Default::default()
+            };
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(async { client.issue_relation_create(None, input).await.unwrap() });
+        }
+
+        // Read issue A via CLI — should show the relation.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_a_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+        // Verify the relations field is present and contains our relation.
+        let relations = detail
+            .get("relations")
+            .and_then(|r| r.get("nodes"))
+            .and_then(|n| n.as_array());
+        assert!(
+            relations.is_some(),
+            "issues read should include relations field"
+        );
+        let relations = relations.unwrap();
+        assert!(
+            !relations.is_empty(),
+            "relations should contain at least one entry"
+        );
+        let has_our_relation = relations.iter().any(|r| {
+            r.get("relatedIssue")
+                .and_then(|ri| ri.get("id"))
+                .and_then(|id| id.as_str())
+                == Some(&issue_b_id)
+        });
+        assert!(
+            has_our_relation,
+            "relations should contain the relation to issue B"
+        );
+
+        // Clean up.
+        delete_issue(&issue_a_id);
+        delete_issue(&issue_b_id);
+    }
+
     // ── Comments create ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
