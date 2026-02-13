@@ -30,70 +30,49 @@ Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
 
 ### Install
 
-#### Pre-built binary (fastest)
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
-```
-
-Run it again to update to the latest version.
-
 #### Via cargo
 
 ```sh
 cargo install lineark
 ```
 
-Run it again to upgrade to the latest version.
 
-#### Download binary manually
+#### Pre-built binary (static binary, no Rust toolchain needed)
 
-Grab a binary from the [latest release](https://github.com/flipbit03/lineark/releases/latest).
+```sh
+curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
+```
+
+The script automatically selects between `linux/x86_64`, `linux/aarch64` or `macos/aarch64`, and running it again will update to the latest version. You can also bypass the installer and download the binary for your system from the [latest release](https://github.com/flipbit03/lineark/releases/latest).
 
 ### Usage
 
-```
-lineark whoami                                   Show authenticated user
-lineark teams list                               List all teams
-lineark users list [--active]                    List users
-lineark projects list                            List all projects
-lineark labels list                              List issue labels
-lineark cycles list [--limit N] [--team KEY]     List cycles
-  [--active]                                     Only the active cycle
-  [--around-active N]                            Active ± N neighbors
-lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
-lineark issues list [--limit N] [--team KEY]     Active issues, newest first
-  [--mine]                                       Only issues assigned to me
-  [--show-done]                                  Include done/canceled issues
-lineark issues read <IDENTIFIER>                 Full issue detail (e.g., E-929)
-lineark issues search <QUERY> [--limit N]        Full-text search
-  [--show-done]                                  Include done/canceled results
-lineark issues create <TITLE> --team KEY         Create an issue
-  [--priority 0-4] [--assignee ID]               0=none 1=urgent 2=high 3=medium 4=low
-  [--labels ID,...] [--description TEXT]          Comma-separated label UUIDs
-  [--status NAME] [--parent ID]                  Status resolved against team states
-lineark issues update <IDENTIFIER>               Update an issue
-  [--status NAME] [--priority 0-4]               Status resolved against team states
-  [--assignee ID] [--parent ID]                  User UUID or issue identifier
-  [--labels ID,...] [--label-by adding|replacing|removing]
-  [--clear-labels] [--title TEXT] [--description TEXT]
-lineark issues archive <IDENTIFIER>              Archive an issue
-lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
-lineark issues delete <IDENTIFIER>               Delete (trash) an issue
-  [--permanently]                                Permanently delete instead of trashing
-lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
-lineark documents list [--limit N]               List documents
-lineark documents read <ID>                      Read document (includes content)
-lineark documents create --title TEXT             Create a document
-  [--content TEXT] [--project ID] [--issue ID]
-lineark documents update <ID>                    Update a document
-  [--title TEXT] [--content TEXT]
-lineark documents delete <ID>                    Delete (trash) a document
-lineark embeds upload <FILE> [--public]          Upload file, returns asset URL
-lineark embeds download <URL>                    Download a file by URL
-  [--output PATH] [--overwrite]
-lineark usage                                    Compact command reference
-```
+| Command | Description |
+|---------|-------------|
+| `lineark whoami` | Show authenticated user |
+| `lineark teams list` | List all teams |
+| `lineark users list [--active]` | List users |
+| `lineark projects list` | List all projects |
+| `lineark labels list` | List issue labels |
+| `lineark cycles list [--limit N] [--team KEY]`<br>`[--active]`<br>`[--around-active N]` | List cycles<br>Only the active cycle<br>Active ± N neighbors |
+| `lineark cycles read <ID> [--team KEY]` | Read cycle (UUID, name, or number) |
+| `lineark issues list [--limit N] [--team KEY]`<br>`[--mine]`<br>`[--show-done]` | Active issues, newest first<br>Only issues assigned to me<br>Include done/canceled issues |
+| `lineark issues read <IDENTIFIER>` | Full issue detail (e.g., E-929) |
+| `lineark issues search <QUERY> [--limit N]`<br>`[--show-done]` | Full-text search<br>Include done/canceled results |
+| `lineark issues create <TITLE> --team KEY`<br>`[--priority 0-4] [--assignee ID]`<br>`[--labels ID,...] [--description TEXT]`<br>`[--status NAME] [--parent ID]` | Create an issue<br>0=none 1=urgent 2=high 3=medium 4=low<br>Comma-separated label UUIDs<br>Status resolved against team states |
+| `lineark issues update <IDENTIFIER>`<br>`[--status NAME] [--priority 0-4]`<br>`[--assignee ID] [--parent ID]`<br>`[--labels ID,...] [--label-by adding\|replacing\|removing]`<br>`[--clear-labels] [--title TEXT] [--description TEXT]` | Update an issue<br>Status resolved against team states<br>User UUID or issue identifier |
+| `lineark issues archive <IDENTIFIER>` | Archive an issue |
+| `lineark issues unarchive <IDENTIFIER>` | Unarchive a previously archived issue |
+| `lineark issues delete <IDENTIFIER>`<br>`[--permanently]` | Delete (trash) an issue<br>Permanently delete instead of trashing |
+| `lineark comments create <ISSUE-ID> --body TEXT` | Comment on an issue |
+| `lineark documents list [--limit N]` | List documents |
+| `lineark documents read <ID>` | Read document (includes content) |
+| `lineark documents create --title TEXT`<br>`[--content TEXT] [--project ID] [--issue ID]` | Create a document |
+| `lineark documents update <ID>`<br>`[--title TEXT] [--content TEXT]` | Update a document |
+| `lineark documents delete <ID>` | Delete (trash) a document |
+| `lineark embeds upload <FILE> [--public]` | Upload file, returns asset URL |
+| `lineark embeds download <URL>`<br>`[--output PATH] [--overwrite]` | Download a file by URL |
+| `lineark usage` | Compact command reference |
 
 Every command supports `--help` for full details.
 
