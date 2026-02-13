@@ -555,7 +555,15 @@ fn print_issue_list(items: &[&IssueListItem], format: Format) {
 
 /// Read a single issue by identifier (e.g. E-929) or UUID, with full nested details.
 async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDetail> {
-    if identifier.contains('-') && !identifier.contains("00000") {
+    if uuid::Uuid::parse_str(identifier).is_ok() {
+        // Direct query by UUID.
+        let variables = serde_json::json!({ "id": identifier });
+        return client
+            .execute(ISSUE_READ_QUERY, variables, "issue")
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e));
+    }
+    if identifier.contains('-') {
         // searchIssues is fuzzy — it may return a different issue if no exact match exists.
         // We fetch a small page and verify the identifier matches exactly.
         let variables = serde_json::json!({ "term": identifier, "first": 5 });

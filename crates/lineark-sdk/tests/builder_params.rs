@@ -223,3 +223,263 @@ async fn workflow_states_first_sets_variable() {
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 50);
 }
+
+// ── DocumentsQuery ──────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn documents_first_sets_variable() {
+    let (server, client) = setup("documents").await;
+    let _ = client.documents().first(20).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], 20);
+}
+
+#[tokio::test]
+async fn documents_last_sets_variable() {
+    let (server, client) = setup("documents").await;
+    let _ = client.documents().last(8).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["last"], 8);
+    assert_eq!(vars["first"], Value::Null);
+}
+
+#[tokio::test]
+async fn documents_after_sets_variable() {
+    let (server, client) = setup("documents").await;
+    let _ = client
+        .documents()
+        .first(10)
+        .after("cursor-abc")
+        .send()
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["after"], "cursor-abc");
+}
+
+#[tokio::test]
+async fn documents_before_sets_variable() {
+    let (server, client) = setup("documents").await;
+    let _ = client.documents().before("cursor-end").send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["before"], "cursor-end");
+}
+
+#[tokio::test]
+async fn documents_include_archived_sets_variable() {
+    let (server, client) = setup("documents").await;
+    let _ = client.documents().include_archived(true).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["includeArchived"], true);
+}
+
+#[tokio::test]
+async fn documents_all_params_chain() {
+    let (server, client) = setup("documents").await;
+    let _ = client
+        .documents()
+        .first(15)
+        .after("cur-start")
+        .include_archived(true)
+        .send()
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], 15);
+    assert_eq!(vars["after"], "cur-start");
+    assert_eq!(vars["includeArchived"], true);
+    assert_eq!(vars["before"], Value::Null);
+    assert_eq!(vars["last"], Value::Null);
+}
+
+#[tokio::test]
+async fn documents_no_params_sends_all_null() {
+    let (server, client) = setup("documents").await;
+    let _ = client.documents().send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], Value::Null);
+    assert_eq!(vars["last"], Value::Null);
+    assert_eq!(vars["before"], Value::Null);
+    assert_eq!(vars["after"], Value::Null);
+    assert_eq!(vars["includeArchived"], Value::Null);
+}
+
+// ── IssueRelationsQuery ─────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn issue_relations_first_sets_variable() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client.issue_relations().first(25).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], 25);
+}
+
+#[tokio::test]
+async fn issue_relations_last_sets_variable() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client.issue_relations().last(3).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["last"], 3);
+    assert_eq!(vars["first"], Value::Null);
+}
+
+#[tokio::test]
+async fn issue_relations_before_after_set_variables() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client
+        .issue_relations()
+        .before("cursor-b")
+        .after("cursor-a")
+        .send()
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["before"], "cursor-b");
+    assert_eq!(vars["after"], "cursor-a");
+}
+
+#[tokio::test]
+async fn issue_relations_include_archived_sets_variable() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client.issue_relations().include_archived(true).send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["includeArchived"], true);
+}
+
+#[tokio::test]
+async fn issue_relations_all_params_chain() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client
+        .issue_relations()
+        .first(30)
+        .after("rel-cursor")
+        .include_archived(false)
+        .send()
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], 30);
+    assert_eq!(vars["after"], "rel-cursor");
+    assert_eq!(vars["includeArchived"], false);
+    assert_eq!(vars["before"], Value::Null);
+    assert_eq!(vars["last"], Value::Null);
+}
+
+#[tokio::test]
+async fn issue_relations_no_params_sends_all_null() {
+    let (server, client) = setup("issueRelations").await;
+    let _ = client.issue_relations().send().await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["first"], Value::Null);
+    assert_eq!(vars["last"], Value::Null);
+    assert_eq!(vars["before"], Value::Null);
+    assert_eq!(vars["after"], Value::Null);
+    assert_eq!(vars["includeArchived"], Value::Null);
+}
+
+// ── Mutation variable tests ─────────────────────────────────────────────────
+
+async fn setup_mutation(data_path: &str) -> (MockServer, Client) {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "data": {
+                data_path: {
+                    "success": true
+                }
+            }
+        })))
+        .mount(&server)
+        .await;
+
+    let mut client = Client::from_token("test-token").unwrap();
+    client.set_base_url(server.uri());
+    (server, client)
+}
+
+#[tokio::test]
+async fn document_create_sends_input_variable() {
+    use lineark_sdk::generated::inputs::DocumentCreateInput;
+
+    let (server, client) = setup_mutation("documentCreate").await;
+    let input = DocumentCreateInput {
+        title: Some("Test Document".to_string()),
+        content: Some("# Hello".to_string()),
+        ..Default::default()
+    };
+    let _ = client.document_create(input).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["title"], "Test Document");
+    assert_eq!(vars["input"]["content"], "# Hello");
+}
+
+#[tokio::test]
+async fn document_update_sends_input_and_id() {
+    use lineark_sdk::generated::inputs::DocumentUpdateInput;
+
+    let (server, client) = setup_mutation("documentUpdate").await;
+    let input = DocumentUpdateInput {
+        title: Some("Updated Title".to_string()),
+        ..Default::default()
+    };
+    let _ = client
+        .document_update(input, "doc-uuid-123".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["title"], "Updated Title");
+    assert_eq!(vars["id"], "doc-uuid-123");
+}
+
+#[tokio::test]
+async fn document_delete_sends_id() {
+    let (server, client) = setup_mutation("documentDelete").await;
+    let _ = client.document_delete("doc-uuid-456".to_string()).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "doc-uuid-456");
+}
+
+#[tokio::test]
+async fn issue_relation_create_sends_input() {
+    use lineark_sdk::generated::enums::IssueRelationType;
+    use lineark_sdk::generated::inputs::IssueRelationCreateInput;
+
+    let (server, client) = setup_mutation("issueRelationCreate").await;
+    let input = IssueRelationCreateInput {
+        issue_id: Some("issue-a".to_string()),
+        related_issue_id: Some("issue-b".to_string()),
+        r#type: Some(IssueRelationType::Blocks),
+        ..Default::default()
+    };
+    let _ = client.issue_relation_create(None, input).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["issueId"], "issue-a");
+    assert_eq!(vars["input"]["relatedIssueId"], "issue-b");
+    assert_eq!(vars["input"]["type"], "blocks");
+    assert_eq!(vars["overrideCreatedAt"], Value::Null);
+}
+
+#[tokio::test]
+async fn file_upload_sends_required_params() {
+    let (server, client) = setup_mutation("fileUpload").await;
+    let _ = client
+        .file_upload(
+            None,
+            Some(true),
+            1024,
+            "image/png".to_string(),
+            "screenshot.png".to_string(),
+        )
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["size"], 1024);
+    assert_eq!(vars["contentType"], "image/png");
+    assert_eq!(vars["filename"], "screenshot.png");
+    assert_eq!(vars["makePublic"], true);
+    assert_eq!(vars["metaData"], Value::Null);
+}
+
+#[tokio::test]
+async fn image_upload_from_url_sends_url() {
+    let (server, client) = setup_mutation("imageUploadFromUrl").await;
+    let _ = client
+        .image_upload_from_url("https://example.com/image.png".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["url"], "https://example.com/image.png");
+}

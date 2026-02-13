@@ -151,6 +151,10 @@ impl Client {
         &self.http
     }
 
+    pub(crate) fn token(&self) -> &str {
+        &self.token
+    }
+
     /// Override the base URL (for testing against mock servers).
     #[cfg(test)]
     pub(crate) fn with_base_url(mut self, url: String) -> Self {
