@@ -9,12 +9,14 @@ COMMANDS:
   lineark users list [--active]                    List users
   lineark projects list                            List all projects
   lineark labels list                              List issue labels
-  lineark cycles list [--limit N]                  List cycles
-  lineark cycles read <ID>                         Read a specific cycle
+  lineark cycles list [--limit N] [--team KEY]     List cycles
+    [--active]                                     Only the active cycle
+    [--around-active N]                            Active ± N neighbors
+  lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark issues list [--limit N] [--team KEY]     Active issues (done/canceled hidden), newest first
     [--mine]                                       Only issues assigned to me
     [--show-done]                                  Include done/canceled issues
-  lineark issues read <IDENTIFIER>                 Full issue detail (e.g., E-929)
+  lineark issues read <IDENTIFIER>                 Full issue detail (e.g., E-929) incl. attachments & relations
   lineark issues search <QUERY> [--limit N]        Full-text search
     [--show-done]                                  Include done/canceled results
   lineark issues create <TITLE> --team KEY         Create an issue
@@ -27,6 +29,16 @@ COMMANDS:
     [--labels ID,...] [--label-by adding|replacing|removing]
     [--clear-labels] [--title TEXT] [--description TEXT]
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+  lineark documents list [--limit N]               List documents
+  lineark documents read <ID>                      Read document (includes content)
+  lineark documents create --title TEXT             Create a document
+    [--content TEXT] [--project ID] [--issue ID]
+  lineark documents update <ID>                    Update a document
+    [--title TEXT] [--content TEXT]
+  lineark documents delete <ID>                    Delete (trash) a document
+  lineark embeds download <URL>                    Download file from URL
+    [--output PATH] [--overwrite]
+  lineark embeds upload <FILE> [--public]          Upload file, returns asset URL
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token

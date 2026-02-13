@@ -300,6 +300,52 @@ impl<'a> IssuesQuery<'a> {
     }
 }
 #[must_use]
+pub struct IssueRelationsQuery<'a> {
+    client: &'a Client,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+}
+impl<'a> IssueRelationsQuery<'a> {
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<IssueRelation>, LinearError> {
+        let variables = serde_json::json!(
+            { "before" : self.before, "after" : self.after, "first" : self.first, "last"
+            : self.last, "includeArchived" : self.include_archived }
+        );
+        self.client
+            .execute_connection::<
+                IssueRelation,
+            >(
+                "query IssueRelations($before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean) { issueRelations(before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived) { nodes { id createdAt updatedAt archivedAt type } pageInfo { hasNextPage endCursor } } }",
+                variables,
+                "issueRelations",
+            )
+            .await
+    }
+}
+#[must_use]
 pub struct IssueLabelsQuery<'a> {
     client: &'a Client,
     before: Option<String>,
@@ -341,6 +387,52 @@ impl<'a> IssueLabelsQuery<'a> {
                 "query IssueLabels($before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean) { issueLabels(before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived) { nodes { id createdAt updatedAt archivedAt name description color isGroup lastAppliedAt retiredAt } pageInfo { hasNextPage endCursor } } }",
                 variables,
                 "issueLabels",
+            )
+            .await
+    }
+}
+#[must_use]
+pub struct DocumentsQuery<'a> {
+    client: &'a Client,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+}
+impl<'a> DocumentsQuery<'a> {
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<Document>, LinearError> {
+        let variables = serde_json::json!(
+            { "before" : self.before, "after" : self.after, "first" : self.first, "last"
+            : self.last, "includeArchived" : self.include_archived }
+        );
+        self.client
+            .execute_connection::<
+                Document,
+            >(
+                "query Documents($before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean) { documents(before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived) { nodes { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } pageInfo { hasNextPage endCursor } } }",
+                variables,
+                "documents",
             )
             .await
     }
@@ -500,6 +592,27 @@ impl Client {
             )
             .await
     }
+    pub fn issue_relations(&self) -> IssueRelationsQuery<'_> {
+        IssueRelationsQuery {
+            client: self,
+            before: None,
+            after: None,
+            first: None,
+            last: None,
+            include_archived: None,
+        }
+    }
+    pub async fn issue_relation(&self, id: String) -> Result<IssueRelation, LinearError> {
+        let variables = serde_json::json!({ "id" : id });
+        self.execute::<
+                IssueRelation,
+            >(
+                "query IssueRelation($id: String!) { issueRelation(id: $id) { id createdAt updatedAt archivedAt type } }",
+                variables,
+                "issueRelation",
+            )
+            .await
+    }
     pub fn issue_labels(&self) -> IssueLabelsQuery<'_> {
         IssueLabelsQuery {
             client: self,
@@ -509,6 +622,27 @@ impl Client {
             last: None,
             include_archived: None,
         }
+    }
+    pub fn documents(&self) -> DocumentsQuery<'_> {
+        DocumentsQuery {
+            client: self,
+            before: None,
+            after: None,
+            first: None,
+            last: None,
+            include_archived: None,
+        }
+    }
+    pub async fn document(&self, id: String) -> Result<Document, LinearError> {
+        let variables = serde_json::json!({ "id" : id });
+        self.execute::<
+                Document,
+            >(
+                "query Document($id: String!) { document(id: $id) { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } }",
+                variables,
+                "document",
+            )
+            .await
     }
     pub fn cycles(&self) -> CyclesQuery<'_> {
         CyclesQuery {

@@ -212,6 +212,9 @@ struct IssueDetail {
     pub project: Option<NestedProject>,
     pub cycle: Option<NestedCycle>,
     pub parent: Option<NestedIssue>,
+    pub attachments: Option<NestedAttachmentConnection>,
+    pub relations: Option<NestedRelationConnection>,
+    pub inverse_relations: Option<NestedRelationConnection>,
 }
 
 const ISSUE_READ_QUERY: &str = "query IssueRead($id: String!) { issue(id: $id) { \
@@ -222,6 +225,9 @@ labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
 team { id key name } project { id name } cycle { id number name } \
 parent { id identifier } \
+attachments { nodes { id title url sourceType } } \
+relations { nodes { id type relatedIssue { id identifier title } } } \
+inverseRelations { nodes { id type issue { id identifier title } } } \
 } }";
 
 const ISSUE_SEARCH_ONE_QUERY: &str = "query IssueSearchOne($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { \
@@ -232,6 +238,9 @@ labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
 team { id key name } project { id name } cycle { id number name } \
 parent { id identifier } \
+attachments { nodes { id title url sourceType } } \
+relations { nodes { id type relatedIssue { id identifier title } } } \
+inverseRelations { nodes { id type issue { id identifier title } } } \
 } } }";
 
 // ── Shared nested types ─────────────────────────────────────────────────────
@@ -291,6 +300,38 @@ struct NestedLabel {
 struct NestedIssue {
     pub id: Option<String>,
     pub identifier: Option<String>,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct NestedAttachmentConnection {
+    pub nodes: Vec<NestedAttachment>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct NestedAttachment {
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub source_type: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct NestedRelationConnection {
+    pub nodes: Vec<NestedRelation>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct NestedRelation {
+    pub id: Option<String>,
+    #[serde(rename = "type")]
+    pub relation_type: Option<String>,
+    pub related_issue: Option<NestedIssue>,
+    pub issue: Option<NestedIssue>,
 }
 
 // ── Command dispatch ────────────────────────────────────────────────────────

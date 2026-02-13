@@ -143,6 +143,14 @@ impl Client {
             .await
     }
 
+    /// Access the underlying HTTP client.
+    ///
+    /// Used internally by [`helpers`](crate::helpers) for file download/upload
+    /// operations that go outside the GraphQL API.
+    pub(crate) fn http(&self) -> &reqwest::Client {
+        &self.http
+    }
+
     /// Override the base URL (for testing against mock servers).
     #[cfg(test)]
     pub(crate) fn with_base_url(mut self, url: String) -> Self {
