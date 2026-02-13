@@ -6,6 +6,7 @@ use super::inputs::*;
 use crate::client::Client;
 use crate::error::LinearError;
 impl Client {
+    /// XHR request payload to upload an images, video and other attachments directly to Linear's cloud storage.
     pub async fn file_upload(
         &self,
         meta_data: Option<serde_json::Value>,
@@ -27,6 +28,7 @@ impl Client {
             )
             .await
     }
+    /// Upload an image from an URL to Linear.
     pub async fn image_upload_from_url(
         &self,
         url: String,
@@ -41,6 +43,7 @@ impl Client {
             )
             .await
     }
+    /// Creates a new comment.
     pub async fn comment_create(
         &self,
         input: CommentCreateInput,
@@ -55,6 +58,7 @@ impl Client {
             )
             .await
     }
+    /// Creates a new issue.
     pub async fn issue_create(
         &self,
         input: IssueCreateInput,
@@ -69,6 +73,7 @@ impl Client {
             )
             .await
     }
+    /// Updates an issue.
     pub async fn issue_update(
         &self,
         input: IssueUpdateInput,
@@ -84,6 +89,7 @@ impl Client {
             )
             .await
     }
+    /// Archives an issue.
     pub async fn issue_archive(
         &self,
         trash: Option<bool>,
@@ -99,6 +105,7 @@ impl Client {
             )
             .await
     }
+    /// Unarchives an issue.
     pub async fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -110,6 +117,7 @@ impl Client {
             )
             .await
     }
+    /// Deletes (trashes) an issue.
     pub async fn issue_delete(
         &self,
         permanently_delete: Option<bool>,
@@ -127,6 +135,7 @@ impl Client {
             )
             .await
     }
+    /// Creates a new issue relation.
     pub async fn issue_relation_create(
         &self,
         override_created_at: Option<serde_json::Value>,
@@ -144,6 +153,7 @@ impl Client {
             )
             .await
     }
+    /// Creates a new document.
     pub async fn document_create(
         &self,
         input: DocumentCreateInput,
@@ -158,6 +168,7 @@ impl Client {
             )
             .await
     }
+    /// Updates a document.
     pub async fn document_update(
         &self,
         input: DocumentUpdateInput,
@@ -173,6 +184,7 @@ impl Client {
             )
             .await
     }
+    /// Deletes (trashes) a document.
     pub async fn document_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<

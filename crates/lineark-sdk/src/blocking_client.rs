@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use lineark_sdk::blocking::Client;
+//! use lineark_sdk::blocking_client::Client;
 //!
 //! let client = Client::auto().unwrap();
 //! let me = client.whoami().unwrap();
@@ -48,7 +48,7 @@ pub struct Client {
 
 impl std::fmt::Debug for Client {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("blocking::Client")
+        f.debug_struct("blocking_client::Client")
             .field("inner", &self.inner)
             .finish_non_exhaustive()
     }
@@ -191,61 +191,61 @@ macro_rules! blocking_query_builder {
 use crate::generated::types::*;
 
 blocking_query_builder! {
-    query_type = WorkflowStatesQuery,
+    query_type = WorkflowStatesQueryBuilder,
     return_type = Connection<WorkflowState>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = UsersQuery,
+    query_type = UsersQueryBuilder,
     return_type = Connection<User>,
     methods = [include_disabled(bool), before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = TeamsQuery,
+    query_type = TeamsQueryBuilder,
     return_type = Connection<Team>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = ProjectsQuery,
+    query_type = ProjectsQueryBuilder,
     return_type = Connection<Project>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = IssueLabelsQuery,
+    query_type = IssueLabelsQueryBuilder,
     return_type = Connection<IssueLabel>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = IssuesQuery,
+    query_type = IssuesQueryBuilder,
     return_type = Connection<Issue>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = CyclesQuery,
+    query_type = CyclesQueryBuilder,
     return_type = Connection<Cycle>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = SearchIssuesQuery,
+    query_type = SearchIssuesQueryBuilder,
     return_type = Connection<Issue>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool), include_comments(bool), team_id(impl Into<String>)]
 }
 
 blocking_query_builder! {
-    query_type = DocumentsQuery,
+    query_type = DocumentsQueryBuilder,
     return_type = Connection<Document>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
-    query_type = IssueRelationsQuery,
+    query_type = IssueRelationsQueryBuilder,
     return_type = Connection<IssueRelation>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
@@ -260,17 +260,17 @@ impl Client {
     /// List workflow states (blocking).
     pub fn workflow_states(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::WorkflowStatesQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::WorkflowStatesQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.workflow_states(), &self.rt)
     }
 
     /// List users (blocking).
-    pub fn users(&self) -> BlockingQuery<'_, crate::generated::queries::UsersQuery<'_>> {
+    pub fn users(&self) -> BlockingQuery<'_, crate::generated::queries::UsersQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.users(), &self.rt)
     }
 
     /// List teams (blocking).
-    pub fn teams(&self) -> BlockingQuery<'_, crate::generated::queries::TeamsQuery<'_>> {
+    pub fn teams(&self) -> BlockingQuery<'_, crate::generated::queries::TeamsQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.teams(), &self.rt)
     }
 
@@ -280,7 +280,9 @@ impl Client {
     }
 
     /// List projects (blocking).
-    pub fn projects(&self) -> BlockingQuery<'_, crate::generated::queries::ProjectsQuery<'_>> {
+    pub fn projects(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::ProjectsQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.projects(), &self.rt)
     }
 
@@ -292,12 +294,12 @@ impl Client {
     /// List issue labels (blocking).
     pub fn issue_labels(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::IssueLabelsQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueLabelsQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.issue_labels(), &self.rt)
     }
 
     /// List issues (blocking).
-    pub fn issues(&self) -> BlockingQuery<'_, crate::generated::queries::IssuesQuery<'_>> {
+    pub fn issues(&self) -> BlockingQuery<'_, crate::generated::queries::IssuesQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.issues(), &self.rt)
     }
 
@@ -307,7 +309,7 @@ impl Client {
     }
 
     /// List cycles (blocking).
-    pub fn cycles(&self) -> BlockingQuery<'_, crate::generated::queries::CyclesQuery<'_>> {
+    pub fn cycles(&self) -> BlockingQuery<'_, crate::generated::queries::CyclesQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.cycles(), &self.rt)
     }
 
@@ -320,12 +322,14 @@ impl Client {
     pub fn search_issues(
         &self,
         term: impl Into<String>,
-    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.search_issues(term), &self.rt)
     }
 
     /// List documents (blocking).
-    pub fn documents(&self) -> BlockingQuery<'_, crate::generated::queries::DocumentsQuery<'_>> {
+    pub fn documents(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::DocumentsQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.documents(), &self.rt)
     }
 
@@ -337,7 +341,7 @@ impl Client {
     /// List issue relations (blocking).
     pub fn issue_relations(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::IssueRelationsQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueRelationsQueryBuilder<'_>> {
         BlockingQuery::new(self.inner.issue_relations(), &self.rt)
     }
 

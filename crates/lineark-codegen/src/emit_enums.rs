@@ -1,4 +1,4 @@
-use crate::parser::EnumDef;
+use crate::parser::{self, EnumDef};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -23,19 +23,22 @@ pub fn emit(enums: &[EnumDef]) -> TokenStream {
 
 fn emit_enum(e: &EnumDef) -> TokenStream {
     let name = quote::format_ident!("{}", e.name);
+    let doc = parser::doc_comment_tokens(&e.description);
     let variants: Vec<TokenStream> = e
         .values
         .iter()
         .filter(|v| !v.name.is_empty())
         .map(|v| {
             let original = &v.name;
+            let vdoc = parser::doc_comment_tokens(&v.description);
             // Convert to PascalCase for Rust convention.
             let rust_name = to_variant_name(original);
             let variant_ident = quote::format_ident!("{}", rust_name);
             if rust_name == *original {
-                quote! { #variant_ident, }
+                quote! { #vdoc #variant_ident, }
             } else {
                 quote! {
+                    #vdoc
                     #[serde(rename = #original)]
                     #variant_ident,
                 }
@@ -44,6 +47,7 @@ fn emit_enum(e: &EnumDef) -> TokenStream {
         .collect();
 
     quote! {
+        #doc
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum #name {
             #(#variants)*
@@ -81,15 +85,19 @@ mod tests {
     fn emit_generates_enum_with_variants() {
         let enums = vec![EnumDef {
             name: "Color".to_string(),
+            description: None,
             values: vec![
                 EnumValueDef {
                     name: "RED".to_string(),
+                    description: None,
                 },
                 EnumValueDef {
                     name: "GREEN".to_string(),
+                    description: None,
                 },
                 EnumValueDef {
                     name: "BLUE".to_string(),
+                    description: None,
                 },
             ],
         }];
@@ -104,8 +112,10 @@ mod tests {
     fn emit_includes_unknown_variant() {
         let enums = vec![EnumDef {
             name: "Status".to_string(),
+            description: None,
             values: vec![EnumValueDef {
                 name: "ACTIVE".to_string(),
+                description: None,
             }],
         }];
         let output = emit(&enums).to_string();
@@ -133,6 +143,7 @@ mod tests {
     fn emit_skips_empty_names() {
         let enums = vec![EnumDef {
             name: "".to_string(),
+            description: None,
             values: vec![],
         }];
         let output = emit(&enums).to_string();
@@ -144,15 +155,19 @@ mod tests {
     fn emit_generated_code_parses() {
         let enums = vec![EnumDef {
             name: "Priority".to_string(),
+            description: None,
             values: vec![
                 EnumValueDef {
                     name: "noPriority".to_string(),
+                    description: None,
                 },
                 EnumValueDef {
                     name: "urgent".to_string(),
+                    description: None,
                 },
                 EnumValueDef {
                     name: "high".to_string(),
+                    description: None,
                 },
             ],
         }];

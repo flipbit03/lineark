@@ -17,7 +17,7 @@ pub enum EmbedsAction {
     /// Download a file from a URL (handles Linear's signed/expiring URLs).
     ///
     /// Examples:
-    ///   lineark embeds download "https://uploads.linear.app/..." --output ./file.png
+    ///   lineark embeds download "<https://uploads.linear.app/...>" --output ./file.png
     Download {
         /// URL of the file to download.
         url: String,

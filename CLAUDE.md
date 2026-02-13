@@ -34,7 +34,8 @@ cargo run -p lineark-codegen             # regenerate SDK types from schema
 cargo run -p lineark -- <args>           # run the CLI
 cargo clippy --workspace -- -D warnings  # lint
 cargo fmt --check                        # format check
-make check                               # run all CI checks locally
+make check                               # lint + doc + build (no tests)
+make test                                # run tests only
 ```
 
 ## Updating the schema
@@ -71,7 +72,7 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 - **Operations are incremental.** Types/enums/inputs are always fully generated. Query and mutation functions are gated by `schema/operations.toml`.
 - **Auth precedence:** `--api-token` flag > `$LINEAR_API_TOKEN` env var > `~/.linear_api_token` file.
 - **Output format:** auto-detect with `std::io::IsTerminal` — human tables when interactive, JSON when piped. Override with `--format human|json`.
-- **Async by default.** The SDK uses tokio + reqwest async. A `blocking` feature flag exposes a sync API.
+- **Async by default.** The SDK uses tokio + reqwest async. A `blocking` feature flag exposes a sync API via the `blocking_client` module.
 - **No macro magic.** No proc macros in the SDK itself. Codegen emits plain Rust structs and functions.
 
 ## CLI discoverability
@@ -85,8 +86,11 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 Every PR must pass CI before merge. The checks are:
 1. `cargo fmt --check` — formatting
 2. `cargo clippy --workspace -- -D warnings` — linting
-3. `cargo build --workspace` — compilation
-4. `cargo test --workspace` — tests
+3. `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps` — doc lints
+4. `cargo build --workspace` — compilation
+5. `cargo test --workspace` — tests
+
+Locally: `make check && make test` runs all of the above.
 
 These run on five targets: `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-gnu`, `aarch64-unknown-linux-musl`, `aarch64-apple-darwin`.
 

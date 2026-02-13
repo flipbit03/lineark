@@ -1,5 +1,5 @@
 use crate::emit_scalars::graphql_type_to_rust;
-use crate::parser::{ArgumentDef, FieldDef, GqlType, ObjectDef, TypeKind};
+use crate::parser::{self, ArgumentDef, FieldDef, GqlType, ObjectDef, TypeKind};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -147,6 +147,8 @@ fn emit_direct_method(
     let (gql_args_str, gql_params_str) = build_gql_strings(args);
     let data_path = &field.name;
 
+    let doc = parser::doc_comment_tokens(&field.description);
+
     if is_connection {
         let (node_type_name, node_type_ident) = connection_node_type(return_type_name);
         let field_selection = build_field_selection(node_type_name, object_map, type_kind_map);
@@ -160,6 +162,7 @@ fn emit_direct_method(
         );
 
         quote! {
+            #doc
             pub async fn #method_name(&self, #(#params),*) -> Result<Connection<#node_type_ident>, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
                 self.execute_connection::<#node_type_ident>(#query_string, variables, #data_path).await
@@ -178,6 +181,7 @@ fn emit_direct_method(
         );
 
         quote! {
+            #doc
             pub async fn #method_name(&self, #(#params),*) -> Result<#return_type_ident, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
                 self.execute::<#return_type_ident>(#query_string, variables, #data_path).await
@@ -198,8 +202,9 @@ fn emit_builder_query(
 ) -> (Vec<TokenStream>, TokenStream) {
     let rust_name = rename.unwrap_or(field.name.as_str());
     let method_name = quote::format_ident!("{}", rust_name.to_snake_case());
-    let builder_name = quote::format_ident!("{}Query", rust_name.to_upper_camel_case());
+    let builder_name = quote::format_ident!("{}QueryBuilder", rust_name.to_upper_camel_case());
     let return_type_name = field.ty.base_name();
+    let doc = parser::doc_comment_tokens(&field.description);
 
     let required_args: Vec<&ArgInfo> = args.iter().filter(|a| a.is_required).collect();
     let optional_args: Vec<&ArgInfo> = args.iter().filter(|a| !a.is_required).collect();
@@ -344,6 +349,7 @@ fn emit_builder_query(
     };
 
     let client_method = quote! {
+        #doc
         pub fn #method_name(&self, #(#constructor_params),*) -> #builder_name<'_> {
             #builder_name {
                 #(#field_inits,)*
@@ -448,7 +454,7 @@ pub fn build_field_selection(
         .join(" ")
 }
 
-/// Convert GqlType back to a GraphQL type string (e.g., "String!", "[String!]").
+/// Convert GqlType back to a GraphQL type string (e.g., `String!`, `[String!]`).
 pub fn gql_type_string(ty: &GqlType) -> String {
     match ty {
         GqlType::Named(name) => name.clone(),

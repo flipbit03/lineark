@@ -28,7 +28,7 @@ lineark/
 │   │   └── src/
 │   │       ├── lib.rs            # Public API surface
 │   │       ├── client.rs         # LinearClient (async)
-│   │       ├── blocking.rs       # Blocking (sync) client wrapper
+│   │       ├── blocking_client.rs # Blocking (sync) client wrapper
 │   │       ├── error.rs          # Error types (mirroring Linear's error taxonomy)
 │   │       ├── pagination.rs     # Connection<T>, PageInfo, cursor helpers
 │   │       ├── auth.rs           # Token resolution (~/.linear_api_token, env, flag)
@@ -113,7 +113,7 @@ blocking = []
 
 **Async by default, blocking opt-in:**
 - `lineark_sdk::Client` — async (requires tokio runtime)
-- `lineark_sdk::blocking::Client` — sync (behind `blocking` feature flag)
+- `lineark_sdk::blocking_client::Client` — sync (behind `blocking` feature flag)
 - Both expose identical APIs, differing only in async/sync
 
 **Client API shape (async):**
@@ -580,7 +580,7 @@ and ensure all tests pass."
 - [x] Implement `lineark documents delete <ID>` (#25)
 
 **SDK blocking API (#26):**
-- [x] Implement `lineark_sdk::blocking::Client` behind `blocking` feature flag (#26)
+- [x] Implement `lineark_sdk::blocking_client::Client` behind `blocking` feature flag (#26)
 - [x] Mirror all async methods as blocking equivalents (#26)
 - [x] Test blocking API independently (#26)
 

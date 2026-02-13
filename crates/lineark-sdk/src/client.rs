@@ -1,3 +1,10 @@
+//! Async Linear API client.
+//!
+//! The primary entry point for interacting with Linear's GraphQL API.
+//! Construct a [`Client`] via [`Client::auto`], [`Client::from_env`],
+//! [`Client::from_file`], or [`Client::from_token`], then call generated
+//! query and mutation methods.
+
 use crate::auth;
 use crate::error::{GraphQLError, LinearError};
 use crate::pagination::Connection;

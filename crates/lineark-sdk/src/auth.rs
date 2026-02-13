@@ -1,3 +1,8 @@
+//! API token resolution.
+//!
+//! Supports three sources (in precedence order): explicit token, the
+//! `LINEAR_API_TOKEN` environment variable, and `~/.linear_api_token` file.
+
 use crate::error::LinearError;
 use std::path::PathBuf;
 

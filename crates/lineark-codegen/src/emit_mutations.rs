@@ -1,5 +1,5 @@
 use crate::emit_queries::{build_field_selection, gql_type_string};
-use crate::parser::{FieldDef, GqlType, ObjectDef, TypeKind};
+use crate::parser::{self, FieldDef, GqlType, ObjectDef, TypeKind};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -93,10 +93,12 @@ fn emit_mutation_method(
     );
 
     let data_path = mutation_name.as_str();
+    let doc = parser::doc_comment_tokens(&field.description);
 
     // Determine the return type: use serde_json::Value for flexibility.
     // The CLI will interpret the payload fields.
     quote! {
+        #doc
         pub async fn #method_name(&self, #(#params),*) -> Result<serde_json::Value, LinearError> {
             let variables = serde_json::json!({ #(#variables_json),* });
             self.execute::<serde_json::Value>(#mutation_string, variables, #data_path).await

@@ -1,3 +1,8 @@
+//! Cursor-based pagination types.
+//!
+//! Linear uses Relay-style connections. [`Connection`] wraps a page of nodes
+//! with [`PageInfo`] for cursor-based traversal.
+
 use serde::{Deserialize, Serialize};
 
 /// Relay-style page info for cursor-based pagination.

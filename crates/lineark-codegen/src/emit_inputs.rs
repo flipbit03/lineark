@@ -26,6 +26,7 @@ pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> T
 
 fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let name = quote::format_ident!("{}", input.name);
+    let doc = parser::doc_comment_tokens(&input.description);
 
     let fields: Vec<TokenStream> = input
         .fields
@@ -55,6 +56,7 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
                 quote! { #ident }
             };
             let rust_type = resolve_input_type(&f.ty, type_kind_map);
+            let fdoc = parser::doc_comment_tokens(&f.description);
             // If the snake_case name differs from the original camelCase, add serde rename.
             // We use rename_all on the struct level, so individual renames are only needed
             // if to_snake_case -> to_camelCase roundtrip doesn't match.
@@ -64,11 +66,13 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
             };
             if needs_rename {
                 quote! {
+                    #fdoc
                     #[serde(rename = #original_name, default, skip_serializing_if = "Option::is_none")]
                     pub #field_ident: #rust_type,
                 }
             } else {
                 quote! {
+                    #fdoc
                     #[serde(default, skip_serializing_if = "Option::is_none")]
                     pub #field_ident: #rust_type,
                 }
@@ -77,6 +81,7 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
         .collect();
 
     quote! {
+        #doc
         #[derive(Debug, Clone, Default, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
         pub struct #name {
@@ -85,7 +90,7 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
     }
 }
 
-/// All input fields are Option<T> for easy Default derivation and the `..Default::default()` pattern.
+/// All input fields are `Option<T>` for easy Default derivation and the `..Default::default()` pattern.
 fn resolve_input_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let inner = resolve_inner(ty, type_kind_map);
     quote! { Option<#inner> }
