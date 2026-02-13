@@ -36,11 +36,15 @@ Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
 curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
 ```
 
+Run it again to update to the latest version.
+
 #### Via cargo
 
 ```sh
 cargo install lineark
 ```
+
+Run it again to upgrade to the latest version.
 
 #### Download binary manually
 
