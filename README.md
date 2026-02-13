@@ -30,13 +30,6 @@ Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
 
 ### Install
 
-#### Via cargo
-
-```sh
-cargo install lineark
-```
-
-
 #### Pre-built binary (static binary, no Rust toolchain needed)
 
 ```sh
@@ -44,6 +37,12 @@ curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh |
 ```
 
 The script automatically selects between `linux/x86_64`, `linux/aarch64` or `macos/aarch64`, and running it again will update to the latest version. You can also bypass the installer and download the binary for your system from the [latest release](https://github.com/flipbit03/lineark/releases/latest).
+
+#### Via cargo
+
+```sh
+cargo install lineark
+```
 
 ### Usage
 
