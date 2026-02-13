@@ -68,10 +68,8 @@ fn emit_mutation_method(
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> Option<TokenStream> {
-    let method_name = quote::format_ident!(
-        "{}",
-        rename.unwrap_or(field.name.as_str()).to_snake_case()
-    );
+    let method_name =
+        quote::format_ident!("{}", rename.unwrap_or(field.name.as_str()).to_snake_case());
     let payload_type_name = field.ty.base_name();
     let payload_obj = object_map.get(payload_type_name)?;
 

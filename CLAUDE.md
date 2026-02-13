@@ -27,6 +27,7 @@ docs/
 ## Key commands
 
 ```bash
+rustup update stable                     # sync local toolchain with CI (do this before developing)
 cargo build --workspace                  # build everything
 cargo test --workspace                   # run all tests
 cargo run -p lineark-codegen             # regenerate SDK types from schema

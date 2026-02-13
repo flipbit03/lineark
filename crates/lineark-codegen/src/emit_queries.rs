@@ -91,9 +91,23 @@ fn emit_query(
         return_type_name.ends_with("Connection") || return_type_name.ends_with("Payload");
 
     if has_optional {
-        emit_builder_query(field, rename, &args, is_connection, object_map, type_kind_map)
+        emit_builder_query(
+            field,
+            rename,
+            &args,
+            is_connection,
+            object_map,
+            type_kind_map,
+        )
     } else {
-        let method = emit_direct_method(field, rename, &args, is_connection, object_map, type_kind_map);
+        let method = emit_direct_method(
+            field,
+            rename,
+            &args,
+            is_connection,
+            object_map,
+            type_kind_map,
+        );
         (vec![], method)
     }
 }
@@ -108,10 +122,8 @@ fn emit_direct_method(
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> TokenStream {
-    let method_name = quote::format_ident!(
-        "{}",
-        rename.unwrap_or(field.name.as_str()).to_snake_case()
-    );
+    let method_name =
+        quote::format_ident!("{}", rename.unwrap_or(field.name.as_str()).to_snake_case());
     let return_type_name = field.ty.base_name();
 
     let params: Vec<TokenStream> = args
