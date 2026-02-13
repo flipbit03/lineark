@@ -33,6 +33,8 @@ pub enum LinearError {
     HttpError { status: u16, body: String },
     /// Auth configuration error (no token found).
     AuthConfig(String),
+    /// Internal error (e.g. runtime creation failure).
+    Internal(String),
 }
 
 impl fmt::Display for LinearError {
@@ -61,6 +63,7 @@ impl fmt::Display for LinearError {
             }
             Self::MissingData(path) => write!(f, "Missing data at path: {}", path),
             Self::AuthConfig(msg) => write!(f, "Auth configuration error: {}", msg),
+            Self::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
     }
 }
@@ -206,6 +209,15 @@ mod tests {
     fn linear_error_is_std_error() {
         let err = LinearError::Authentication("test".to_string());
         let _: &dyn std::error::Error = &err;
+    }
+
+    #[test]
+    fn display_internal_error() {
+        let err = LinearError::Internal("Failed to create tokio runtime: foo".to_string());
+        assert_eq!(
+            err.to_string(),
+            "Internal error: Failed to create tokio runtime: foo"
+        );
     }
 
     #[test]

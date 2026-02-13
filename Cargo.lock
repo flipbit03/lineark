@@ -853,6 +853,7 @@ dependencies = [
  "home",
  "libtest-with",
  "lineark-sdk",
+ "percent-encoding",
  "predicates",
  "serde",
  "serde_json",
@@ -891,6 +892,7 @@ dependencies = [
  "tempfile",
  "test-with",
  "tokio",
+ "url",
  "uuid",
  "wiremock",
 ]

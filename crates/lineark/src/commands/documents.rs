@@ -4,6 +4,7 @@ use lineark_sdk::Client;
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
+use super::helpers::{check_success, resolve_issue_id, NestedProject, NestedUser};
 use crate::output::{self, Format};
 
 /// Manage documents.
@@ -125,20 +126,6 @@ struct DocumentDetail {
     creator: Option<NestedUser>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedProject {
-    id: Option<String>,
-    name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedUser {
-    id: Option<String>,
-    name: Option<String>,
-}
-
 const DOCUMENT_READ_QUERY: &str = "query Document($id: String!) { document(id: $id) { \
 id title slugId content url createdAt updatedAt icon color \
 project { id name } creator { id name } \
@@ -180,11 +167,16 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             project,
             issue,
         } => {
+            let issue_id = match issue {
+                Some(ref id) => Some(resolve_issue_id(client, id).await?),
+                None => None,
+            };
+
             let input = DocumentCreateInput {
                 title: Some(title),
                 content,
                 project_id: project,
-                issue_id: issue,
+                issue_id,
                 ..Default::default()
             };
 
@@ -198,6 +190,12 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             output::print_one(&doc, format);
         }
         DocumentsAction::Update { id, title, content } => {
+            if title.is_none() && content.is_none() {
+                return Err(anyhow::anyhow!(
+                    "No update fields provided. Use --title or --content to specify changes."
+                ));
+            }
+
             let input = DocumentUpdateInput {
                 title,
                 content,
@@ -222,16 +220,6 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             check_success(&payload)?;
             output::print_one(&payload, format);
         }
-    }
-    Ok(())
-}
-
-fn check_success(payload: &serde_json::Value) -> anyhow::Result<()> {
-    if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
-        return Err(anyhow::anyhow!(
-            "Operation failed: {}",
-            serde_json::to_string_pretty(payload).unwrap_or_default()
-        ));
     }
     Ok(())
 }

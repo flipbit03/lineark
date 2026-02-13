@@ -46,6 +46,14 @@ pub struct Client {
     rt: tokio::runtime::Runtime,
 }
 
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("blocking::Client")
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Client {
     /// Create a blocking client with an explicit API token.
     pub fn from_token(token: impl Into<String>) -> Result<Self, LinearError> {
@@ -133,21 +141,14 @@ impl Client {
 
 /// A blocking query builder. Wraps an async builder and runs `.send()` synchronously.
 #[must_use]
-pub struct BlockingQuery<B> {
+pub struct BlockingQuery<'rt, B> {
     builder: B,
-    rt: *const tokio::runtime::Runtime,
+    rt: &'rt tokio::runtime::Runtime,
 }
 
-// Safety: BlockingQuery is only used on the same thread as the Client that created it.
-// The runtime pointer is valid for the lifetime of the Client.
-unsafe impl<B: Send> Send for BlockingQuery<B> {}
-
-impl<B> BlockingQuery<B> {
-    fn new(builder: B, rt: &tokio::runtime::Runtime) -> Self {
-        Self {
-            builder,
-            rt: rt as *const _,
-        }
+impl<'rt, B> BlockingQuery<'rt, B> {
+    fn new(builder: B, rt: &'rt tokio::runtime::Runtime) -> Self {
+        Self { builder, rt }
     }
 }
 
@@ -160,7 +161,7 @@ macro_rules! blocking_query_builder {
         return_type = $ReturnKind:ident < $ReturnType:ty >,
         methods = [ $( $method:ident ( $arg_ty:ty ) ),* $(,)? ]
     ) => {
-        impl BlockingQuery<crate::generated::queries::$QueryType<'_>> {
+        impl<'rt> BlockingQuery<'rt, crate::generated::queries::$QueryType<'_>> {
             $(
                 pub fn $method(mut self, value: $arg_ty) -> Self {
                     self.builder = self.builder.$method(value);
@@ -175,17 +176,14 @@ macro_rules! blocking_query_builder {
     (@send Connection<$T:ty>) => {
         /// Execute the query and return the result synchronously.
         pub fn send(self) -> Result<Connection<$T>, LinearError> {
-            // Safety: extract rt before moving builder out of self.
-            let rt = unsafe { &*self.rt };
-            rt.block_on(self.builder.send())
+            self.rt.block_on(self.builder.send())
         }
     };
     // Single return type
     (@send Single<$T:ty>) => {
         /// Execute the query and return the result synchronously.
         pub fn send(self) -> Result<$T, LinearError> {
-            let rt = unsafe { &*self.rt };
-            rt.block_on(self.builder.send())
+            self.rt.block_on(self.builder.send())
         }
     };
 }
@@ -262,17 +260,17 @@ impl Client {
     /// List workflow states (blocking).
     pub fn workflow_states(
         &self,
-    ) -> BlockingQuery<crate::generated::queries::WorkflowStatesQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::WorkflowStatesQuery<'_>> {
         BlockingQuery::new(self.inner.workflow_states(), &self.rt)
     }
 
     /// List users (blocking).
-    pub fn users(&self) -> BlockingQuery<crate::generated::queries::UsersQuery<'_>> {
+    pub fn users(&self) -> BlockingQuery<'_, crate::generated::queries::UsersQuery<'_>> {
         BlockingQuery::new(self.inner.users(), &self.rt)
     }
 
     /// List teams (blocking).
-    pub fn teams(&self) -> BlockingQuery<crate::generated::queries::TeamsQuery<'_>> {
+    pub fn teams(&self) -> BlockingQuery<'_, crate::generated::queries::TeamsQuery<'_>> {
         BlockingQuery::new(self.inner.teams(), &self.rt)
     }
 
@@ -282,7 +280,7 @@ impl Client {
     }
 
     /// List projects (blocking).
-    pub fn projects(&self) -> BlockingQuery<crate::generated::queries::ProjectsQuery<'_>> {
+    pub fn projects(&self) -> BlockingQuery<'_, crate::generated::queries::ProjectsQuery<'_>> {
         BlockingQuery::new(self.inner.projects(), &self.rt)
     }
 
@@ -292,12 +290,14 @@ impl Client {
     }
 
     /// List issue labels (blocking).
-    pub fn issue_labels(&self) -> BlockingQuery<crate::generated::queries::IssueLabelsQuery<'_>> {
+    pub fn issue_labels(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueLabelsQuery<'_>> {
         BlockingQuery::new(self.inner.issue_labels(), &self.rt)
     }
 
     /// List issues (blocking).
-    pub fn issues(&self) -> BlockingQuery<crate::generated::queries::IssuesQuery<'_>> {
+    pub fn issues(&self) -> BlockingQuery<'_, crate::generated::queries::IssuesQuery<'_>> {
         BlockingQuery::new(self.inner.issues(), &self.rt)
     }
 
@@ -307,7 +307,7 @@ impl Client {
     }
 
     /// List cycles (blocking).
-    pub fn cycles(&self) -> BlockingQuery<crate::generated::queries::CyclesQuery<'_>> {
+    pub fn cycles(&self) -> BlockingQuery<'_, crate::generated::queries::CyclesQuery<'_>> {
         BlockingQuery::new(self.inner.cycles(), &self.rt)
     }
 
@@ -320,12 +320,12 @@ impl Client {
     pub fn search_issues(
         &self,
         term: impl Into<String>,
-    ) -> BlockingQuery<crate::generated::queries::SearchIssuesQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQuery<'_>> {
         BlockingQuery::new(self.inner.search_issues(term), &self.rt)
     }
 
     /// List documents (blocking).
-    pub fn documents(&self) -> BlockingQuery<crate::generated::queries::DocumentsQuery<'_>> {
+    pub fn documents(&self) -> BlockingQuery<'_, crate::generated::queries::DocumentsQuery<'_>> {
         BlockingQuery::new(self.inner.documents(), &self.rt)
     }
 
@@ -337,7 +337,7 @@ impl Client {
     /// List issue relations (blocking).
     pub fn issue_relations(
         &self,
-    ) -> BlockingQuery<crate::generated::queries::IssueRelationsQuery<'_>> {
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueRelationsQuery<'_>> {
         BlockingQuery::new(self.inner.issue_relations(), &self.rt)
     }
 
@@ -459,5 +459,5 @@ fn build_runtime() -> Result<tokio::runtime::Runtime, LinearError> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .map_err(|e| LinearError::AuthConfig(format!("Failed to create tokio runtime: {}", e)))
+        .map_err(|e| LinearError::Internal(format!("Failed to create tokio runtime: {}", e)))
 }

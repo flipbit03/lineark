@@ -42,7 +42,7 @@ COMMANDS:
     [--assignee ID] [--parent ID]                  User UUID or issue identifier
     [--labels ID,...] [--label-by adding|replacing|removing]
     [--clear-labels] [--title TEXT] [--description TEXT]
-  lineark issues archive <IDENTIFIER>               Archive an issue
+  lineark issues archive <IDENTIFIER>              Archive an issue
   lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
     [--permanently]                                Permanently delete instead of trashing

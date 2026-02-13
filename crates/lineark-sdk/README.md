@@ -174,6 +174,9 @@ All methods return `Result<T, LinearError>`. Error variants:
 - `GraphQL` — errors returned in the GraphQL response
 - `Network` — connection/transport failures
 - `HttpError` — non-200 responses not covered above
+- `MissingData` — expected data path not found in response
+- `AuthConfig` — auth configuration error (no token found)
+- `Internal` — internal error (e.g. runtime creation failure)
 
 ## Codegen
 

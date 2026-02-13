@@ -24,10 +24,12 @@ issueRelation = true
 # Phase 2 — Core writes
 issueCreate = true
 issueUpdate = true
+commentCreate = true
+
+# Phase 3 — Issue lifecycle
 issueArchive = true
 issueUnarchive = true
 issueDelete = true
-commentCreate = true
 
 # Phase 3 — Rich features
 documentCreate = true

@@ -47,12 +47,15 @@ impl Client {
     /// # }
     /// ```
     pub async fn download_url(&self, url: &str) -> Result<DownloadResult, LinearError> {
-        let response = self
-            .http()
-            .get(url)
-            .header("Authorization", self.token())
-            .send()
-            .await?;
+        let is_linear_url = url::Url::parse(url)
+            .map(|u| u.host_str().is_some_and(|h| h.ends_with(".linear.app")))
+            .unwrap_or(false);
+
+        let mut request = self.http().get(url);
+        if is_linear_url {
+            request = request.header("Authorization", self.token());
+        }
+        let response = request.send().await?;
 
         let status = response.status();
         if !status.is_success() {
@@ -227,6 +230,37 @@ mod tests {
     }
 
     // ── download_url ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn download_url_sends_auth_for_linear_urls() {
+        let server = MockServer::start().await;
+        // This test verifies that for non-Linear URLs, no Authorization header is sent.
+        // We can check by mounting a mock that requires NO auth header.
+        Mock::given(method("GET"))
+            .and(path("/external/file.png"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_bytes(vec![1, 2, 3])
+                    .insert_header("content-type", "image/png"),
+            )
+            .mount(&server)
+            .await;
+
+        let client = test_client_with_base(&server.uri());
+        let url = format!("{}/external/file.png", server.uri());
+        let result = client.download_url(&url).await.unwrap();
+        assert_eq!(result.bytes, vec![1, 2, 3]);
+
+        // Verify the request did NOT include an Authorization header
+        // (since the URL is not a *.linear.app domain)
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let auth_header = requests[0].headers.get("authorization");
+        assert!(
+            auth_header.is_none(),
+            "Authorization header should not be sent to non-Linear URLs"
+        );
+    }
 
     #[tokio::test]
     async fn download_url_returns_bytes_and_content_type() {
