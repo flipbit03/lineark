@@ -549,6 +549,10 @@ and ensure all tests pass."
 **Additional operations — as needed (#27):**
 - [ ] Issue relations (blocking, related, duplicate) (#27)
 - [ ] Issue attachments listing (#27)
+- [ ] `cycles list --active` flag — filter to only the active cycle (#27)
+- [ ] `cycles list --around-active N` flag — return active cycle ± N neighbors (#27)
+- [ ] Surface `isActive`/`isNext`/`isPrevious`/`number` in cycle output (#27)
+- [ ] Verify/implement cycle name resolution in `cycles read` (#27)
 - [ ] Any other operations that surface as needed during real usage (#27)
 
 **Phase 3 acceptance criteria (#28):**
