@@ -28,7 +28,7 @@ Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
 
 ## CLI: `lineark`
 
-### Install
+### Installation
 
 #### Pre-built binary (static binary, no Rust toolchain needed)
 
