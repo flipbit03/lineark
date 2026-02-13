@@ -29,7 +29,9 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
     match cmd.action {
         ProjectsAction::List => {
             let conn = client
-                .projects(None, None, Some(250), None, None)
+                .projects()
+                .first(250)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

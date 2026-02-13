@@ -29,7 +29,9 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
     match cmd.action {
         TeamsAction::List => {
             let conn = client
-                .teams(None, None, Some(250), None, None)
+                .teams()
+                .first(250)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

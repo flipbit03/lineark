@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let me = client.viewer().await?;
     println!("{:?}", me);
 
-    let teams = client.teams(None, None, None, None, None).await?;
+    let teams = client.teams().send().await?;
     for team in &teams.nodes {
         println!("{}: {}",
             team.key.as_deref().unwrap_or("?"),

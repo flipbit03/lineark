@@ -34,7 +34,9 @@ pub async fn run(cmd: UsersCmd, client: &Client, format: Format) -> anyhow::Resu
     match cmd.action {
         UsersAction::List { active } => {
             let conn = client
-                .users(None, None, None, Some(250), None, None)
+                .users()
+                .last(250)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
