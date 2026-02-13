@@ -1,5 +1,19 @@
 /// Print a compact LLM-friendly command reference (<1000 tokens).
 pub fn run() {
+    let env_hint = if std::env::var("LINEAR_API_TOKEN").is_ok() {
+        " (set)"
+    } else {
+        ""
+    };
+    let file_hint = if std::env::var("HOME")
+        .map(|h| std::path::Path::new(&h).join(".linear_api_token").exists())
+        .unwrap_or(false)
+    {
+        " (found)"
+    } else {
+        ""
+    };
+
     print!(
         r#"lineark — Linear CLI for humans and LLMs
 
@@ -52,8 +66,8 @@ GLOBAL OPTIONS:
 
 AUTH (in precedence order):
   1. --api-token flag
-  2. $LINEAR_API_TOKEN env var
-  3. ~/.linear_api_token file
+  2. $LINEAR_API_TOKEN env var{env_hint}
+  3. ~/.linear_api_token file{file_hint}
 
 OUTPUT:
   Terminal → human-readable tables
