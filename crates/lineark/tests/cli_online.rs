@@ -250,6 +250,137 @@ mod cli_online {
         delete_issue(issue_id);
     }
 
+    // ── Issues delete ──────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_delete_permanently() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue to delete.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI issues delete",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)");
+
+        // Delete the issue permanently via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "delete",
+                issue_id,
+                "--permanently",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues delete --permanently should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let deleted: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            deleted.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "delete should report success"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_delete_trash_and_verify() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI issues trash",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)")
+            .to_string();
+
+        // Delete without --permanently (trash).
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "delete",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues delete (trash) should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let trashed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            trashed.get("success").and_then(|v| v.as_bool()),
+            Some(true),
+            "trash should report success"
+        );
+
+        // Clean up: permanently delete the trashed issue.
+        delete_issue(&issue_id);
+    }
+
     // ── Documents ─────────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

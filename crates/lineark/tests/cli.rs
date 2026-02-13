@@ -77,7 +77,8 @@ fn issues_help_shows_subcommands() {
         .stdout(predicate::str::contains("read"))
         .stdout(predicate::str::contains("search"))
         .stdout(predicate::str::contains("create"))
-        .stdout(predicate::str::contains("update"));
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
 }
 
 #[test]
@@ -135,7 +136,18 @@ fn usage_includes_write_commands() {
         .success()
         .stdout(predicate::str::contains("issues create"))
         .stdout(predicate::str::contains("issues update"))
+        .stdout(predicate::str::contains("issues delete"))
         .stdout(predicate::str::contains("comments create"));
+}
+
+#[test]
+fn issues_delete_help_shows_flags() {
+    lineark()
+        .args(["issues", "delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--permanently"))
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
 }
 
 // ── Documents ───────────────────────────────────────────────────────────────

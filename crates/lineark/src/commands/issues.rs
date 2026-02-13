@@ -77,6 +77,18 @@ pub enum IssuesAction {
         #[arg(long)]
         status: Option<String>,
     },
+    /// Delete (trash) an issue. Use --permanently to delete permanently.
+    ///
+    /// Examples:
+    ///   lineark issues delete ENG-123
+    ///   lineark issues delete ENG-123 --permanently
+    Delete {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+        /// Permanently delete the issue instead of trashing it.
+        #[arg(long, default_value = "false")]
+        permanently: bool,
+    },
     /// Update an existing issue. Returns the updated issue.
     ///
     /// Examples:
@@ -444,6 +456,21 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             check_success(&payload)?;
             let issue = payload.get("issue").cloned().unwrap_or_default();
             output::print_one(&issue, format);
+        }
+        IssuesAction::Delete {
+            identifier,
+            permanently,
+        } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+            let permanently_delete = if permanently { Some(true) } else { None };
+
+            let payload = client
+                .issue_delete(permanently_delete, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
         }
         IssuesAction::Update {
             identifier,

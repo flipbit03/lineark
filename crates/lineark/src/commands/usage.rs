@@ -28,6 +28,8 @@ COMMANDS:
     [--assignee ID] [--parent ID]                  User UUID or issue identifier
     [--labels ID,...] [--label-by adding|replacing|removing]
     [--clear-labels] [--title TEXT] [--description TEXT]
+  lineark issues delete <IDENTIFIER>               Delete (trash) an issue
+    [--permanently]                                Permanently delete instead of trashing
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark documents list [--limit N]               List documents
   lineark documents read <ID>                      Read document (includes content)

@@ -483,3 +483,25 @@ async fn image_upload_from_url_sends_url() {
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["url"], "https://example.com/image.png");
 }
+
+#[tokio::test]
+async fn issue_delete_sends_id_and_permanently_delete() {
+    let (server, client) = setup_mutation("issueDelete").await;
+    let _ = client
+        .issue_delete(Some(true), "issue-uuid-123".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "issue-uuid-123");
+    assert_eq!(vars["permanentlyDelete"], true);
+}
+
+#[tokio::test]
+async fn issue_delete_without_permanently_sends_null() {
+    let (server, client) = setup_mutation("issueDelete").await;
+    let _ = client
+        .issue_delete(None, "issue-uuid-456".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "issue-uuid-456");
+    assert_eq!(vars["permanentlyDelete"], Value::Null);
+}

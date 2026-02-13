@@ -46,7 +46,7 @@ lineark/
 │   │       ├── main.rs
 │   │       ├── commands/         # One module per command group
 │   │       │   ├── mod.rs
-│   │       │   ├── issues.rs     # issues list|read|search|create|update
+│   │       │   ├── issues.rs     # issues list|read|search|create|update|delete
 │   │       │   ├── comments.rs   # comments create
 │   │       │   ├── teams.rs      # teams list
 │   │       │   ├── users.rs      # users list
@@ -195,6 +195,7 @@ lineark issues read <IDENTIFIER>        # e.g. ENG-123
 lineark issues search <QUERY> [--team NAME] [--project NAME]
 lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-3] [--description TEXT]
 lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-3] [--labels L1,L2] [--assignee ID] [--parent ID]
+lineark issues delete <IDENTIFIER> [--permanently]
 
 lineark comments create <ISSUE-ID> --body <TEXT>
 
