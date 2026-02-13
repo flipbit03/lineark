@@ -21,7 +21,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { success uploadFile { filename contentType size uploadUrl assetUrl metaData } success } }",
+                "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { success uploadFile { filename contentType size uploadUrl assetUrl metaData } } }",
                 variables,
                 "fileUpload",
             )
@@ -35,7 +35,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { success url success } }",
+                "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { success url } }",
                 variables,
                 "imageUploadFromUrl",
             )
@@ -49,7 +49,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id createdAt updatedAt archivedAt body issueId documentContentId projectUpdateId initiativeUpdateId parentId resolvedAt resolvingCommentId editedAt bodyData quotedText reactionData threadSummary isArtificialAgentSessionRoot url hideInLinear } success } }",
+                "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id createdAt updatedAt archivedAt body issueId documentContentId projectUpdateId initiativeUpdateId parentId resolvedAt resolvingCommentId editedAt bodyData quotedText reactionData threadSummary isArtificialAgentSessionRoot url hideInLinear } } }",
                 variables,
                 "commentCreate",
             )
@@ -63,7 +63,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } success } }",
+                "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueCreate",
             )
@@ -78,7 +78,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueUpdate($input: IssueUpdateInput!, $id: String!) { issueUpdate(input: $input, id: $id) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } success } }",
+                "mutation IssueUpdate($input: IssueUpdateInput!, $id: String!) { issueUpdate(input: $input, id: $id) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueUpdate",
             )
@@ -93,7 +93,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueArchive($trash: Boolean, $id: String!) { issueArchive(trash: $trash, id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
+                "mutation IssueArchive($trash: Boolean, $id: String!) { issueArchive(trash: $trash, id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueArchive",
             )
@@ -104,7 +104,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
+                "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueUnarchive",
             )
@@ -121,7 +121,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueDelete($permanentlyDelete: Boolean, $id: String!) { issueDelete(permanentlyDelete: $permanentlyDelete, id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
+                "mutation IssueDelete($permanentlyDelete: Boolean, $id: String!) { issueDelete(permanentlyDelete: $permanentlyDelete, id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
                 variables,
                 "issueDelete",
             )
@@ -138,7 +138,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { id createdAt updatedAt archivedAt type } success } }",
+                "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { id createdAt updatedAt archivedAt type } } }",
                 variables,
                 "issueRelationCreate",
             )
@@ -152,7 +152,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } success } }",
+                "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
                 variables,
                 "documentCreate",
             )
@@ -167,7 +167,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } success } }",
+                "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
                 variables,
                 "documentUpdate",
             )
@@ -178,7 +178,7 @@ impl Client {
         self.execute::<
                 serde_json::Value,
             >(
-                "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success success entity { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
+                "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success entity { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
                 variables,
                 "documentDelete",
             )

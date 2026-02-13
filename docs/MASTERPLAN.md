@@ -27,10 +27,12 @@ lineark/
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs            # Public API surface
-│   │       ├── client.rs         # LinearClient (async + blocking)
+│   │       ├── client.rs         # LinearClient (async)
+│   │       ├── blocking.rs       # Blocking (sync) client wrapper
 │   │       ├── error.rs          # Error types (mirroring Linear's error taxonomy)
 │   │       ├── pagination.rs     # Connection<T>, PageInfo, cursor helpers
 │   │       ├── auth.rs           # Token resolution (~/.linear_api_token, env, flag)
+│   │       ├── helpers.rs        # HTTP helpers for file download/upload
 │   │       └── generated/        # ALL codegen output lives here
 │   │           ├── mod.rs
 │   │           ├── types.rs      # Object types (Team, Issue, User, Project, etc.)
@@ -55,6 +57,8 @@ lineark/
 │   │       │   ├── labels.rs     # labels list
 │   │       │   ├── embeds.rs     # embeds download|upload
 │   │       │   ├── documents.rs  # documents list|read|create|update|delete
+│   │       │   ├── helpers.rs    # Shared helpers (resolve IDs, check success)
+│   │       │   ├── viewer.rs     # whoami
 │   │       │   └── usage.rs      # Compact LLM-friendly command reference
 │   │       └── output.rs         # Human (tables/color) vs JSON formatting
 │   │
@@ -63,6 +67,7 @@ lineark/
 │       └── src/
 │           ├── main.rs           # CLI: reads schema.graphql, writes generated/*.rs
 │           ├── parser.rs         # Wraps apollo-parser, extracts type info
+│           ├── fetch_schema.rs   # Fetches schema via introspection (--fetch flag)
 │           ├── emit_types.rs     # Generates types.rs
 │           ├── emit_inputs.rs    # Generates inputs.rs
 │           ├── emit_enums.rs     # Generates enums.rs
@@ -93,15 +98,17 @@ lineark/
 **Dependencies:**
 ```toml
 [dependencies]
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
+home = "0.5"
+url = "2"
 
 [features]
 default = []
-blocking = ["reqwest/blocking"]
+blocking = []
 ```
 
 **Async by default, blocking opt-in:**
@@ -112,6 +119,7 @@ blocking = ["reqwest/blocking"]
 **Client API shape (async):**
 ```rust
 use lineark_sdk::Client;
+use lineark_sdk::generated::inputs::IssueCreateInput;
 
 let client = Client::from_token("lin_api_...")?;
 // or
@@ -119,39 +127,41 @@ let client = Client::from_env()?;      // LINEAR_API_TOKEN env var
 // or
 let client = Client::from_file()?;     // ~/.linear_api_token
 // or
-let client = Client::auto()?;          // tries file -> env (same precedence as CLI)
+let client = Client::auto()?;          // tries env -> file (same precedence as CLI)
 
 let me = client.whoami().await?;
-let teams = client.teams().await?;
-let issue = client.issue("ENG-123").await?;
+let teams = client.teams().send().await?;
+let issue = client.issue("UUID-HERE".into()).await?;
 let issues = client.issues()
-    .team("Engineering")
-    .status("In Progress")
-    .limit(25)
+    .first(25)
+    .send()
     .await?;
-let created = client.create_issue(IssueCreateInput {
-    title: "Fix the thing".into(),
-    team_id: team.id.clone(),
+let created = client.issue_create(IssueCreateInput {
+    title: Some("Fix the thing".to_string()),
+    team_id: Some(team.id.clone().unwrap_or_default()),
     ..Default::default()
 }).await?;
 ```
 
 **Error types** mirror Linear's taxonomy:
-- `LinearError::Authentication`
-- `LinearError::RateLimited { retry_after, .. }`
-- `LinearError::InvalidInput { message, .. }`
-- `LinearError::Forbidden`
-- `LinearError::Network { .. }`
-- `LinearError::GraphQL { errors: Vec<GraphQLError> }`
+- `LinearError::Authentication` — invalid or expired token
+- `LinearError::RateLimited { retry_after, message }` — rate limited
+- `LinearError::InvalidInput(String)` — bad input
+- `LinearError::Forbidden(String)` — insufficient permissions
+- `LinearError::Network(reqwest::Error)` — transport error
+- `LinearError::GraphQL(Vec<GraphQLError>)` — GraphQL-level errors
+- `LinearError::HttpError { status, body }` — non-2xx HTTP responses
+- `LinearError::MissingData(String)` — expected data path missing
+- `LinearError::AuthConfig(String)` — auth configuration error
+- `LinearError::Internal(String)` — internal error
 
 **Pagination** follows Relay cursor spec:
 ```rust
 // Manual pagination
-let page1 = client.issues().limit(50).await?;
-let page2 = client.issues().limit(50).after(page1.page_info.end_cursor).await?;
-
-// Auto-pagination (collects all pages)
-let all_issues = client.issues().all().await?;
+let page1 = client.issues().first(50).send().await?;
+if let Some(cursor) = page1.page_info.end_cursor {
+    let page2 = client.issues().first(50).after(cursor).send().await?;
+}
 ```
 
 ### lineark (CLI)
@@ -162,12 +172,16 @@ let all_issues = client.issues().all().await?;
 **Dependencies:**
 ```toml
 [dependencies]
-lineark-sdk = { path = "../lineark-sdk", version = "0.1" }
+lineark-sdk = { path = "../lineark-sdk", version = "0.0.0" }
 clap = { version = "4", features = ["derive"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
 tabled = "0.17"       # Human-readable table output
 colored = "2"          # Terminal colors
+anyhow = "1"
+uuid = "1"
+percent-encoding = "2"
 ```
 
 **Output format auto-detection:**
@@ -190,11 +204,11 @@ Detection uses `std::io::IsTerminal` from Rust stdlib (no external crate).
 **Command structure** (linearis-inspired, clap-powered):
 
 ```
-lineark issues list [--team NAME] [--status NAME] [--assignee NAME] [--limit N]
+lineark issues list [--team KEY] [--mine] [--show-done] [--limit N]
 lineark issues read <IDENTIFIER>        # e.g. ENG-123
-lineark issues search <QUERY> [--team NAME] [--project NAME]
-lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-3] [--description TEXT]
-lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-3] [--labels L1,L2] [--assignee ID] [--parent ID]
+lineark issues search <QUERY> [--limit N] [--show-done]
+lineark issues create <TITLE> --team KEY [--assignee ID] [--labels L1,L2] [--priority 0-4] [--description TEXT] [--status NAME] [--parent ID]
+lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-4] [--labels L1,L2] [--label-by adding|replacing|removing] [--clear-labels] [--assignee ID] [--parent ID] [--title TEXT] [--description TEXT]
 lineark issues archive <IDENTIFIER>
 lineark issues unarchive <IDENTIFIER>
 lineark issues delete <IDENTIFIER> [--permanently]
@@ -202,22 +216,22 @@ lineark issues delete <IDENTIFIER> [--permanently]
 lineark comments create <ISSUE-ID> --body <TEXT>
 
 lineark embeds download <URL> [--output PATH] [--overwrite]
-lineark embeds upload <FILE>
+lineark embeds upload <FILE> [--public]
 
-lineark documents list [--project NAME] [--issue ID]
+lineark documents list [--limit N]
 lineark documents read <ID>
-lineark documents create --title TEXT --content TEXT [--project NAME] [--attach-to ISSUE-ID]
+lineark documents create --title TEXT [--content TEXT] [--project ID] [--issue ID]
 lineark documents update <ID> [--title TEXT] [--content TEXT]
 lineark documents delete <ID>
 
 lineark teams list
 lineark users list [--active]
 lineark projects list
-lineark labels list [--team NAME]
-lineark cycles list [--team NAME] [--active] [--limit N]
-lineark cycles read <ID-OR-NAME> [--team NAME]
+lineark labels list
+lineark cycles list [--team KEY] [--active] [--around-active N] [--limit N]
+lineark cycles read <ID-OR-NAME> [--team KEY]
 
-lineark viewer                          # Who am I? (token info)
+lineark whoami                          # Who am I? (authenticated user)
 lineark usage                           # Compact command reference (LLM-optimized, <1000 tokens)
 ```
 
@@ -239,7 +253,7 @@ Every command supports `--help` with full descriptions, argument docs, and examp
 7. Walk `Mutation` type fields -> emit async mutation functions
 8. Format output with `prettyplease` (Rust code formatter crate, no need for external rustfmt)
 
-**Key dependency:** `apollo-parser` — modern, actively maintained GraphQL parser from Apollo. Produces a lossless CST with error recovery. Replaces `apollo-parser` which is less maintained.
+**Key dependency:** `apollo-parser` — modern, actively maintained GraphQL parser from Apollo. Produces a lossless CST with error recovery. Replaces `graphql-parser` which is less maintained.
 
 **Run as:**
 ```bash
@@ -272,8 +286,8 @@ schema/operations.toml    # Controls which queries/mutations to generate
 
 ```toml
 [queries]
-# Phase 1
-viewer = true
+# Phase 1 — Core reads
+viewer = "whoami"
 teams = true
 team = true
 users = true
@@ -283,15 +297,32 @@ projects = true
 project = true
 cycles = true
 cycle = true
-labels = true
-# Phase 2+: add more as needed
+issueLabels = true
+searchIssues = true
+workflowStates = true
+
+# Phase 3 — Rich features
+documents = true
+document = true
+issueRelations = true
+issueRelation = true
 
 [mutations]
-# Phase 2
+# Phase 2 — Core writes
 issueCreate = true
 issueUpdate = true
+issueArchive = true
+issueUnarchive = true
+issueDelete = true
 commentCreate = true
-# Phase 3+: add more as needed
+
+# Phase 3 — Rich features
+documentCreate = true
+documentUpdate = true
+documentDelete = true
+fileUpload = true
+imageUploadFromUrl = true
+issueRelationCreate = true
 ```
 
 Types and enums are always fully generated (they're cheap and needed for completeness). Operations are added incrementally as the CLI needs them.
@@ -350,7 +381,9 @@ Targets:
 | Target | GHA Runner | Method |
 |---|---|---|
 | `x86_64-unknown-linux-gnu` | `ubuntu-latest` | Native build |
+| `x86_64-unknown-linux-musl` | `ubuntu-latest` | Cross-compile (musl) |
 | `aarch64-unknown-linux-gnu` | `ubuntu-24.04-arm` | Native build (ARM runner) |
+| `aarch64-unknown-linux-musl` | `ubuntu-24.04-arm` | Cross-compile (musl) |
 | `aarch64-apple-darwin` | `macos-latest` | Native build (Apple Silicon runner) |
 
 Installers generated by cargo-dist:
@@ -365,7 +398,9 @@ ci = "github"
 installers = ["shell", "homebrew"]
 targets = [
     "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
     "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
     "aarch64-apple-darwin",
 ]
 

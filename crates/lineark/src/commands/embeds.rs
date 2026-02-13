@@ -67,7 +67,14 @@ pub async fn run(cmd: EmbedsCmd, client: &Client, format: Format) -> anyhow::Res
                     // Extract filename from URL (before query params).
                     let url_path = url.split('?').next().unwrap_or(&url);
                     let filename = url_path.rsplit('/').next().unwrap_or("download");
-                    PathBuf::from(filename)
+                    let filename = if filename.is_empty() {
+                        "download"
+                    } else {
+                        filename
+                    };
+                    let filename =
+                        percent_encoding::percent_decode_str(filename).decode_utf8_lossy();
+                    PathBuf::from(filename.as_ref())
                 }
             };
 
@@ -83,7 +90,8 @@ pub async fn run(cmd: EmbedsCmd, client: &Client, format: Format) -> anyhow::Res
                 .await
                 .map_err(|e| anyhow::anyhow!("Download failed: {}", e))?;
 
-            std::fs::write(&output_path, &result.bytes)
+            tokio::fs::write(&output_path, &result.bytes)
+                .await
                 .map_err(|e| anyhow::anyhow!("Failed to write file: {}", e))?;
 
             let info = serde_json::json!({
@@ -98,8 +106,9 @@ pub async fn run(cmd: EmbedsCmd, client: &Client, format: Format) -> anyhow::Res
                 return Err(anyhow::anyhow!("File '{}' not found", file.display()));
             }
 
-            let file_bytes =
-                std::fs::read(&file).map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
+            let file_bytes = tokio::fs::read(&file)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
 
             let filename = file
                 .file_name()
@@ -108,16 +117,17 @@ pub async fn run(cmd: EmbedsCmd, client: &Client, format: Format) -> anyhow::Res
                 .to_string();
 
             let content_type = mime_from_extension(&file);
+            let file_size = file_bytes.len() as u64;
 
             let result = client
-                .upload_file(&filename, &content_type, file_bytes.clone(), public)
+                .upload_file(&filename, &content_type, file_bytes, public)
                 .await
                 .map_err(|e| anyhow::anyhow!("Upload failed: {}", e))?;
 
             let info = UploadOutput {
                 asset_url: result.asset_url,
                 filename,
-                size: file_bytes.len() as u64,
+                size: file_size,
             };
             output::print_one(&info, format);
         }

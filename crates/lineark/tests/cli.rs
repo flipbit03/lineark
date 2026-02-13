@@ -327,3 +327,63 @@ fn empty_token_prints_error() {
         .failure()
         .stderr(predicate::str::contains("Error"));
 }
+
+// ── --active and --around-active conflict (issue #4) ────────────────────────
+
+#[test]
+fn cycles_list_active_and_around_active_conflict() {
+    lineark()
+        .args(["cycles", "list", "--active", "--around-active", "2"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+// ── No-op update validation (issue #9) ──────────────────────────────────────
+
+#[test]
+fn issues_update_no_flags_prints_error() {
+    // Use a fake token to skip auth, but the validation should fire before any API call
+    lineark()
+        .args(["--api-token", "fake-token", "issues", "update", "ENG-123"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn documents_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "documents",
+            "update",
+            "doc-uuid",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+// ── Cycle number parsing rejects NaN/inf (issue #6) ─────────────────────────
+
+#[test]
+fn cycles_read_rejects_nan() {
+    // NaN should not parse as i64, so it will be treated as a name lookup
+    // which requires --team. This verifies it doesn't silently succeed as f64.
+    lineark()
+        .args(["--api-token", "fake", "cycles", "read", "NaN"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--team"));
+}
+
+#[test]
+fn cycles_read_rejects_inf() {
+    lineark()
+        .args(["--api-token", "fake", "cycles", "read", "inf"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--team"));
+}

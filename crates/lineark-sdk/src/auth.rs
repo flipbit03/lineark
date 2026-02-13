@@ -18,9 +18,12 @@ pub fn token_from_file() -> Result<String, LinearError> {
 
 /// Resolve a Linear API token from the environment variable `LINEAR_API_TOKEN`.
 pub fn token_from_env() -> Result<String, LinearError> {
-    std::env::var("LINEAR_API_TOKEN").map_err(|_| {
-        LinearError::AuthConfig("LINEAR_API_TOKEN environment variable not set".to_string())
-    })
+    match std::env::var("LINEAR_API_TOKEN") {
+        Ok(val) if !val.trim().is_empty() => Ok(val.trim().to_string()),
+        _ => Err(LinearError::AuthConfig(
+            "LINEAR_API_TOKEN environment variable not set".to_string(),
+        )),
+    }
 }
 
 /// Resolve a Linear API token with precedence: env var -> file.
@@ -63,6 +66,30 @@ mod tests {
         std::env::remove_var("LINEAR_API_TOKEN");
         // Should use env var, not file
         assert_eq!(result.unwrap(), "env-token-auto");
+    }
+
+    #[test]
+    fn token_from_env_empty_string_is_treated_as_absent() {
+        std::env::set_var("LINEAR_API_TOKEN", "");
+        let result = token_from_env();
+        std::env::remove_var("LINEAR_API_TOKEN");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn token_from_env_whitespace_only_is_treated_as_absent() {
+        std::env::set_var("LINEAR_API_TOKEN", "   ");
+        let result = token_from_env();
+        std::env::remove_var("LINEAR_API_TOKEN");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn token_from_env_trims_whitespace() {
+        std::env::set_var("LINEAR_API_TOKEN", "  my-token  ");
+        let result = token_from_env();
+        std::env::remove_var("LINEAR_API_TOKEN");
+        assert_eq!(result.unwrap(), "my-token");
     }
 
     #[test]

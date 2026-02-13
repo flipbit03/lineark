@@ -4,6 +4,7 @@ use lineark_sdk::Client;
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
+use super::helpers::{check_success, resolve_issue_id, resolve_team_id, NestedProject, NestedUser};
 use crate::output::{self, Format};
 
 /// Manage issues.
@@ -276,13 +277,6 @@ inverseRelations { nodes { id type issue { id identifier title } } } \
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
-struct NestedUser {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
 struct NestedTeam {
     pub id: Option<String>,
     pub key: Option<String>,
@@ -292,13 +286,6 @@ struct NestedTeam {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 struct NestedState {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedProject {
     pub id: Option<String>,
     pub name: Option<String>,
 }
@@ -523,6 +510,20 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             title,
             description,
         } => {
+            if status.is_none()
+                && priority.is_none()
+                && labels.is_none()
+                && !clear_labels
+                && assignee.is_none()
+                && parent.is_none()
+                && title.is_none()
+                && description.is_none()
+            {
+                return Err(anyhow::anyhow!(
+                    "No update fields provided. Use --status, --priority, --assignee, --labels, --title, --description, or --parent to specify changes."
+                ));
+            }
+
             let issue_id = resolve_issue_id(client, &identifier).await?;
 
             // For status resolution, we need the team ID. Read the issue to get it.
@@ -655,29 +656,6 @@ async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDe
     }
 }
 
-/// Resolve a team key (e.g., "E", "ENG") to a team UUID.
-/// If the input already looks like a UUID, return it as-is.
-async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<String> {
-    if uuid::Uuid::parse_str(team_key).is_ok() {
-        return Ok(team_key.to_string());
-    }
-    let conn = client
-        .teams()
-        .send()
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-    for team in &conn.nodes {
-        if team
-            .key
-            .as_deref()
-            .is_some_and(|k| k.eq_ignore_ascii_case(team_key))
-        {
-            return Ok(team.id.clone().unwrap_or_default());
-        }
-    }
-    Err(anyhow::anyhow!("Team '{}' not found", team_key))
-}
-
 /// Resolve a workflow state name to its UUID for a given team.
 async fn resolve_state_id(
     client: &Client,
@@ -715,42 +693,4 @@ async fn resolve_state_id(
         state_name,
         available.join(", ")
     ))
-}
-
-/// Resolve an issue identifier (e.g., ENG-123) to a UUID.
-/// If the input already looks like a UUID, return it as-is.
-async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Result<String> {
-    if uuid::Uuid::parse_str(identifier).is_ok() {
-        return Ok(identifier.to_string());
-    }
-    let variables = serde_json::json!({ "term": identifier, "first": 5 });
-    let conn: lineark_sdk::Connection<serde_json::Value> = client
-        .execute_connection(
-            "query IssueIdResolve($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { id identifier } pageInfo { hasNextPage endCursor } } }",
-            variables,
-            "searchIssues",
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-    conn.nodes
-        .iter()
-        .find(|n| {
-            n.get("identifier")
-                .and_then(|v| v.as_str())
-                .is_some_and(|id| id.eq_ignore_ascii_case(identifier))
-        })
-        .and_then(|n| n.get("id").and_then(|v| v.as_str()).map(String::from))
-        .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
-}
-
-/// Check the `success` field in a mutation payload.
-fn check_success(payload: &serde_json::Value) -> anyhow::Result<()> {
-    if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
-        return Err(anyhow::anyhow!(
-            "Mutation failed: {}",
-            serde_json::to_string_pretty(payload).unwrap_or_default()
-        ));
-    }
-    Ok(())
 }

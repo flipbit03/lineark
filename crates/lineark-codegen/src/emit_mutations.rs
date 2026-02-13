@@ -119,7 +119,8 @@ fn build_payload_selection(
         match type_kind_map.get(base) {
             Some(TypeKind::Scalar) | Some(TypeKind::Enum) => {
                 // Include scalar/enum fields directly (e.g., lastSyncId)
-                if field.name != "lastSyncId" {
+                // Skip `success` (already hardcoded above) and `lastSyncId` (internal)
+                if field.name != "lastSyncId" && field.name != "success" {
                     parts.push(field.name.clone());
                 }
             }

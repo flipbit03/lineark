@@ -3,6 +3,7 @@ use lineark_sdk::Client;
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
+use super::helpers::resolve_team_id;
 use crate::output::{self, Format};
 
 /// Manage cycles.
@@ -32,7 +33,7 @@ pub enum CyclesAction {
         active: bool,
         /// Show the active cycle plus N neighbors on each side (by number).
         /// Implies fetching from the relevant team.
-        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=50))]
+        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=50), conflicts_with = "active")]
         around_active: Option<i64>,
     },
     /// Read a specific cycle by UUID or by name/number.
@@ -79,7 +80,7 @@ fn cycle_status_label(cycle: &CycleListItem) -> String {
 #[serde(rename_all = "camelCase", default)]
 struct CycleListItem {
     id: Option<String>,
-    number: Option<f64>,
+    number: Option<i64>,
     name: Option<String>,
     starts_at: Option<String>,
     ends_at: Option<String>,
@@ -183,7 +184,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
             );
 
             // Try parsing as a number first.
-            if let Ok(num) = id.parse::<f64>() {
+            if let Ok(num) = id.parse::<i64>() {
                 filter.insert("number".into(), serde_json::json!({ "eq": num }));
             } else {
                 filter.insert("name".into(), serde_json::json!({ "eq": id }));
@@ -229,37 +230,15 @@ fn around_active_filter(cycles: &[CycleListItem], n: i64) -> Vec<&CycleListItem>
         .and_then(|c| c.number);
 
     let Some(active_num) = active_number else {
-        // No active cycle found — return all.
-        return cycles.iter().collect();
+        eprintln!("Warning: no active cycle found");
+        return Vec::new();
     };
 
-    let lo = active_num - n as f64;
-    let hi = active_num + n as f64;
+    let lo = active_num - n;
+    let hi = active_num + n;
 
     cycles
         .iter()
         .filter(|c| c.number.is_some_and(|num| num >= lo && num <= hi))
         .collect()
-}
-
-/// Resolve a team key (e.g., "ENG") to a team UUID.
-async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<String> {
-    if uuid::Uuid::parse_str(team_key).is_ok() {
-        return Ok(team_key.to_string());
-    }
-    let conn = client
-        .teams()
-        .send()
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
-    for team in &conn.nodes {
-        if team
-            .key
-            .as_deref()
-            .is_some_and(|k| k.eq_ignore_ascii_case(team_key))
-        {
-            return Ok(team.id.clone().unwrap_or_default());
-        }
-    }
-    Err(anyhow::anyhow!("Team '{}' not found", team_key))
 }
