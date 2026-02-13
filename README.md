@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // auto() tries all token methods (env var, ~/.linear_api_token file)
     let client = Client::auto()?;
 
-    let me = client.viewer().await?;
+    let me = client.whoami().await?;
     println!("{:?}", me);
 
     // Queries with optional args use a builder pattern:

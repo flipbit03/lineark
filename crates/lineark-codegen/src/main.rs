@@ -7,7 +7,7 @@ mod emit_types;
 mod fetch_schema;
 mod parser;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 fn main() {
@@ -55,27 +55,8 @@ fn main() {
         .parse()
         .expect("Failed to parse operations.toml");
 
-    let allowed_queries: HashSet<String> = operations
-        .get("queries")
-        .and_then(|q| q.as_table())
-        .map(|t| {
-            t.iter()
-                .filter(|(_, v)| v.as_bool() == Some(true))
-                .map(|(k, _)| k.clone())
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let allowed_mutations: HashSet<String> = operations
-        .get("mutations")
-        .and_then(|m| m.as_table())
-        .map(|t| {
-            t.iter()
-                .filter(|(_, v)| v.as_bool() == Some(true))
-                .map(|(k, _)| k.clone())
-                .collect()
-        })
-        .unwrap_or_default();
+    let (allowed_queries, query_renames) = parse_operations_section(&operations, "queries");
+    let (allowed_mutations, mutation_renames) = parse_operations_section(&operations, "mutations");
 
     println!(
         "  {} allowed queries, {} allowed mutations",
@@ -106,6 +87,7 @@ fn main() {
     let queries_tokens = emit_queries::emit(
         &schema.query_fields,
         &allowed_queries,
+        &query_renames,
         &schema.objects,
         &schema.type_kind_map,
     );
@@ -115,6 +97,7 @@ fn main() {
     let mutations_tokens = emit_mutations::emit(
         &schema.mutation_fields,
         &allowed_mutations,
+        &mutation_renames,
         &schema.objects,
         &schema.type_kind_map,
     );
@@ -146,6 +129,35 @@ fn main() {
     }
 
     println!("Code generation complete.");
+}
+
+/// Parse an operations section from operations.toml.
+///
+/// Each entry can be either `name = true` (use default method name) or
+/// `name = "rename"` (use a custom Rust method name).
+fn parse_operations_section(
+    operations: &toml::Value,
+    section: &str,
+) -> (HashSet<String>, HashMap<String, String>) {
+    let mut allowed = HashSet::new();
+    let mut renames = HashMap::new();
+
+    if let Some(table) = operations.get(section).and_then(|s| s.as_table()) {
+        for (key, value) in table {
+            match value {
+                toml::Value::Boolean(true) => {
+                    allowed.insert(key.clone());
+                }
+                toml::Value::String(rename) => {
+                    allowed.insert(key.clone());
+                    renames.insert(key.clone(), rename.clone());
+                }
+                _ => {}
+            }
+        }
+    }
+
+    (allowed, renames)
 }
 
 fn write_formatted(path: &Path, tokens: proc_macro2::TokenStream) {

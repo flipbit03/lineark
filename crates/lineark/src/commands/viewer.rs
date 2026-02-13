@@ -14,7 +14,7 @@ pub struct ViewerRow {
 
 pub async fn run(client: &Client, format: Format) -> anyhow::Result<()> {
     let user = client
-        .viewer()
+        .whoami()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
