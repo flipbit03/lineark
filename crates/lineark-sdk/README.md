@@ -140,7 +140,7 @@ lineark-sdk = { version = "...", features = ["blocking"] }
 The blocking client mirrors the async API exactly:
 
 ```rust
-use lineark_sdk::blocking::Client;
+use lineark_sdk::blocking_client::Client;
 
 let client = Client::auto()?;
 

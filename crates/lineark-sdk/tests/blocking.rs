@@ -4,7 +4,7 @@
 //! Linear API token at `~/.linear_api_token_test` for online tests.
 //! When the token file is missing, online tests are automatically skipped.
 
-use lineark_sdk::blocking::Client;
+use lineark_sdk::blocking_client::Client;
 
 fn no_online_test_token() -> Option<String> {
     let path = home::home_dir()?.join(".linear_api_token_test");

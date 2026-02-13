@@ -1,6 +1,6 @@
 pub mod auth;
 #[cfg(feature = "blocking")]
-pub mod blocking;
+pub mod blocking_client;
 pub mod client;
 pub mod error;
 pub mod generated;

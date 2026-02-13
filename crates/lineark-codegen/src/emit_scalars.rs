@@ -1,4 +1,4 @@
-use crate::parser::ScalarDef;
+use crate::parser::{self, ScalarDef};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -24,7 +24,9 @@ pub fn emit(scalars: &[ScalarDef]) -> TokenStream {
         .filter_map(|s| {
             let rust_type = scalar_to_rust_type(&s.name)?;
             let name = quote::format_ident!("{}", s.name);
+            let doc = parser::doc_comment_tokens(&s.description);
             Some(quote! {
+                #doc
                 pub type #name = #rust_type;
             })
         })
@@ -119,9 +121,11 @@ mod tests {
         let scalars = vec![
             ScalarDef {
                 name: "DateTime".to_string(),
+                description: None,
             },
             ScalarDef {
                 name: "JSON".to_string(),
+                description: None,
             },
         ];
         let output = emit(&scalars).to_string();
@@ -134,6 +138,7 @@ mod tests {
     fn emit_skips_unknown_scalars() {
         let scalars = vec![ScalarDef {
             name: "SomeCustomThing".to_string(),
+            description: None,
         }];
         let output = emit(&scalars).to_string();
         // Unknown scalars are skipped (no type alias generated)

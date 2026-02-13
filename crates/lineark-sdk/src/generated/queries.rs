@@ -5,8 +5,12 @@ use super::types::*;
 use crate::client::Client;
 use crate::error::LinearError;
 use crate::pagination::Connection;
+/// Query builder: All issue workflow states.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct WorkflowStatesQuery<'a> {
+pub struct WorkflowStatesQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -14,7 +18,7 @@ pub struct WorkflowStatesQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> WorkflowStatesQuery<'a> {
+impl<'a> WorkflowStatesQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -51,8 +55,12 @@ impl<'a> WorkflowStatesQuery<'a> {
             .await
     }
 }
+/// Query builder: All users for the organization.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct UsersQuery<'a> {
+pub struct UsersQueryBuilder<'a> {
     client: &'a Client,
     include_disabled: Option<bool>,
     before: Option<String>,
@@ -61,7 +69,7 @@ pub struct UsersQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> UsersQuery<'a> {
+impl<'a> UsersQueryBuilder<'a> {
     pub fn include_disabled(mut self, value: bool) -> Self {
         self.include_disabled = Some(value);
         self
@@ -103,8 +111,12 @@ impl<'a> UsersQuery<'a> {
             .await
     }
 }
+/// Query builder: All projects.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct ProjectsQuery<'a> {
+pub struct ProjectsQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -112,7 +124,7 @@ pub struct ProjectsQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> ProjectsQuery<'a> {
+impl<'a> ProjectsQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -149,8 +161,12 @@ impl<'a> ProjectsQuery<'a> {
             .await
     }
 }
+/// Query builder: All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct TeamsQuery<'a> {
+pub struct TeamsQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -158,7 +174,7 @@ pub struct TeamsQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> TeamsQuery<'a> {
+impl<'a> TeamsQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -195,8 +211,12 @@ impl<'a> TeamsQuery<'a> {
             .await
     }
 }
+/// Query builder: Search issues.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct SearchIssuesQuery<'a> {
+pub struct SearchIssuesQueryBuilder<'a> {
     client: &'a Client,
     term: String,
     before: Option<String>,
@@ -207,7 +227,7 @@ pub struct SearchIssuesQuery<'a> {
     include_comments: Option<bool>,
     team_id: Option<String>,
 }
-impl<'a> SearchIssuesQuery<'a> {
+impl<'a> SearchIssuesQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -253,8 +273,12 @@ impl<'a> SearchIssuesQuery<'a> {
             .await
     }
 }
+/// Query builder: All issues.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct IssuesQuery<'a> {
+pub struct IssuesQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -262,7 +286,7 @@ pub struct IssuesQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> IssuesQuery<'a> {
+impl<'a> IssuesQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -299,8 +323,12 @@ impl<'a> IssuesQuery<'a> {
             .await
     }
 }
+/// Query builder: All issue relationships.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct IssueRelationsQuery<'a> {
+pub struct IssueRelationsQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -308,7 +336,7 @@ pub struct IssueRelationsQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> IssueRelationsQuery<'a> {
+impl<'a> IssueRelationsQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -345,8 +373,12 @@ impl<'a> IssueRelationsQuery<'a> {
             .await
     }
 }
+/// Query builder: All issue labels.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct IssueLabelsQuery<'a> {
+pub struct IssueLabelsQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -354,7 +386,7 @@ pub struct IssueLabelsQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> IssueLabelsQuery<'a> {
+impl<'a> IssueLabelsQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -391,8 +423,12 @@ impl<'a> IssueLabelsQuery<'a> {
             .await
     }
 }
+/// Query builder: All documents in the workspace.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct DocumentsQuery<'a> {
+pub struct DocumentsQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -400,7 +436,7 @@ pub struct DocumentsQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> DocumentsQuery<'a> {
+impl<'a> DocumentsQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -437,8 +473,12 @@ impl<'a> DocumentsQuery<'a> {
             .await
     }
 }
+/// Query builder: All cycles.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct CyclesQuery<'a> {
+pub struct CyclesQueryBuilder<'a> {
     client: &'a Client,
     before: Option<String>,
     after: Option<String>,
@@ -446,7 +486,7 @@ pub struct CyclesQuery<'a> {
     last: Option<i64>,
     include_archived: Option<bool>,
 }
-impl<'a> CyclesQuery<'a> {
+impl<'a> CyclesQueryBuilder<'a> {
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -484,8 +524,9 @@ impl<'a> CyclesQuery<'a> {
     }
 }
 impl Client {
-    pub fn workflow_states(&self) -> WorkflowStatesQuery<'_> {
-        WorkflowStatesQuery {
+    /// All issue workflow states.
+    pub fn workflow_states(&self) -> WorkflowStatesQueryBuilder<'_> {
+        WorkflowStatesQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -494,8 +535,9 @@ impl Client {
             include_archived: None,
         }
     }
-    pub fn users(&self) -> UsersQuery<'_> {
-        UsersQuery {
+    /// All users for the organization.
+    pub fn users(&self) -> UsersQueryBuilder<'_> {
+        UsersQueryBuilder {
             client: self,
             include_disabled: None,
             before: None,
@@ -505,6 +547,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// The currently authenticated user.
     pub async fn whoami(&self) -> Result<User, LinearError> {
         let variables = serde_json::json!({});
         self.execute::<
@@ -516,8 +559,9 @@ impl Client {
             )
             .await
     }
-    pub fn projects(&self) -> ProjectsQuery<'_> {
-        ProjectsQuery {
+    /// All projects.
+    pub fn projects(&self) -> ProjectsQueryBuilder<'_> {
+        ProjectsQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -526,6 +570,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific project.
     pub async fn project(&self, id: String) -> Result<Project, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -537,8 +582,9 @@ impl Client {
             )
             .await
     }
-    pub fn teams(&self) -> TeamsQuery<'_> {
-        TeamsQuery {
+    /// All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+    pub fn teams(&self) -> TeamsQueryBuilder<'_> {
+        TeamsQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -547,6 +593,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific team.
     pub async fn team(&self, id: String) -> Result<Team, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -558,8 +605,9 @@ impl Client {
             )
             .await
     }
-    pub fn search_issues(&self, term: impl Into<String>) -> SearchIssuesQuery<'_> {
-        SearchIssuesQuery {
+    /// Search issues.
+    pub fn search_issues(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_> {
+        SearchIssuesQueryBuilder {
             client: self,
             term: term.into(),
             before: None,
@@ -571,8 +619,9 @@ impl Client {
             team_id: None,
         }
     }
-    pub fn issues(&self) -> IssuesQuery<'_> {
-        IssuesQuery {
+    /// All issues.
+    pub fn issues(&self) -> IssuesQueryBuilder<'_> {
+        IssuesQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -581,6 +630,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific issue.
     pub async fn issue(&self, id: String) -> Result<Issue, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -592,8 +642,9 @@ impl Client {
             )
             .await
     }
-    pub fn issue_relations(&self) -> IssueRelationsQuery<'_> {
-        IssueRelationsQuery {
+    /// All issue relationships.
+    pub fn issue_relations(&self) -> IssueRelationsQueryBuilder<'_> {
+        IssueRelationsQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -602,6 +653,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific issue relation.
     pub async fn issue_relation(&self, id: String) -> Result<IssueRelation, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -613,8 +665,9 @@ impl Client {
             )
             .await
     }
-    pub fn issue_labels(&self) -> IssueLabelsQuery<'_> {
-        IssueLabelsQuery {
+    /// All issue labels.
+    pub fn issue_labels(&self) -> IssueLabelsQueryBuilder<'_> {
+        IssueLabelsQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -623,8 +676,9 @@ impl Client {
             include_archived: None,
         }
     }
-    pub fn documents(&self) -> DocumentsQuery<'_> {
-        DocumentsQuery {
+    /// All documents in the workspace.
+    pub fn documents(&self) -> DocumentsQueryBuilder<'_> {
+        DocumentsQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -633,6 +687,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific document.
     pub async fn document(&self, id: String) -> Result<Document, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<
@@ -644,8 +699,9 @@ impl Client {
             )
             .await
     }
-    pub fn cycles(&self) -> CyclesQuery<'_> {
-        CyclesQuery {
+    /// All cycles.
+    pub fn cycles(&self) -> CyclesQueryBuilder<'_> {
+        CyclesQueryBuilder {
             client: self,
             before: None,
             after: None,
@@ -654,6 +710,7 @@ impl Client {
             include_archived: None,
         }
     }
+    /// One specific cycle.
     pub async fn cycle(&self, id: String) -> Result<Cycle, LinearError> {
         let variables = serde_json::json!({ "id" : id });
         self.execute::<

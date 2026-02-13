@@ -33,7 +33,7 @@ fn extract_variables(server_requests: &[wiremock::Request]) -> Value {
     body["variables"].clone()
 }
 
-// ── TeamsQuery ───────────────────────────────────────────────────────────────
+// ── TeamsQueryBuilder ───────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn teams_first_sets_variable() {
@@ -105,7 +105,7 @@ async fn teams_no_params_sends_all_null() {
     assert_eq!(vars["includeArchived"], Value::Null);
 }
 
-// ── UsersQuery ───────────────────────────────────────────────────────────────
+// ── UsersQueryBuilder ───────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn users_include_disabled_sets_variable() {
@@ -116,7 +116,7 @@ async fn users_include_disabled_sets_variable() {
     assert_eq!(vars["last"], 5);
 }
 
-// ── SearchIssuesQuery (has required `term` arg) ──────────────────────────────
+// ── SearchIssuesQueryBuilder (has required `term` arg) ──────────────────────────────
 
 #[tokio::test]
 async fn search_issues_term_is_required() {
@@ -167,7 +167,7 @@ async fn search_issues_string_setters_accept_str_ref() {
     assert_eq!(vars["teamId"], "t");
 }
 
-// ── IssuesQuery ──────────────────────────────────────────────────────────────
+// ── IssuesQueryBuilder ──────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn issues_first_and_include_archived() {
@@ -183,7 +183,7 @@ async fn issues_first_and_include_archived() {
     assert_eq!(vars["includeArchived"], true);
 }
 
-// ── CyclesQuery ──────────────────────────────────────────────────────────────
+// ── CyclesQueryBuilder ──────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn cycles_first_sets_variable() {
@@ -193,7 +193,7 @@ async fn cycles_first_sets_variable() {
     assert_eq!(vars["first"], 50);
 }
 
-// ── IssueLabelsQuery ─────────────────────────────────────────────────────────
+// ── IssueLabelsQueryBuilder ─────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn issue_labels_first_sets_variable() {
@@ -203,7 +203,7 @@ async fn issue_labels_first_sets_variable() {
     assert_eq!(vars["first"], 250);
 }
 
-// ── ProjectsQuery ────────────────────────────────────────────────────────────
+// ── ProjectsQueryBuilder ────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn projects_last_and_before() {
@@ -214,7 +214,7 @@ async fn projects_last_and_before() {
     assert_eq!(vars["before"], "cur-end");
 }
 
-// ── WorkflowStatesQuery ──────────────────────────────────────────────────────
+// ── WorkflowStatesQueryBuilder ──────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn workflow_states_first_sets_variable() {
@@ -224,7 +224,7 @@ async fn workflow_states_first_sets_variable() {
     assert_eq!(vars["first"], 50);
 }
 
-// ── DocumentsQuery ──────────────────────────────────────────────────────────
+// ── DocumentsQueryBuilder ──────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn documents_first_sets_variable() {
@@ -302,7 +302,7 @@ async fn documents_no_params_sends_all_null() {
     assert_eq!(vars["includeArchived"], Value::Null);
 }
 
-// ── IssueRelationsQuery ─────────────────────────────────────────────────────
+// ── IssueRelationsQueryBuilder ─────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn issue_relations_first_sets_variable() {

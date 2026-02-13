@@ -38,6 +38,11 @@ jobs:
         env:
           RUSTFLAGS: -Dwarnings
 
+      - name: Doc lints
+        run: cargo doc --workspace --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -Dwarnings
+
   test:
     name: Test
     needs: lint

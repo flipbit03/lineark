@@ -1,3 +1,8 @@
+//! Error types for the Linear SDK.
+//!
+//! [`LinearError`] covers authentication failures, HTTP transport errors,
+//! GraphQL-level errors, rate limiting, and more.
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

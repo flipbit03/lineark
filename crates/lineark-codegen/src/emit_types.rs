@@ -26,6 +26,7 @@ pub fn emit(objects: &[ObjectDef], type_kind_map: &HashMap<String, TypeKind>) ->
 
 fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let name = quote::format_ident!("{}", obj.name);
+    let doc = parser::doc_comment_tokens(&obj.description);
 
     let fields: Vec<TokenStream> = obj
         .fields
@@ -43,13 +44,16 @@ fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> To
                 quote! { #ident }
             };
             let rust_type = resolve_type(&f.ty);
+            let fdoc = parser::doc_comment_tokens(&f.description);
             quote! {
+                #fdoc
                 pub #field_ident: #rust_type,
             }
         })
         .collect();
 
     quote! {
+        #doc
         #[derive(Debug, Clone, Default, Serialize, Deserialize)]
         #[serde(rename_all = "camelCase", default)]
         pub struct #name {
@@ -68,7 +72,7 @@ fn is_scalar_or_enum_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKin
 }
 
 /// Resolve a GraphQL type to its Rust type tokens.
-/// All output type fields are wrapped in Option<T>.
+/// All output type fields are wrapped in `Option<T>`.
 fn resolve_type(ty: &GqlType) -> TokenStream {
     let inner = resolve_inner_type(ty);
     // Always wrap output type fields in Option since we do partial field selection.
@@ -110,19 +114,23 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "User".to_string(),
+            description: None,
             fields: vec![
                 FieldDef {
                     name: "id".to_string(),
+                    description: None,
                     ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
                     arguments: vec![],
                 },
                 FieldDef {
                     name: "name".to_string(),
+                    description: None,
                     ty: GqlType::NonNull(Box::new(GqlType::Named("String".to_string()))),
                     arguments: vec![],
                 },
                 FieldDef {
                     name: "active".to_string(),
+                    description: None,
                     ty: GqlType::Named("Boolean".to_string()),
                     arguments: vec![],
                 },
@@ -141,14 +149,17 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "Issue".to_string(),
+            description: None,
             fields: vec![
                 FieldDef {
                     name: "id".to_string(),
+                    description: None,
                     ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
                     arguments: vec![],
                 },
                 FieldDef {
                     name: "team".to_string(),
+                    description: None,
                     ty: GqlType::Named("Team".to_string()),
                     arguments: vec![],
                 },
@@ -165,8 +176,10 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "Issue".to_string(),
+            description: None,
             fields: vec![FieldDef {
                 name: "status".to_string(),
+                description: None,
                 ty: GqlType::Named("Status".to_string()),
                 arguments: vec![],
             }],
@@ -180,8 +193,10 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "User".to_string(),
+            description: None,
             fields: vec![FieldDef {
                 name: "createdAt".to_string(),
+                description: None,
                 ty: GqlType::Named("DateTime".to_string()),
                 arguments: vec![],
             }],
@@ -197,14 +212,17 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "Team".to_string(),
+            description: None,
             fields: vec![
                 FieldDef {
                     name: "id".to_string(),
+                    description: None,
                     ty: GqlType::NonNull(Box::new(GqlType::Named("ID".to_string()))),
                     arguments: vec![],
                 },
                 FieldDef {
                     name: "name".to_string(),
+                    description: None,
                     ty: GqlType::Named("String".to_string()),
                     arguments: vec![],
                 },
@@ -219,6 +237,7 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "".to_string(),
+            description: None,
             fields: vec![],
         }];
         let output = emit(&objects, &type_kind_map).to_string();
@@ -230,8 +249,10 @@ mod tests {
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "User".to_string(),
+            description: None,
             fields: vec![FieldDef {
                 name: "labelIds".to_string(),
+                description: None,
                 ty: GqlType::List(Box::new(GqlType::NonNull(Box::new(GqlType::Named(
                     "String".to_string(),
                 ))))),

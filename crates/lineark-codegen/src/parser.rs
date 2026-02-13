@@ -17,14 +17,17 @@ pub enum TypeKind {
 #[derive(Debug, Clone)]
 pub struct FieldDef {
     pub name: String,
+    pub description: Option<String>,
     pub ty: GqlType,
     pub arguments: Vec<ArgumentDef>,
 }
 
 /// A simplified argument representation.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ArgumentDef {
     pub name: String,
+    pub description: Option<String>,
     pub ty: GqlType,
 }
 
@@ -32,12 +35,14 @@ pub struct ArgumentDef {
 #[derive(Debug, Clone)]
 pub struct EnumValueDef {
     pub name: String,
+    pub description: Option<String>,
 }
 
 /// A simplified enum type.
 #[derive(Debug, Clone)]
 pub struct EnumDef {
     pub name: String,
+    pub description: Option<String>,
     pub values: Vec<EnumValueDef>,
 }
 
@@ -45,6 +50,7 @@ pub struct EnumDef {
 #[derive(Debug, Clone)]
 pub struct ObjectDef {
     pub name: String,
+    pub description: Option<String>,
     pub fields: Vec<FieldDef>,
 }
 
@@ -52,6 +58,7 @@ pub struct ObjectDef {
 #[derive(Debug, Clone)]
 pub struct InputDef {
     pub name: String,
+    pub description: Option<String>,
     pub fields: Vec<FieldDef>,
 }
 
@@ -59,6 +66,7 @@ pub struct InputDef {
 #[derive(Debug, Clone)]
 pub struct ScalarDef {
     pub name: String,
+    pub description: Option<String>,
 }
 
 /// Represents a GraphQL type reference (NamedType, List, NonNull wrapping).
@@ -122,8 +130,9 @@ pub fn parse(schema_text: &str) -> ParsedSchema {
         match def {
             cst::Definition::ScalarTypeDefinition(s) => {
                 let name = extract_name(&s.name());
+                let description = extract_description(&s.description());
                 type_kind_map.insert(name.clone(), TypeKind::Scalar);
-                scalars.push(ScalarDef { name });
+                scalars.push(ScalarDef { name, description });
             }
             cst::Definition::EnumTypeDefinition(e) => {
                 let name = extract_name(&e.name());
@@ -132,6 +141,7 @@ pub fn parse(schema_text: &str) -> ParsedSchema {
             }
             cst::Definition::ObjectTypeDefinition(o) => {
                 let name = extract_name(&o.name());
+                let description = extract_description(&o.description());
                 type_kind_map.insert(name.clone(), TypeKind::Object);
                 let fields = extract_fields(&o.fields_definition());
                 if name == "Query" {
@@ -139,7 +149,11 @@ pub fn parse(schema_text: &str) -> ParsedSchema {
                 } else if name == "Mutation" {
                     mutation_fields = fields;
                 } else {
-                    objects.push(ObjectDef { name, fields });
+                    objects.push(ObjectDef {
+                        name,
+                        description,
+                        fields,
+                    });
                 }
             }
             cst::Definition::InputObjectTypeDefinition(i) => {
@@ -176,6 +190,13 @@ fn extract_name(name: &Option<cst::Name>) -> String {
         .unwrap_or_default()
 }
 
+fn extract_description(desc: &Option<cst::Description>) -> Option<String> {
+    desc.as_ref()
+        .and_then(|d| d.string_value())
+        .map(String::from)
+        .filter(|s| !s.is_empty())
+}
+
 fn extract_type(ty: &Option<cst::Type>) -> GqlType {
     match ty {
         None => GqlType::Named("String".to_string()),
@@ -210,10 +231,12 @@ fn extract_fields(fields_def: &Option<cst::FieldsDefinition>) -> Vec<FieldDef> {
     fd.field_definitions()
         .map(|f| {
             let name = extract_name(&f.name());
+            let description = extract_description(&f.description());
             let ty = extract_type(&f.ty());
             let arguments = extract_arguments(&f.arguments_definition());
             FieldDef {
                 name,
+                description,
                 ty,
                 arguments,
             }
@@ -228,14 +251,20 @@ fn extract_arguments(args_def: &Option<cst::ArgumentsDefinition>) -> Vec<Argumen
     ad.input_value_definitions()
         .map(|iv| {
             let name = extract_name(&iv.name());
+            let description = extract_description(&iv.description());
             let ty = extract_type(&iv.ty());
-            ArgumentDef { name, ty }
+            ArgumentDef {
+                name,
+                description,
+                ty,
+            }
         })
         .collect()
 }
 
 fn extract_enum(e: &cst::EnumTypeDefinition) -> EnumDef {
     let name = extract_name(&e.name());
+    let description = extract_description(&e.description());
     let values = e
         .enum_values_definition()
         .map(|evd| {
@@ -245,26 +274,37 @@ fn extract_enum(e: &cst::EnumTypeDefinition) -> EnumDef {
                         .enum_value()
                         .map(|v| v.text().to_string())
                         .unwrap_or_default();
-                    EnumValueDef { name: val_name }
+                    let val_desc = extract_description(&ev.description());
+                    EnumValueDef {
+                        name: val_name,
+                        description: val_desc,
+                    }
                 })
                 .collect()
         })
         .unwrap_or_default();
 
-    EnumDef { name, values }
+    EnumDef {
+        name,
+        description,
+        values,
+    }
 }
 
 fn extract_input(i: &cst::InputObjectTypeDefinition) -> InputDef {
     let name = extract_name(&i.name());
+    let description = extract_description(&i.description());
     let fields = i
         .input_fields_definition()
         .map(|ifd| {
             ifd.input_value_definitions()
                 .map(|iv| {
                     let fname = extract_name(&iv.name());
+                    let fdesc = extract_description(&iv.description());
                     let ty = extract_type(&iv.ty());
                     FieldDef {
                         name: fname,
+                        description: fdesc,
                         ty,
                         arguments: Vec::new(),
                     }
@@ -273,7 +313,87 @@ fn extract_input(i: &cst::InputObjectTypeDefinition) -> InputDef {
         })
         .unwrap_or_default();
 
-    InputDef { name, fields }
+    InputDef {
+        name,
+        description,
+        fields,
+    }
+}
+
+/// Emit `/// ...` doc comment tokens from an optional description string.
+/// Multi-line descriptions produce multiple `/// ` lines.
+/// Sanitizes the description to avoid rustdoc warnings (unresolved links,
+/// bare URLs).
+pub fn doc_comment_tokens(description: &Option<String>) -> proc_macro2::TokenStream {
+    let Some(desc) = description else {
+        return proc_macro2::TokenStream::new();
+    };
+    let sanitized = sanitize_doc(desc);
+    let lines: Vec<proc_macro2::TokenStream> = sanitized
+        .lines()
+        .map(|line| {
+            let text = format!(" {}", line);
+            quote::quote! { #[doc = #text] }
+        })
+        .collect();
+    quote::quote! { #(#lines)* }
+}
+
+/// Sanitize a GraphQL description for use as a Rust doc comment.
+///
+/// - Escapes `[Foo]` bracket tags (e.g. `[DEPRECATED]`) that rustdoc would
+///   interpret as intra-doc links, by replacing them with backtick-quoted text.
+/// - Wraps bare `https://` URLs in angle brackets so rustdoc renders them as
+///   clickable links instead of warning.
+pub fn sanitize_doc(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let chars: Vec<char> = s.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        if chars[i] == '[' {
+            // Find matching `]`
+            if let Some(close) = chars[i + 1..].iter().position(|&c| c == ']') {
+                let close = i + 1 + close;
+                let inner: String = chars[i + 1..close].iter().collect();
+                // Only escape if it's NOT a markdown link (no `(` follows the `]`)
+                let is_md_link = close + 1 < len && chars[close + 1] == '(';
+                if !is_md_link && !inner.is_empty() {
+                    out.push('`');
+                    out.push_str(&inner);
+                    out.push('`');
+                    i = close + 1;
+                    continue;
+                }
+            }
+            out.push('[');
+            i += 1;
+        } else if i + 8 <= len && chars[i..i + 8].iter().collect::<String>() == "https://" {
+            // Check if already inside angle brackets
+            let already_bracketed = i > 0 && chars[i - 1] == '<';
+            // Find end of URL (whitespace, closing paren, comma, or end of string)
+            let url_end = chars[i..]
+                .iter()
+                .position(|&c| c.is_whitespace() || c == ')' || c == ',' || c == '>' || c == '\'')
+                .map(|p| i + p)
+                .unwrap_or(len);
+            let url: String = chars[i..url_end].iter().collect();
+            if already_bracketed {
+                out.push_str(&url);
+            } else {
+                out.push('<');
+                out.push_str(&url);
+                out.push('>');
+            }
+            i = url_end;
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+
+    out
 }
 
 /// Rust keywords that need r# prefix when used as identifiers.
@@ -299,19 +419,19 @@ mod tests {
     use super::*;
 
     const MINI_SCHEMA: &str = r#"
-        scalar DateTime
+        "Represents a date and time." scalar DateTime
         scalar JSON
 
-        enum IssueStatus {
+        "The status of an issue." enum IssueStatus {
             BACKLOG
             TODO
-            IN_PROGRESS
+            "Work in progress." IN_PROGRESS
             DONE
         }
 
-        type User {
-            id: ID!
-            name: String!
+        "A user account." type User {
+            "The unique identifier." id: ID!
+            "The user's display name." name: String!
             email: String
             active: Boolean
             createdAt: DateTime
@@ -324,8 +444,8 @@ mod tests {
             description: String
         }
 
-        input UserFilter {
-            name: String
+        "Filter for users." input UserFilter {
+            "Filter by name." name: String
             active: Boolean
         }
 
@@ -493,6 +613,59 @@ mod tests {
             "Int".to_string(),
         )))));
         assert_eq!(list.base_name(), "Int");
+    }
+
+    #[test]
+    fn parse_descriptions() {
+        let schema = parse(MINI_SCHEMA);
+
+        // Scalar description
+        let dt = schema
+            .scalars
+            .iter()
+            .find(|s| s.name == "DateTime")
+            .unwrap();
+        assert_eq!(
+            dt.description.as_deref(),
+            Some("Represents a date and time.")
+        );
+
+        let json = schema.scalars.iter().find(|s| s.name == "JSON").unwrap();
+        assert!(json.description.is_none());
+
+        // Enum description
+        let e = &schema.enums[0];
+        assert_eq!(e.description.as_deref(), Some("The status of an issue."));
+
+        // Enum value description
+        let in_progress = e.values.iter().find(|v| v.name == "IN_PROGRESS").unwrap();
+        assert_eq!(
+            in_progress.description.as_deref(),
+            Some("Work in progress.")
+        );
+        let backlog = e.values.iter().find(|v| v.name == "BACKLOG").unwrap();
+        assert!(backlog.description.is_none());
+
+        // Object description
+        let user = schema.objects.iter().find(|o| o.name == "User").unwrap();
+        assert_eq!(user.description.as_deref(), Some("A user account."));
+
+        // Field description
+        let id_field = user.fields.iter().find(|f| f.name == "id").unwrap();
+        assert_eq!(
+            id_field.description.as_deref(),
+            Some("The unique identifier.")
+        );
+        let email_field = user.fields.iter().find(|f| f.name == "email").unwrap();
+        assert!(email_field.description.is_none());
+
+        // Input description
+        let input = &schema.inputs[0];
+        assert_eq!(input.description.as_deref(), Some("Filter for users."));
+
+        // Input field description
+        let name_field = input.fields.iter().find(|f| f.name == "name").unwrap();
+        assert_eq!(name_field.description.as_deref(), Some("Filter by name."));
     }
 
     #[test]
