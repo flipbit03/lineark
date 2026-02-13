@@ -78,6 +78,8 @@ fn issues_help_shows_subcommands() {
         .stdout(predicate::str::contains("search"))
         .stdout(predicate::str::contains("create"))
         .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("archive"))
+        .stdout(predicate::str::contains("unarchive"))
         .stdout(predicate::str::contains("delete"));
 }
 
@@ -136,8 +138,28 @@ fn usage_includes_write_commands() {
         .success()
         .stdout(predicate::str::contains("issues create"))
         .stdout(predicate::str::contains("issues update"))
+        .stdout(predicate::str::contains("issues archive"))
+        .stdout(predicate::str::contains("issues unarchive"))
         .stdout(predicate::str::contains("issues delete"))
         .stdout(predicate::str::contains("comments create"));
+}
+
+#[test]
+fn issues_archive_help_shows_identifier() {
+    lineark()
+        .args(["issues", "archive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
+}
+
+#[test]
+fn issues_unarchive_help_shows_identifier() {
+    lineark()
+        .args(["issues", "unarchive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<IDENTIFIER>"));
 }
 
 #[test]

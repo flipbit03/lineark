@@ -485,6 +485,38 @@ async fn image_upload_from_url_sends_url() {
 }
 
 #[tokio::test]
+async fn issue_archive_sends_id_and_trash() {
+    let (server, client) = setup_mutation("issueArchive").await;
+    let _ = client
+        .issue_archive(Some(true), "issue-uuid-arch".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "issue-uuid-arch");
+    assert_eq!(vars["trash"], true);
+}
+
+#[tokio::test]
+async fn issue_archive_without_trash_sends_null() {
+    let (server, client) = setup_mutation("issueArchive").await;
+    let _ = client
+        .issue_archive(None, "issue-uuid-arch2".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "issue-uuid-arch2");
+    assert_eq!(vars["trash"], Value::Null);
+}
+
+#[tokio::test]
+async fn issue_unarchive_sends_id() {
+    let (server, client) = setup_mutation("issueUnarchive").await;
+    let _ = client
+        .issue_unarchive("issue-uuid-unarch".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "issue-uuid-unarch");
+}
+
+#[tokio::test]
 async fn issue_delete_sends_id_and_permanently_delete() {
     let (server, client) = setup_mutation("issueDelete").await;
     let _ = client

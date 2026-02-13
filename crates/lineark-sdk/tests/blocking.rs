@@ -140,6 +140,46 @@ mod blocking {
         assert_eq!(del.get("success").and_then(|v| v.as_bool()), Some(true));
     }
 
+    // ── Archive / Unarchive ────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn blocking_issue_archive_and_unarchive() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let client = test_client();
+        let teams = client.teams().first(1).send().unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let input = IssueCreateInput {
+            title: Some("[test] blocking archive/unarchive".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let payload = client.issue_create(input).unwrap();
+        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
+        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+
+        // Archive.
+        let arch = client.issue_archive(None, issue_id.clone()).unwrap();
+        assert_eq!(arch.get("success").and_then(|v| v.as_bool()), Some(true));
+        assert!(
+            arch["entity"]["archivedAt"].as_str().is_some(),
+            "archivedAt should be set after archiving"
+        );
+
+        // Unarchive.
+        let unarch = client.issue_unarchive(issue_id.clone()).unwrap();
+        assert_eq!(unarch.get("success").and_then(|v| v.as_bool()), Some(true));
+        assert!(
+            unarch["entity"]["archivedAt"].is_null(),
+            "archivedAt should be null after unarchiving"
+        );
+
+        // Clean up.
+        client.issue_delete(Some(true), issue_id).unwrap();
+    }
+
     // ── File Upload ─────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

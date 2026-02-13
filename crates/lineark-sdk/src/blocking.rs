@@ -384,6 +384,11 @@ impl Client {
         self.rt.block_on(self.inner.issue_archive(trash, id))
     }
 
+    /// Unarchive an issue (blocking).
+    pub fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        self.rt.block_on(self.inner.issue_unarchive(id))
+    }
+
     /// Delete an issue (blocking).
     pub fn issue_delete(
         &self,

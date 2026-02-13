@@ -514,6 +514,60 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_archive_and_unarchive() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let client = test_client();
+
+        // Create an issue to archive.
+        let teams = client.teams().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let input = IssueCreateInput {
+            title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let create_payload = client.issue_create(input).await.unwrap();
+        let issue = create_payload.get("issue").unwrap();
+        let issue_id = issue
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .to_string();
+
+        // Archive the issue.
+        let archive_payload = client.issue_archive(None, issue_id.clone()).await.unwrap();
+        assert_eq!(
+            archive_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        // Verify entity is returned with archivedAt set.
+        let entity = archive_payload.get("entity").unwrap();
+        assert!(
+            entity.get("archivedAt").and_then(|v| v.as_str()).is_some(),
+            "archived issue should have archivedAt timestamp"
+        );
+
+        // Unarchive the issue.
+        let unarchive_payload = client.issue_unarchive(issue_id.clone()).await.unwrap();
+        assert_eq!(
+            unarchive_payload.get("success").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        // Verify entity is returned with archivedAt cleared.
+        let entity = unarchive_payload.get("entity").unwrap();
+        assert!(
+            entity.get("archivedAt").unwrap().is_null(),
+            "unarchived issue should have null archivedAt"
+        );
+
+        // Clean up: permanently delete.
+        client.issue_delete(Some(true), issue_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn comment_create() {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 

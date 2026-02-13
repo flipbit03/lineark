@@ -102,7 +102,8 @@ let payload = client.issue_create(IssueCreateInput {
 |--------|-------------|
 | `issue_create(input)` | Create an issue |
 | `issue_update(input, id)` | Update an issue |
-| `issue_archive(trash, id)` | Archive/trash an issue |
+| `issue_archive(trash, id)` | Archive an issue |
+| `issue_unarchive(id)` | Unarchive a previously archived issue |
 | `issue_delete(permanently, id)` | Delete an issue |
 | `comment_create(input)` | Create a comment |
 | `document_create(input)` | Create a document |

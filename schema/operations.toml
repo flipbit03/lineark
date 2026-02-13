@@ -25,6 +25,7 @@ issueRelation = true
 issueCreate = true
 issueUpdate = true
 issueArchive = true
+issueUnarchive = true
 issueDelete = true
 commentCreate = true
 

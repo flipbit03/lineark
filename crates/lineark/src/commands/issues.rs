@@ -77,6 +77,22 @@ pub enum IssuesAction {
         #[arg(long)]
         status: Option<String>,
     },
+    /// Archive an issue.
+    ///
+    /// Examples:
+    ///   lineark issues archive ENG-123
+    Archive {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+    },
+    /// Unarchive a previously archived issue.
+    ///
+    /// Examples:
+    ///   lineark issues unarchive ENG-123
+    Unarchive {
+        /// Issue identifier (e.g., ENG-123) or UUID.
+        identifier: String,
+    },
     /// Delete (trash) an issue. Use --permanently to delete permanently.
     ///
     /// Examples:
@@ -215,6 +231,7 @@ struct IssueDetail {
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
     pub canceled_at: Option<String>,
+    pub archived_at: Option<String>,
     pub estimate: Option<f64>,
     pub labels: Option<NestedLabelConnection>,
     pub assignee: Option<NestedUser>,
@@ -231,7 +248,7 @@ struct IssueDetail {
 
 const ISSUE_READ_QUERY: &str = "query IssueRead($id: String!) { issue(id: $id) { \
 identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt \
+createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
 estimate \
 labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
@@ -244,7 +261,7 @@ inverseRelations { nodes { id type issue { id identifier title } } } \
 
 const ISSUE_SEARCH_ONE_QUERY: &str = "query IssueSearchOne($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { \
 identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt \
+createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
 estimate \
 labels { nodes { id name } } \
 assignee { id name } creator { id name } state { id name } \
@@ -456,6 +473,28 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             check_success(&payload)?;
             let issue = payload.get("issue").cloned().unwrap_or_default();
             output::print_one(&issue, format);
+        }
+        IssuesAction::Archive { identifier } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+
+            let payload = client
+                .issue_archive(None, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
+        }
+        IssuesAction::Unarchive { identifier } => {
+            let issue_id = resolve_issue_id(client, &identifier).await?;
+
+            let payload = client
+                .issue_unarchive(issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            check_success(&payload)?;
+            output::print_one(&payload, format);
         }
         IssuesAction::Delete {
             identifier,

@@ -195,6 +195,8 @@ lineark issues read <IDENTIFIER>        # e.g. ENG-123
 lineark issues search <QUERY> [--team NAME] [--project NAME]
 lineark issues create <TITLE> --team NAME [--assignee ID] [--labels L1,L2] [--priority 0-3] [--description TEXT]
 lineark issues update <IDENTIFIER> [--status NAME] [--priority 0-3] [--labels L1,L2] [--assignee ID] [--parent ID]
+lineark issues archive <IDENTIFIER>
+lineark issues unarchive <IDENTIFIER>
 lineark issues delete <IDENTIFIER> [--permanently]
 
 lineark comments create <ISSUE-ID> --body <TEXT>

@@ -99,6 +99,17 @@ impl Client {
             )
             .await
     }
+    pub async fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        let variables = serde_json::json!({ "id" : id });
+        self.execute::<
+                serde_json::Value,
+            >(
+                "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
+                variables,
+                "issueUnarchive",
+            )
+            .await
+    }
     pub async fn issue_delete(
         &self,
         permanently_delete: Option<bool>,
