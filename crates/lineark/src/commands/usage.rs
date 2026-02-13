@@ -68,10 +68,6 @@ AUTH (in precedence order):
   1. --api-token flag
   2. $LINEAR_API_TOKEN env var{env_hint}
   3. ~/.linear_api_token file{file_hint}
-
-OUTPUT:
-  Terminal → human-readable tables
-  Piped    → JSON
 "#
     );
 }
