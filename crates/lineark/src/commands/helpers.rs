@@ -1,19 +1,4 @@
 use lineark_sdk::Client;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct NestedUser {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct NestedProject {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
 
 /// Resolve a team key (e.g., "ENG") to a team UUID.
 /// If the input already looks like a UUID, return it as-is.
@@ -45,24 +30,21 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
     if uuid::Uuid::parse_str(identifier).is_ok() {
         return Ok(identifier.to_string());
     }
-    let variables = serde_json::json!({ "term": identifier, "first": 5 });
-    let conn: lineark_sdk::Connection<serde_json::Value> = client
-        .execute_connection(
-            "query IssueIdResolve($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { id identifier } pageInfo { hasNextPage endCursor } } }",
-            variables,
-            "searchIssues",
-        )
+    let conn = client
+        .search_issues(identifier)
+        .first(5)
+        .send()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     conn.nodes
         .iter()
         .find(|n| {
-            n.get("identifier")
-                .and_then(|v| v.as_str())
+            n.identifier
+                .as_deref()
                 .is_some_and(|id| id.eq_ignore_ascii_case(identifier))
         })
-        .and_then(|n| n.get("id").and_then(|v| v.as_str()).map(String::from))
+        .and_then(|n| n.id.clone())
         .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
 }
 

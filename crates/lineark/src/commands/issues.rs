@@ -1,10 +1,13 @@
 use clap::Args;
-use lineark_sdk::generated::inputs::{IssueCreateInput, IssueUpdateInput};
+use lineark_sdk::generated::inputs::{
+    IssueCreateInput, IssueFilter, IssueUpdateInput, WorkflowStateFilter,
+};
+use lineark_sdk::generated::types::Issue;
 use lineark_sdk::Client;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tabled::Tabled;
 
-use super::helpers::{check_success, resolve_issue_id, resolve_team_id, NestedProject, NestedUser};
+use super::helpers::{check_success, resolve_issue_id, resolve_team_id};
 use crate::output::{self, Format};
 
 /// Manage issues.
@@ -155,18 +158,7 @@ pub enum LabelMode {
     Removing,
 }
 
-// ── List/search row (table + JSON) ──────────────────────────────────────────
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct IssueListItem {
-    identifier: Option<String>,
-    title: Option<String>,
-    priority_label: Option<String>,
-    assignee: Option<NestedUser>,
-    state: Option<NestedState>,
-    team: Option<NestedTeam>,
-}
+// ── List/search row (table display) ─────────────────────────────────────────
 
 #[derive(Debug, Serialize, Tabled)]
 struct IssueRow {
@@ -178,8 +170,8 @@ struct IssueRow {
     team: String,
 }
 
-impl From<&IssueListItem> for IssueRow {
-    fn from(i: &IssueListItem) -> Self {
+impl From<&Issue> for IssueRow {
+    fn from(i: &Issue) -> Self {
         Self {
             identifier: i.identifier.clone().unwrap_or_default(),
             title: i.title.clone().unwrap_or_default(),
@@ -203,153 +195,6 @@ impl From<&IssueListItem> for IssueRow {
     }
 }
 
-const ISSUE_LIST_QUERY: &str =
-    "query Issues($first: Int, $filter: IssueFilter) { issues(first: $first, filter: $filter) { \
-nodes { identifier title priorityLabel \
-assignee { id name } state { id name } team { id key name } \
-} pageInfo { hasNextPage endCursor } } }";
-
-const ISSUE_SEARCH_QUERY: &str =
-    "query IssueSearch($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { \
-nodes { identifier title priorityLabel \
-assignee { id name } state { id name } team { id key name } \
-} pageInfo { hasNextPage endCursor } } }";
-
-// ── Detail (read) ───────────────────────────────────────────────────────────
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct IssueDetail {
-    pub identifier: Option<String>,
-    pub title: Option<String>,
-    pub description: Option<String>,
-    pub priority_label: Option<String>,
-    pub url: Option<String>,
-    pub branch_name: Option<String>,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
-    pub due_date: Option<String>,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
-    pub canceled_at: Option<String>,
-    pub archived_at: Option<String>,
-    pub estimate: Option<f64>,
-    pub labels: Option<NestedLabelConnection>,
-    pub assignee: Option<NestedUser>,
-    pub creator: Option<NestedUser>,
-    pub state: Option<NestedState>,
-    pub team: Option<NestedTeam>,
-    pub project: Option<NestedProject>,
-    pub cycle: Option<NestedCycle>,
-    pub parent: Option<NestedIssue>,
-    pub attachments: Option<NestedAttachmentConnection>,
-    pub relations: Option<NestedRelationConnection>,
-    pub inverse_relations: Option<NestedRelationConnection>,
-}
-
-const ISSUE_READ_QUERY: &str = "query IssueRead($id: String!) { issue(id: $id) { \
-identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
-estimate \
-labels { nodes { id name } } \
-assignee { id name } creator { id name } state { id name } \
-team { id key name } project { id name } cycle { id number name } \
-parent { id identifier } \
-attachments { nodes { id title url sourceType } } \
-relations { nodes { id type relatedIssue { id identifier title } } } \
-inverseRelations { nodes { id type issue { id identifier title } } } \
-} }";
-
-const ISSUE_SEARCH_ONE_QUERY: &str = "query IssueSearchOne($term: String!, $first: Int) { searchIssues(term: $term, first: $first) { nodes { \
-identifier title description priorityLabel url branchName \
-createdAt updatedAt dueDate startedAt completedAt canceledAt archivedAt \
-estimate \
-labels { nodes { id name } } \
-assignee { id name } creator { id name } state { id name } \
-team { id key name } project { id name } cycle { id number name } \
-parent { id identifier } \
-attachments { nodes { id title url sourceType } } \
-relations { nodes { id type relatedIssue { id identifier title } } } \
-inverseRelations { nodes { id type issue { id identifier title } } } \
-} } }";
-
-// ── Shared nested types ─────────────────────────────────────────────────────
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedTeam {
-    pub id: Option<String>,
-    pub key: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedState {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedCycle {
-    pub id: Option<String>,
-    pub number: Option<f64>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedLabelConnection {
-    pub nodes: Vec<NestedLabel>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedLabel {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedIssue {
-    pub id: Option<String>,
-    pub identifier: Option<String>,
-    pub title: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedAttachmentConnection {
-    pub nodes: Vec<NestedAttachment>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct NestedAttachment {
-    pub id: Option<String>,
-    pub title: Option<String>,
-    pub url: Option<String>,
-    pub source_type: Option<String>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(default)]
-struct NestedRelationConnection {
-    pub nodes: Vec<NestedRelation>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct NestedRelation {
-    pub id: Option<String>,
-    #[serde(rename = "type")]
-    pub relation_type: Option<String>,
-    pub related_issue: Option<NestedIssue>,
-    pub issue: Option<NestedIssue>,
-}
-
 // ── Command dispatch ────────────────────────────────────────────────────────
 
 pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -360,16 +205,16 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             mine,
             show_done,
         } => {
-            let mut filter = serde_json::Map::new();
+            let mut filter_map = serde_json::Map::new();
             if !show_done {
-                filter.insert(
+                filter_map.insert(
                     "state".into(),
                     serde_json::json!({ "type": { "nin": ["completed", "canceled"] } }),
                 );
             }
             if let Some(ref team_key) = team {
                 let team_id = resolve_team_id(client, team_key).await?;
-                filter.insert(
+                filter_map.insert(
                     "team".into(),
                     serde_json::json!({ "id": { "eq": team_id } }),
                 );
@@ -382,21 +227,24 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 let viewer_id = viewer
                     .id
                     .ok_or_else(|| anyhow::anyhow!("Could not determine authenticated user ID"))?;
-                filter.insert(
+                filter_map.insert(
                     "assignee".into(),
                     serde_json::json!({ "id": { "eq": viewer_id } }),
                 );
             }
-            let variables = serde_json::json!({
-                "first": limit,
-                "filter": filter,
-            });
+
+            let filter: IssueFilter = serde_json::from_value(serde_json::Value::Object(filter_map))
+                .expect("valid IssueFilter");
+
             let conn = client
-                .execute_connection::<IssueListItem>(ISSUE_LIST_QUERY, variables, "issues")
+                .issues()
+                .filter(filter)
+                .first(limit)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            let items: Vec<&IssueListItem> = conn.nodes.iter().collect();
+            let items: Vec<&Issue> = conn.nodes.iter().collect();
             print_issue_list(&items, format);
         }
         IssuesAction::Read { identifier } => {
@@ -408,10 +256,10 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             limit,
             show_done,
         } => {
-            // searchIssues doesn't support IssueFilter, so filter client-side.
-            let variables = serde_json::json!({ "term": query, "first": limit });
-            let conn: lineark_sdk::Connection<IssueListItem> = client
-                .execute_connection(ISSUE_SEARCH_QUERY, variables, "searchIssues")
+            let conn = client
+                .search_issues(query)
+                .first(limit)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -589,7 +437,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 // TODO(phase2): query workflowStates types instead of hardcoding state names
 const DONE_STATES: &[&str] = &["Done", "Canceled", "Cancelled", "Duplicate"];
 
-fn filter_done(items: &[IssueListItem], show_done: bool) -> Vec<&IssueListItem> {
+fn filter_done(items: &[Issue], show_done: bool) -> Vec<&Issue> {
     if show_done {
         items.iter().collect()
     } else {
@@ -607,7 +455,7 @@ fn filter_done(items: &[IssueListItem], show_done: bool) -> Vec<&IssueListItem> 
     }
 }
 
-fn print_issue_list(items: &[&IssueListItem], format: Format) {
+fn print_issue_list(items: &[&Issue], format: Format) {
     match format {
         Format::Json => {
             let json = serde_json::to_string_pretty(items).unwrap_or_default();
@@ -621,21 +469,20 @@ fn print_issue_list(items: &[&IssueListItem], format: Format) {
 }
 
 /// Read a single issue by identifier (e.g. E-929) or UUID, with full nested details.
-async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDetail> {
+async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<Issue> {
     if uuid::Uuid::parse_str(identifier).is_ok() {
-        // Direct query by UUID.
-        let variables = serde_json::json!({ "id": identifier });
         return client
-            .execute(ISSUE_READ_QUERY, variables, "issue")
+            .issue(identifier.to_string())
             .await
             .map_err(|e| anyhow::anyhow!("{}", e));
     }
     if identifier.contains('-') {
         // searchIssues is fuzzy — it may return a different issue if no exact match exists.
         // We fetch a small page and verify the identifier matches exactly.
-        let variables = serde_json::json!({ "term": identifier, "first": 5 });
-        let conn: lineark_sdk::Connection<IssueDetail> = client
-            .execute_connection(ISSUE_SEARCH_ONE_QUERY, variables, "searchIssues")
+        let conn = client
+            .search_issues(identifier)
+            .first(5)
+            .send()
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         conn.nodes
@@ -648,9 +495,8 @@ async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDe
             })
             .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
     } else {
-        let variables = serde_json::json!({ "id": identifier });
         client
-            .execute(ISSUE_READ_QUERY, variables, "issue")
+            .issue(identifier.to_string())
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))
     }
@@ -662,32 +508,25 @@ async fn resolve_state_id(
     team_id: &str,
     state_name: &str,
 ) -> anyhow::Result<String> {
-    let filter = serde_json::json!({ "team": { "id": { "eq": team_id } } });
-    let variables = serde_json::json!({ "first": 50, "filter": filter });
+    let filter: WorkflowStateFilter =
+        serde_json::from_value(serde_json::json!({ "team": { "id": { "eq": team_id } } }))
+            .expect("valid WorkflowStateFilter");
+
     let conn = client
-        .execute_connection::<serde_json::Value>(
-            "query WorkflowStates($first: Int, $filter: WorkflowStateFilter) { workflowStates(first: $first, filter: $filter) { nodes { id name } pageInfo { hasNextPage endCursor } } }",
-            variables,
-            "workflowStates",
-        )
+        .workflow_states()
+        .filter(filter)
+        .first(50)
+        .send()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     for node in &conn.nodes {
-        let name = node.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let name = node.name.as_deref().unwrap_or("");
         if name.eq_ignore_ascii_case(state_name) {
-            return Ok(node
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string());
+            return Ok(node.id.clone().unwrap_or_default());
         }
     }
-    let available: Vec<String> = conn
-        .nodes
-        .iter()
-        .filter_map(|n| n.get("name").and_then(|v| v.as_str()).map(String::from))
-        .collect();
+    let available: Vec<String> = conn.nodes.iter().filter_map(|n| n.name.clone()).collect();
     Err(anyhow::anyhow!(
         "Status '{}' not found for this team. Available: {}",
         state_name,

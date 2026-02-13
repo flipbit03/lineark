@@ -1,6 +1,8 @@
 use clap::Args;
+use lineark_sdk::generated::inputs::CycleFilter;
+use lineark_sdk::generated::types::Cycle;
 use lineark_sdk::Client;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tabled::Tabled;
 
 use super::helpers::resolve_team_id;
@@ -60,7 +62,7 @@ pub struct CycleRow {
     pub active: String,
 }
 
-fn cycle_status_label(cycle: &CycleListItem) -> String {
+fn cycle_status_label(cycle: &Cycle) -> String {
     if cycle.is_active.unwrap_or(false) {
         "active".to_string()
     } else if cycle.is_next.unwrap_or(false) {
@@ -76,26 +78,6 @@ fn cycle_status_label(cycle: &CycleListItem) -> String {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct CycleListItem {
-    id: Option<String>,
-    number: Option<i64>,
-    name: Option<String>,
-    starts_at: Option<String>,
-    ends_at: Option<String>,
-    is_active: Option<bool>,
-    is_next: Option<bool>,
-    is_previous: Option<bool>,
-    is_future: Option<bool>,
-    is_past: Option<bool>,
-}
-
-const CYCLE_LIST_QUERY: &str =
-    "query Cycles($first: Int, $filter: CycleFilter) { cycles(first: $first, filter: $filter) { \
-nodes { id number name startsAt endsAt isActive isNext isPrevious isFuture isPast } \
-pageInfo { hasNextPage endCursor } } }";
-
 pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Result<()> {
     match cmd.action {
         CyclesAction::List {
@@ -104,32 +86,32 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
             active,
             around_active,
         } => {
-            let mut filter = serde_json::Map::new();
+            let mut filter_map = serde_json::Map::new();
 
             if let Some(ref team_key) = team {
                 let team_id = resolve_team_id(client, team_key).await?;
-                filter.insert(
+                filter_map.insert(
                     "team".into(),
                     serde_json::json!({ "id": { "eq": team_id } }),
                 );
             }
 
             if active {
-                filter.insert("isActive".into(), serde_json::json!({ "eq": true }));
+                filter_map.insert("isActive".into(), serde_json::json!({ "eq": true }));
             }
 
-            let variables = serde_json::json!({
-                "first": limit,
-                "filter": filter,
-            });
+            let filter: CycleFilter = serde_json::from_value(serde_json::Value::Object(filter_map))
+                .expect("valid CycleFilter");
 
             let conn = client
-                .execute_connection::<CycleListItem>(CYCLE_LIST_QUERY, variables, "cycles")
+                .cycles()
+                .filter(filter)
+                .first(limit)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            let items: Vec<&CycleListItem> = if let Some(n) = around_active {
-                // Find the active cycle and return it ± N neighbors by number.
+            let items: Vec<&Cycle> = if let Some(n) = around_active {
                 around_active_filter(&conn.nodes, n)
             } else {
                 conn.nodes.iter().collect()
@@ -147,8 +129,8 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
                             id: c.id.clone().unwrap_or_default(),
                             number: c.number.map(|n| n.to_string()).unwrap_or_default(),
                             name: c.name.clone().unwrap_or_default(),
-                            starts_at: c.starts_at.clone().unwrap_or_default(),
-                            ends_at: c.ends_at.clone().unwrap_or_default(),
+                            starts_at: c.starts_at.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
+                            ends_at: c.ends_at.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
                             active: cycle_status_label(c),
                         })
                         .collect();
@@ -177,26 +159,27 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
 
             let team_id = resolve_team_id(client, team_key).await?;
 
-            let mut filter = serde_json::Map::new();
-            filter.insert(
+            let mut filter_map = serde_json::Map::new();
+            filter_map.insert(
                 "team".into(),
                 serde_json::json!({ "id": { "eq": team_id } }),
             );
 
             // Try parsing as a number first.
             if let Ok(num) = id.parse::<i64>() {
-                filter.insert("number".into(), serde_json::json!({ "eq": num }));
+                filter_map.insert("number".into(), serde_json::json!({ "eq": num }));
             } else {
-                filter.insert("name".into(), serde_json::json!({ "eq": id }));
+                filter_map.insert("name".into(), serde_json::json!({ "eq": id }));
             }
 
-            let variables = serde_json::json!({
-                "first": 1,
-                "filter": filter,
-            });
+            let filter: CycleFilter = serde_json::from_value(serde_json::Value::Object(filter_map))
+                .expect("valid CycleFilter");
 
             let conn = client
-                .execute_connection::<serde_json::Value>(CYCLE_LIST_QUERY, variables, "cycles")
+                .cycles()
+                .filter(filter)
+                .first(1)
+                .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -205,11 +188,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
             })?;
 
             // Re-fetch with full detail using the cycle's ID.
-            let cycle_id = cycle
-                .get("id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow::anyhow!("Cycle has no ID"))?
-                .to_string();
+            let cycle_id = cycle.id.ok_or_else(|| anyhow::anyhow!("Cycle has no ID"))?;
 
             let full_cycle = client
                 .cycle(cycle_id)
@@ -223,7 +202,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
 }
 
 /// Filter cycles to the active one ± N neighbors by cycle number.
-fn around_active_filter(cycles: &[CycleListItem], n: i64) -> Vec<&CycleListItem> {
+fn around_active_filter(cycles: &[Cycle], n: i64) -> Vec<&Cycle> {
     let active_number = cycles
         .iter()
         .find(|c| c.is_active.unwrap_or(false))
@@ -234,6 +213,7 @@ fn around_active_filter(cycles: &[CycleListItem], n: i64) -> Vec<&CycleListItem>
         return Vec::new();
     };
 
+    let n = n as f64;
     let lo = active_num - n;
     let hi = active_num + n;
 
