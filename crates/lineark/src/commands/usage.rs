@@ -41,10 +41,10 @@ COMMANDS:
     [--title TEXT] [--content TEXT]
   lineark documents delete <ID>                    Delete (trash) a document
   lineark embeds upload <FILE> [--public]          Upload file to Linear, returns asset URL
-                                                   Use the URL in markdown: [name](url) in
-                                                   issue descriptions, comments, or documents
-  lineark embeds download <URL>                    Download file from Linear CDN URL
-    [--output PATH] [--overwrite]                  (e.g. uploads.linear.app/... URLs from issues)
+                                                   Embed as markdown [name](url) in issues,
+                                                   comments, or documents
+  lineark embeds download <URL>                    Download any file by URL (works with
+    [--output PATH] [--overwrite]                  Linear CDN URLs and external URLs alike)
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token
