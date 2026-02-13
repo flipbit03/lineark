@@ -121,7 +121,7 @@ let client = Client::from_file()?;     // ~/.linear_api_token
 // or
 let client = Client::auto()?;          // tries file -> env (same precedence as CLI)
 
-let me = client.viewer().await?;
+let me = client.whoami().await?;
 let teams = client.teams().await?;
 let issue = client.issue("ENG-123").await?;
 let issues = client.issues()

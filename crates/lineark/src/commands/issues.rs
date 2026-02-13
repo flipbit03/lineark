@@ -319,7 +319,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             }
             if mine {
                 let viewer = client
-                    .viewer()
+                    .whoami()
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
                 let viewer_id = viewer

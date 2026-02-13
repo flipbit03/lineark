@@ -36,7 +36,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn viewer_returns_authenticated_user() {
         let client = test_client();
-        let user = client.viewer().await.unwrap();
+        let user = client.whoami().await.unwrap();
         assert!(user.id.is_some(), "viewer should have an id");
         assert!(user.email.is_some(), "viewer should have an email");
         assert!(user.active.is_some(), "viewer should have active status");
@@ -45,7 +45,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn viewer_fields_deserialize_correctly() {
         let client = test_client();
-        let user = client.viewer().await.unwrap();
+        let user = client.whoami().await.unwrap();
         assert!(user.id.is_some());
         assert!(user.name.is_some());
         assert!(user.email.is_some());
@@ -560,7 +560,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn invalid_token_returns_auth_error() {
         let client = Client::from_token("lin_api_invalid_token_12345").unwrap();
-        let result = client.viewer().await;
+        let result = client.whoami().await;
         assert!(result.is_err(), "invalid token should produce an error");
     }
 }

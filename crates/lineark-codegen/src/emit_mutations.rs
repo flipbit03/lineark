@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 pub fn emit(
     mutation_fields: &[FieldDef],
     allowed: &HashSet<String>,
+    renames: &HashMap<String, String>,
     objects: &[ObjectDef],
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> TokenStream {
@@ -17,7 +18,10 @@ pub fn emit(
     let methods: Vec<TokenStream> = mutation_fields
         .iter()
         .filter(|f| allowed.contains(&f.name))
-        .filter_map(|f| emit_mutation_method(f, &object_map, type_kind_map))
+        .filter_map(|f| {
+            let rename = renames.get(&f.name).map(|s| s.as_str());
+            emit_mutation_method(f, rename, &object_map, type_kind_map)
+        })
         .collect();
 
     if methods.is_empty() {
@@ -60,10 +64,14 @@ pub fn emit(
 /// and returns the payload with the entity's scalar/enum fields selected.
 fn emit_mutation_method(
     field: &FieldDef,
+    rename: Option<&str>,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> Option<TokenStream> {
-    let method_name = quote::format_ident!("{}", field.name.to_snake_case());
+    let method_name = quote::format_ident!(
+        "{}",
+        rename.unwrap_or(field.name.as_str()).to_snake_case()
+    );
     let payload_type_name = field.ty.base_name();
     let payload_obj = object_map.get(payload_type_name)?;
 

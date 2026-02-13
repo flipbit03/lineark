@@ -19,7 +19,7 @@ use lineark_sdk::Client;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::auto()?;
 
-    let me = client.viewer().await?;
+    let me = client.whoami().await?;
     println!("Logged in as: {}", me.name.as_deref().unwrap_or("?"));
 
     let teams = client.teams(None, None, None, None, None).await?;

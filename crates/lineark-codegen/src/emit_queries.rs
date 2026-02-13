@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 pub fn emit(
     query_fields: &[FieldDef],
     allowed: &HashSet<String>,
+    renames: &HashMap<String, String>,
     objects: &[ObjectDef],
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> TokenStream {
@@ -18,7 +19,8 @@ pub fn emit(
     let mut client_methods: Vec<TokenStream> = Vec::new();
 
     for field in query_fields.iter().filter(|f| allowed.contains(&f.name)) {
-        let (builders, method) = emit_query(field, &object_map, type_kind_map);
+        let rename = renames.get(&field.name).map(|s| s.as_str());
+        let (builders, method) = emit_query(field, rename, &object_map, type_kind_map);
         builder_items.extend(builders);
         client_methods.push(method);
     }
@@ -78,6 +80,7 @@ fn classify_args(arguments: &[ArgumentDef]) -> Vec<ArgInfo> {
 
 fn emit_query(
     field: &FieldDef,
+    rename: Option<&str>,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> (Vec<TokenStream>, TokenStream) {
@@ -88,9 +91,9 @@ fn emit_query(
         return_type_name.ends_with("Connection") || return_type_name.ends_with("Payload");
 
     if has_optional {
-        emit_builder_query(field, &args, is_connection, object_map, type_kind_map)
+        emit_builder_query(field, rename, &args, is_connection, object_map, type_kind_map)
     } else {
-        let method = emit_direct_method(field, &args, is_connection, object_map, type_kind_map);
+        let method = emit_direct_method(field, rename, &args, is_connection, object_map, type_kind_map);
         (vec![], method)
     }
 }
@@ -99,12 +102,16 @@ fn emit_query(
 
 fn emit_direct_method(
     field: &FieldDef,
+    rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> TokenStream {
-    let method_name = quote::format_ident!("{}", field.name.to_snake_case());
+    let method_name = quote::format_ident!(
+        "{}",
+        rename.unwrap_or(field.name.as_str()).to_snake_case()
+    );
     let return_type_name = field.ty.base_name();
 
     let params: Vec<TokenStream> = args
@@ -171,13 +178,15 @@ fn emit_direct_method(
 
 fn emit_builder_query(
     field: &FieldDef,
+    rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> (Vec<TokenStream>, TokenStream) {
-    let method_name = quote::format_ident!("{}", field.name.to_snake_case());
-    let builder_name = quote::format_ident!("{}Query", field.name.to_upper_camel_case());
+    let rust_name = rename.unwrap_or(field.name.as_str());
+    let method_name = quote::format_ident!("{}", rust_name.to_snake_case());
+    let builder_name = quote::format_ident!("{}Query", rust_name.to_upper_camel_case());
     let return_type_name = field.ty.base_name();
 
     let required_args: Vec<&ArgInfo> = args.iter().filter(|a| a.is_required).collect();

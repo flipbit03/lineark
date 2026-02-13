@@ -413,7 +413,7 @@ impl Client {
             include_archived: None,
         }
     }
-    pub async fn viewer(&self) -> Result<User, LinearError> {
+    pub async fn whoami(&self) -> Result<User, LinearError> {
         let variables = serde_json::json!({});
         self.execute::<
                 User,
