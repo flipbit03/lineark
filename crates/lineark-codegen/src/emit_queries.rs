@@ -302,7 +302,23 @@ fn emit_builder_query(
     };
 
     // ── Builder struct + impl ──
+    let builder_doc = match &field.description {
+        Some(desc) => {
+            let sanitized = crate::parser::sanitize_doc(desc);
+            let text = format!(" Query builder: {}", sanitized);
+            quote::quote! { #[doc = #text] }
+        }
+        None => {
+            let text = format!(" Query builder for `{}`.", method_name);
+            quote::quote! { #[doc = #text] }
+        }
+    };
+
     let builder_tokens = quote! {
+        #builder_doc
+        ///
+        /// Use setter methods to configure optional parameters, then call
+        /// [`.send()`](Self::send) to execute the query.
         #[must_use]
         pub struct #builder_name<'a> {
             #(#struct_fields,)*

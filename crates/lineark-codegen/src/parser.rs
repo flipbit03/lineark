@@ -345,7 +345,7 @@ pub fn doc_comment_tokens(description: &Option<String>) -> proc_macro2::TokenStr
 ///   interpret as intra-doc links, by replacing them with backtick-quoted text.
 /// - Wraps bare `https://` URLs in angle brackets so rustdoc renders them as
 ///   clickable links instead of warning.
-fn sanitize_doc(s: &str) -> String {
+pub fn sanitize_doc(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let chars: Vec<char> = s.chars().collect();
     let len = chars.len();

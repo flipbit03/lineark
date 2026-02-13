@@ -5,6 +5,10 @@ use super::types::*;
 use crate::client::Client;
 use crate::error::LinearError;
 use crate::pagination::Connection;
+/// Query builder: All issue workflow states.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct WorkflowStatesQueryBuilder<'a> {
     client: &'a Client,
@@ -51,6 +55,10 @@ impl<'a> WorkflowStatesQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All users for the organization.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct UsersQueryBuilder<'a> {
     client: &'a Client,
@@ -103,6 +111,10 @@ impl<'a> UsersQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All projects.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct ProjectsQueryBuilder<'a> {
     client: &'a Client,
@@ -149,6 +161,10 @@ impl<'a> ProjectsQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct TeamsQueryBuilder<'a> {
     client: &'a Client,
@@ -195,6 +211,10 @@ impl<'a> TeamsQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: Search issues.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct SearchIssuesQueryBuilder<'a> {
     client: &'a Client,
@@ -253,6 +273,10 @@ impl<'a> SearchIssuesQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All issues.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct IssuesQueryBuilder<'a> {
     client: &'a Client,
@@ -299,6 +323,10 @@ impl<'a> IssuesQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All issue relationships.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct IssueRelationsQueryBuilder<'a> {
     client: &'a Client,
@@ -345,6 +373,10 @@ impl<'a> IssueRelationsQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All issue labels.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct IssueLabelsQueryBuilder<'a> {
     client: &'a Client,
@@ -391,6 +423,10 @@ impl<'a> IssueLabelsQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All documents in the workspace.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct DocumentsQueryBuilder<'a> {
     client: &'a Client,
@@ -437,6 +473,10 @@ impl<'a> DocumentsQueryBuilder<'a> {
             .await
     }
 }
+/// Query builder: All cycles.
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
 #[must_use]
 pub struct CyclesQueryBuilder<'a> {
     client: &'a Client,
