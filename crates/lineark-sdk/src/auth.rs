@@ -7,7 +7,7 @@ use crate::error::LinearError;
 use std::path::PathBuf;
 
 /// Resolve a Linear API token from the filesystem.
-/// Reads `~/.linear_api_token` (linearis-compatible).
+/// Reads `~/.linear_api_token`.
 pub fn token_from_file() -> Result<String, LinearError> {
     let path = token_file_path()?;
     std::fs::read_to_string(&path)
