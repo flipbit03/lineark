@@ -70,7 +70,6 @@ jobs:
 
   test-online:
     name: Tests (Online)
-    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
