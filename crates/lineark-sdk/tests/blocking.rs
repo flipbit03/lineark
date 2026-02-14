@@ -5,6 +5,7 @@
 //! When the token file is missing, online tests are automatically skipped.
 
 use lineark_sdk::blocking_client::Client;
+use lineark_sdk::generated::types::{Document, Issue};
 
 fn no_online_test_token() -> Option<String> {
     let path = home::home_dir()?.join(".linear_api_token_test");
@@ -93,15 +94,15 @@ mod blocking {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let entity: serde_json::Value = client.document_create::<serde_json::Value>(input).unwrap();
-        let doc_id = entity["id"].as_str().unwrap().to_string();
+        let entity = client.document_create::<Document>(input).unwrap();
+        let doc_id = entity.id.clone().unwrap();
 
         // Read.
         let doc = client.document(doc_id.clone()).unwrap();
         assert_eq!(doc.id, Some(doc_id.clone()));
 
         // Delete.
-        let _del: serde_json::Value = client.document_delete::<serde_json::Value>(doc_id).unwrap();
+        let _del = client.document_delete::<Document>(doc_id).unwrap();
     }
 
     // ── Issue Relations ─────────────────────────────────────────────────────
@@ -112,6 +113,18 @@ mod blocking {
         let conn = client.issue_relations().first(5).send().unwrap();
         // Just verify deserialization works — may be empty.
         assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+    }
+
+    // ── Search ────────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn blocking_search_issues() {
+        let client = test_client();
+        let conn = client.search_issues("test").first(5).send().unwrap();
+        // Just verify deserialization works — results may be empty.
+        for result in &conn.nodes {
+            assert!(result.id.is_some());
+        }
     }
 
     // ── Mutations ───────────────────────────────────────────────────────────
@@ -130,12 +143,10 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let entity: serde_json::Value = client.issue_create::<serde_json::Value>(input).unwrap();
-        let issue_id = entity["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
-        let _del: serde_json::Value = client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
-            .unwrap();
+        let _del = client.issue_delete::<Issue>(Some(true), issue_id).unwrap();
     }
 
     // ── Archive / Unarchive ────────────────────────────────────────────────
@@ -154,31 +165,27 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let entity: serde_json::Value = client.issue_create::<serde_json::Value>(input).unwrap();
-        let issue_id = entity["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Archive.
-        let arch: serde_json::Value = client
-            .issue_archive::<serde_json::Value>(None, issue_id.clone())
+        let arch = client
+            .issue_archive::<Issue>(None, issue_id.clone())
             .unwrap();
         assert!(
-            arch["archivedAt"].as_str().is_some(),
+            arch.archived_at.is_some(),
             "archivedAt should be set after archiving"
         );
 
         // Unarchive.
-        let unarch: serde_json::Value = client
-            .issue_unarchive::<serde_json::Value>(issue_id.clone())
-            .unwrap();
+        let unarch = client.issue_unarchive::<Issue>(issue_id.clone()).unwrap();
         assert!(
-            unarch["archivedAt"].is_null(),
+            unarch.archived_at.is_none(),
             "archivedAt should be null after unarchiving"
         );
 
         // Clean up.
-        let _: serde_json::Value = client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
-            .unwrap();
+        let _ = client.issue_delete::<Issue>(Some(true), issue_id).unwrap();
     }
 
     // ── File Upload ─────────────────────────────────────────────────────────

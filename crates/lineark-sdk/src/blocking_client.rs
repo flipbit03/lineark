@@ -342,8 +342,12 @@ impl Client {
     pub fn search_issues(
         &self,
         term: impl Into<String>,
-    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQueryBuilder<'_, Issue>> {
-        BlockingQuery::new(self.inner.search_issues::<Issue>(term), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQueryBuilder<'_, IssueSearchResult>>
+    {
+        BlockingQuery::new(
+            self.inner.search_issues::<IssueSearchResult>(term),
+            &self.rt,
+        )
     }
 
     /// List documents (blocking).
