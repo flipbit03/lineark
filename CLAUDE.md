@@ -110,13 +110,14 @@ Before merging, run `/update-docs` to review and update all documentation (top-l
 
 ## Versioning
 
-All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. It means "current dev". Actual versions are set dynamically at release time by the GitHub Actions release workflow (`.github/workflows/release.yml`), which:
+All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. It means "current dev". Actual versions are set dynamically at release time by the GitHub Actions release workflow (`.github/workflows/release.yml`), which is triggered by publishing a GitHub Release. The workflow:
 
-1. Extracts the version from the git tag (`v1.2.3` → `1.2.3`)
+1. Extracts the version from the release tag (`v1.2.3` → `1.2.3`)
 2. Patches all `0.0.0` placeholders via `sed` (workspace version + inter-crate dep versions)
 3. Publishes in dependency order: `lineark-derive` → `lineark-sdk` → `lineark`
+4. Builds platform binaries and uploads them to the release
 
-Never manually set version numbers in Cargo.toml files. To release, just push a semver tag like `v0.1.0`.
+Never manually set version numbers in Cargo.toml files. To release, create a GitHub Release with a semver tag like `v0.1.0` (via the GitHub UI or `gh release create v0.1.0 --generate-notes`).
 
 ## What NOT to do
 
