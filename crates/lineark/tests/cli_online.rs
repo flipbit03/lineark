@@ -605,25 +605,40 @@ mod cli_online {
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
         // for resolve_issue_id to find archived issues.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "unarchive",
-                &identifier,
-            ])
-            .output()
-            .expect("failed to execute lineark");
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        //
+        // Linear's search index is async — the newly created+archived issue may
+        // not be searchable immediately. Retry with backoff to avoid flakiness.
+        let mut last_stdout = String::new();
+        let mut last_stderr = String::new();
+        let mut succeeded = false;
+        for attempt in 0..8 {
+            let delay = if attempt < 3 { 1 } else { 3 };
+            std::thread::sleep(std::time::Duration::from_secs(delay));
+
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "unarchive",
+                    &identifier,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            last_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            last_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if output.status.success() {
+                succeeded = true;
+                break;
+            }
+        }
         assert!(
-            output.status.success(),
-            "unarchive by human identifier should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+            succeeded,
+            "unarchive by human identifier should succeed (after retries).\nstdout: {last_stdout}\nstderr: {last_stderr}"
         );
-        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let unarchived: serde_json::Value = serde_json::from_str(&last_stdout).unwrap();
         assert!(
             unarchived.get("id").is_some(),
             "unarchive response should contain id"
