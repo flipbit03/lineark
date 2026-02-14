@@ -45,7 +45,6 @@ jobs:
 
   test:
     name: Test (async)
-    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +73,6 @@ jobs:
 
   test-blocking:
     name: Test (blocking)
-    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,7 +101,6 @@ jobs:
 
   build:
     name: Build (${{ matrix.name }})
-    needs: lint
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
