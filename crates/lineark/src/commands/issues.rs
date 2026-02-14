@@ -160,16 +160,22 @@ pub enum LabelMode {
     Removing,
 }
 
-// ── List/search row (table display) ─────────────────────────────────────────
+// ── Flattened row (table display + JSON list output) ────────────────────────
 
 #[derive(Debug, Serialize, Tabled)]
+#[serde(rename_all = "camelCase")]
 struct IssueRow {
     identifier: String,
     title: String,
-    status: String,
+    #[serde(rename = "priorityLabel")]
+    #[tabled(rename = "priority")]
+    priority_label: String,
+    #[tabled(rename = "status")]
+    state: String,
     assignee: String,
-    priority: String,
     team: String,
+    #[tabled(skip)]
+    url: String,
 }
 
 impl From<&IssueSummary> for IssueRow {
@@ -177,7 +183,8 @@ impl From<&IssueSummary> for IssueRow {
         Self {
             identifier: i.identifier.clone().unwrap_or_default(),
             title: i.title.clone().unwrap_or_default(),
-            status: i
+            priority_label: i.priority_label.clone().unwrap_or_default(),
+            state: i
                 .state
                 .as_ref()
                 .and_then(|s| s.name.clone())
@@ -187,12 +194,12 @@ impl From<&IssueSummary> for IssueRow {
                 .as_ref()
                 .and_then(|a| a.name.clone())
                 .unwrap_or_default(),
-            priority: i.priority_label.clone().unwrap_or_default(),
             team: i
                 .team
                 .as_ref()
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
+            url: i.url.clone().unwrap_or_default(),
         }
     }
 }
@@ -202,7 +209,8 @@ impl From<&SearchSummary> for IssueRow {
         Self {
             identifier: i.identifier.clone().unwrap_or_default(),
             title: i.title.clone().unwrap_or_default(),
-            status: i
+            priority_label: i.priority_label.clone().unwrap_or_default(),
+            state: i
                 .state
                 .as_ref()
                 .and_then(|s| s.name.clone())
@@ -212,12 +220,12 @@ impl From<&SearchSummary> for IssueRow {
                 .as_ref()
                 .and_then(|a| a.name.clone())
                 .unwrap_or_default(),
-            priority: i.priority_label.clone().unwrap_or_default(),
             team: i
                 .team
                 .as_ref()
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
+            url: i.url.clone().unwrap_or_default(),
         }
     }
 }
@@ -588,16 +596,8 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 const DONE_STATES: &[&str] = &["Done", "Canceled", "Cancelled", "Duplicate"];
 
 fn print_issue_list(items: &[&IssueSummary], format: Format) {
-    match format {
-        Format::Json => {
-            let json = serde_json::to_string_pretty(items).unwrap_or_default();
-            println!("{json}");
-        }
-        Format::Human => {
-            let rows: Vec<IssueRow> = items.iter().map(|i| IssueRow::from(*i)).collect();
-            output::print_table(&rows, format);
-        }
-    }
+    let rows: Vec<IssueRow> = items.iter().map(|i| IssueRow::from(*i)).collect();
+    output::print_table(&rows, format);
 }
 
 fn filter_done_search(items: &[SearchSummary], show_done: bool) -> Vec<&SearchSummary> {
@@ -619,16 +619,8 @@ fn filter_done_search(items: &[SearchSummary], show_done: bool) -> Vec<&SearchSu
 }
 
 fn print_search_list(items: &[&SearchSummary], format: Format) {
-    match format {
-        Format::Json => {
-            let json = serde_json::to_string_pretty(items).unwrap_or_default();
-            println!("{json}");
-        }
-        Format::Human => {
-            let rows: Vec<IssueRow> = items.iter().map(|i| IssueRow::from(*i)).collect();
-            output::print_table(&rows, format);
-        }
-    }
+    let rows: Vec<IssueRow> = items.iter().map(|i| IssueRow::from(*i)).collect();
+    output::print_table(&rows, format);
 }
 
 /// Read a single issue by identifier (e.g. E-929) or UUID, with full nested details.

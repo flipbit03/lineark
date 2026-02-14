@@ -131,6 +131,33 @@ mod cli_online {
         assert!(json.is_array(), "labels list JSON should be an array");
     }
 
+    /// Regression: labels list must include team field (#65)
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn labels_list_json_includes_team_field() {
+        let token = api_token();
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "labels", "list"])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "labels list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+
+        if let Some(label) = arr.first() {
+            assert!(
+                label.get("team").is_some(),
+                "each label should include a 'team' field"
+            );
+            // team should be a string (team key or empty for workspace-wide)
+            assert!(
+                label["team"].is_string(),
+                "team should be a string, got: {}",
+                label["team"]
+            );
+        }
+    }
+
     // ── Issues ────────────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
@@ -161,6 +188,64 @@ mod cli_online {
             assert!(
                 issue.get("assignee").is_some(),
                 "assignee field should be present"
+            );
+        }
+    }
+
+    /// Regression: issues list JSON must be flat — no nested objects (#65)
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_json_is_flat() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "list",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+
+        if let Some(issue) = arr.first() {
+            // state, assignee, team must be flat strings, not nested objects
+            assert!(
+                issue["state"].is_string(),
+                "state should be a flat string, got: {}",
+                issue["state"]
+            );
+            assert!(
+                issue["team"].is_string(),
+                "team should be a flat string, got: {}",
+                issue["team"]
+            );
+            // assignee can be "" for unassigned
+            assert!(
+                issue["assignee"].is_string(),
+                "assignee should be a flat string, got: {}",
+                issue["assignee"]
+            );
+            // id and priority (numeric) must be absent
+            assert!(
+                issue.get("id").is_none(),
+                "id (UUID) should not be in list output"
+            );
+            assert!(
+                issue.get("priority").is_none(),
+                "priority (numeric) should not be in list output"
+            );
+            // url and priorityLabel must be present
+            assert!(issue.get("url").is_some(), "url should be in list output");
+            assert!(
+                issue.get("priorityLabel").is_some(),
+                "priorityLabel should be in list output"
             );
         }
     }
@@ -200,6 +285,49 @@ mod cli_online {
             assert!(
                 issue.get("assignee").is_some(),
                 "assignee field should be present"
+            );
+        }
+    }
+
+    /// Regression: issues search JSON must be flat — same as list (#65)
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_search_json_is_flat() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "search",
+                "test",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues search should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue["state"].is_string(),
+                "state should be a flat string in search output"
+            );
+            assert!(
+                issue["team"].is_string(),
+                "team should be a flat string in search output"
+            );
+            assert!(
+                issue.get("id").is_none(),
+                "id (UUID) should not be in search output"
+            );
+            assert!(
+                issue.get("priority").is_none(),
+                "priority (numeric) should not be in search output"
             );
         }
     }
@@ -477,25 +605,40 @@ mod cli_online {
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
         // for resolve_issue_id to find archived issues.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "unarchive",
-                &identifier,
-            ])
-            .output()
-            .expect("failed to execute lineark");
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        //
+        // Linear's search index is async — the newly created+archived issue may
+        // not be searchable immediately. Retry with backoff to avoid flakiness.
+        let mut last_stdout = String::new();
+        let mut last_stderr = String::new();
+        let mut succeeded = false;
+        for attempt in 0..8 {
+            let delay = if attempt < 3 { 1 } else { 3 };
+            std::thread::sleep(std::time::Duration::from_secs(delay));
+
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "unarchive",
+                    &identifier,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            last_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            last_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if output.status.success() {
+                succeeded = true;
+                break;
+            }
+        }
         assert!(
-            output.status.success(),
-            "unarchive by human identifier should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+            succeeded,
+            "unarchive by human identifier should succeed (after retries).\nstdout: {last_stdout}\nstderr: {last_stderr}"
         );
-        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let unarchived: serde_json::Value = serde_json::from_str(&last_stdout).unwrap();
         assert!(
             unarchived.get("id").is_some(),
             "unarchive response should contain id"

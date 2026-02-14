@@ -22,7 +22,7 @@ COMMANDS:
   lineark teams list                               List all teams
   lineark users list [--active]                    List users
   lineark projects list                            List all projects
-  lineark labels list                              List issue labels
+  lineark labels list [--team KEY]                  List issue labels (includes team key)
   lineark cycles list [--limit N] [--team KEY]     List cycles
     [--active]                                     Only the active cycle
     [--around-active N]                            Active ± N neighbors

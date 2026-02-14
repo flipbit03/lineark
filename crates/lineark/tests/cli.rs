@@ -308,6 +308,17 @@ fn usage_includes_cycles_flags() {
         .stdout(predicate::str::contains("--around-active"));
 }
 
+// ── Labels ──────────────────────────────────────────────────────────────────
+
+#[test]
+fn labels_list_help_shows_team_flag() {
+    lineark()
+        .args(["labels", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"));
+}
+
 // ── Auth error handling ─────────────────────────────────────────────────────
 
 #[test]
