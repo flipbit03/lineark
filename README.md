@@ -132,7 +132,7 @@ lineark is four crates that form a clean pipeline:
 
 - **lineark-codegen** reads Linear API's GraphQL schema and generates typed Rust code into the SDK
 - **lineark-sdk** combines a small hand-written core with the generated types, queries, and mutations into a cohesive and reusable client library
-- **lineark-derive** provides `#[derive(GraphQLFields)]` — a proc macro that lets consumers define custom lean types for zero-overfetch queries
+- **lineark-derive** provides `#[derive(GraphQLFields)]` — a proc macro for custom lean types with zero overfetching (re-exported by `lineark-sdk`, no extra dependency needed)
 - **lineark** consumes the SDK as a normal library — zero GraphQL, typed method calls with custom lean types via `#[derive(GraphQLFields)]`
 
 ### The Big Picture
@@ -229,7 +229,7 @@ graph TD
 
 The key trick: `Client` is defined in hand-written `client.rs`, but codegen adds methods to it via a separate `impl Client` block in `client_impl.rs`. Rust's open `impl` blocks make this seamless — consumers see one unified `Client` type with both hand-written and generated methods.
 
-All query/mutation methods are generic over `T: DeserializeOwned + GraphQLFields`. The generated types implement `GraphQLFields` automatically (via codegen), and consumers can define custom lean structs with `#[derive(GraphQLFields)]` from `lineark-derive` to fetch only the fields they need. The `#[graphql(full_type = X)]` attribute enables compile-time validation that custom fields exist on the schema type with compatible types.
+All query/mutation methods are generic over `T: DeserializeOwned + GraphQLFields`. The generated types implement `GraphQLFields` automatically (via codegen), and consumers can define custom lean structs with `#[derive(GraphQLFields)]` to fetch only the fields they need — the derive macro is re-exported by `lineark-sdk`, so `use lineark_sdk::GraphQLFields` gives you both the trait and the macro with no extra dependency. The `#[graphql(full_type = X)]` attribute enables compile-time validation that custom fields exist on the schema type with compatible types.
 
 ### How the CLI Plugs In
 

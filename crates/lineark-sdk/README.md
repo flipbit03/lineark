@@ -88,7 +88,9 @@ All collection queries support `.first(n)`, `.last(n)`, `.after(cursor)`, `.befo
 
 ## Custom field selection
 
-All queries are generic over `T: DeserializeOwned + GraphQLFields`. By default they use the generated types (which fetch all scalar fields), but you can define custom lean structs to fetch only the fields you need. Add `#[graphql(full_type = X)]` to get compile-time validation that your fields exist on the schema type with compatible types:
+All queries are generic over `T: DeserializeOwned + GraphQLFields`. By default they use the generated types (which fetch all scalar fields), but you can define custom lean structs to fetch only the fields you need.
+
+`use lineark_sdk::GraphQLFields` gives you both the trait and the `#[derive(GraphQLFields)]` macro — no extra crate needed. Add `#[graphql(full_type = X)]` to get compile-time validation that your fields exist on the schema type with compatible types:
 
 ```rust
 use lineark_sdk::{Client, GraphQLFields};

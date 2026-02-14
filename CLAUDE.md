@@ -108,6 +108,16 @@ Before merging, run `/update-docs` to review and update all documentation (top-l
 - No "Generated with Claude Code" footers
 - Keep messages concise, focused on "why" not "what"
 
+## Versioning
+
+All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. It means "current dev". Actual versions are set dynamically at release time by the GitHub Actions release workflow (`.github/workflows/release.yml`), which:
+
+1. Extracts the version from the git tag (`v1.2.3` → `1.2.3`)
+2. Patches all `0.0.0` placeholders via `sed` (workspace version + inter-crate dep versions)
+3. Publishes in dependency order: `lineark-derive` → `lineark-sdk` → `lineark`
+
+Never manually set version numbers in Cargo.toml files. To release, just push a semver tag like `v0.1.0`.
+
 ## What NOT to do
 
 - Don't hand-edit files in `crates/lineark-sdk/src/generated/` — run codegen instead
