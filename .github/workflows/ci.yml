@@ -97,7 +97,7 @@ jobs:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
       - name: Run tests
-        run: cargo test -p lineark-sdk --features blocking
+        run: cargo test -p lineark-sdk --features blocking --test blocking
 
   build:
     name: Build (${{ matrix.name }})

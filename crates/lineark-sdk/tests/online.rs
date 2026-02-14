@@ -342,12 +342,15 @@ mod online {
         let mut matched = false;
         for i in 0..8 {
             tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 1 } else { 3 })).await;
-            let found = client
+            let found = match client
                 .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
                 .send()
                 .await
-                .unwrap();
+            {
+                Ok(v) => v,
+                Err(_) => continue, // rate-limited or transient error — retry
+            };
             matched = found
                 .nodes
                 .iter()
@@ -364,7 +367,7 @@ mod online {
             .first(5)
             .send()
             .await
-            .unwrap();
+            .expect("nonsense search should not be rate-limited");
         let false_match = not_found
             .nodes
             .iter()
@@ -402,15 +405,18 @@ mod online {
 
         // Linear's search index is async — retry a few times.
         let mut found = false;
-        for _ in 0..6 {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            let with_team = client
+        for _ in 0..8 {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let with_team = match client
                 .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
                 .team_id(&team_id)
                 .send()
                 .await
-                .unwrap();
+            {
+                Ok(v) => v,
+                Err(_) => continue, // rate-limited or transient error — retry
+            };
             found = with_team
                 .nodes
                 .iter()
@@ -422,13 +428,14 @@ mod online {
         assert!(found, "search with correct team_id should find the issue");
 
         // Search with a fake team_id — should NOT find it.
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         let with_wrong_team = client
             .search_issues::<IssueSearchResult>(&unique)
             .first(5)
             .team_id("00000000-0000-0000-0000-000000000000")
             .send()
             .await
-            .unwrap();
+            .expect("wrong-team search should not be rate-limited");
         let false_match = with_wrong_team
             .nodes
             .iter()
