@@ -143,7 +143,26 @@ mod cli_online {
         assert!(output.status.success(), "issues list should succeed");
         let json: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
-        assert!(json.is_array(), "issues list JSON should be an array");
+        let arr = json
+            .as_array()
+            .expect("issues list JSON should be an array");
+
+        // Regression: relation fields must be populated, not null (#63)
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("state").is_some_and(|v| !v.is_null()),
+                "state should be populated"
+            );
+            assert!(
+                issue.get("team").is_some_and(|v| !v.is_null()),
+                "team should be populated"
+            );
+            // assignee can legitimately be null (unassigned issues), so just check the field exists
+            assert!(
+                issue.get("assignee").is_some(),
+                "assignee field should be present"
+            );
+        }
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
@@ -164,7 +183,25 @@ mod cli_online {
         assert!(output.status.success(), "issues search should succeed");
         let json: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
-        assert!(json.is_array(), "issues search JSON should be an array");
+        let arr = json
+            .as_array()
+            .expect("issues search JSON should be an array");
+
+        // Regression: relation fields must be populated, not null (#63)
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("state").is_some_and(|v| !v.is_null()),
+                "state should be populated"
+            );
+            assert!(
+                issue.get("team").is_some_and(|v| !v.is_null()),
+                "team should be populated"
+            );
+            assert!(
+                issue.get("assignee").is_some(),
+                "assignee field should be present"
+            );
+        }
     }
 
     // ── Issues create + update + archive ─────────────────────────────────────

@@ -172,8 +172,8 @@ struct IssueRow {
     team: String,
 }
 
-impl From<&Issue> for IssueRow {
-    fn from(i: &Issue) -> Self {
+impl From<&IssueSummary> for IssueRow {
+    fn from(i: &IssueSummary) -> Self {
         Self {
             identifier: i.identifier.clone().unwrap_or_default(),
             title: i.title.clone().unwrap_or_default(),
@@ -197,8 +197,8 @@ impl From<&Issue> for IssueRow {
     }
 }
 
-impl From<&IssueSearchResult> for IssueRow {
-    fn from(i: &IssueSearchResult) -> Self {
+impl From<&SearchSummary> for IssueRow {
+    fn from(i: &SearchSummary) -> Self {
         Self {
             identifier: i.identifier.clone().unwrap_or_default(),
             title: i.title.clone().unwrap_or_default(),
@@ -220,6 +220,46 @@ impl From<&IssueSearchResult> for IssueRow {
                 .unwrap_or_default(),
         }
     }
+}
+
+// ── IssueSummary — lean type for `issues list` with nested fields ────────
+
+/// Lean issue type for list views — scalars + the nested fields we display.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase", default)]
+pub struct IssueSummary {
+    pub id: Option<String>,
+    pub identifier: Option<String>,
+    pub title: Option<String>,
+    pub priority: Option<f64>,
+    pub priority_label: Option<String>,
+    pub url: Option<String>,
+    #[graphql(nested)]
+    pub state: Option<StateRef>,
+    #[graphql(nested)]
+    pub assignee: Option<UserRef>,
+    #[graphql(nested)]
+    pub team: Option<TeamRef>,
+}
+
+/// Lean search result type for `issues search` with nested fields.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = IssueSearchResult)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SearchSummary {
+    pub id: Option<String>,
+    pub identifier: Option<String>,
+    pub title: Option<String>,
+    pub priority: Option<f64>,
+    pub priority_label: Option<String>,
+    pub url: Option<String>,
+    #[graphql(nested)]
+    pub state: Option<StateRef>,
+    #[graphql(nested)]
+    pub assignee: Option<UserRef>,
+    #[graphql(nested)]
+    pub team: Option<TeamRef>,
 }
 
 // ── IssueDetail — custom type for `issues read` with nested data ─────────
@@ -354,14 +394,14 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 .expect("valid IssueFilter");
 
             let conn = client
-                .issues::<Issue>()
+                .issues::<IssueSummary>()
                 .filter(filter)
                 .first(limit)
                 .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            let items: Vec<&Issue> = conn.nodes.iter().collect();
+            let items: Vec<&IssueSummary> = conn.nodes.iter().collect();
             print_issue_list(&items, format);
         }
         IssuesAction::Read { identifier } => {
@@ -374,7 +414,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             show_done,
         } => {
             let conn = client
-                .search_issues::<IssueSearchResult>(query)
+                .search_issues::<SearchSummary>(query)
                 .first(limit)
                 .send()
                 .await
@@ -547,7 +587,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 // TODO(phase2): query workflowStates types instead of hardcoding state names
 const DONE_STATES: &[&str] = &["Done", "Canceled", "Cancelled", "Duplicate"];
 
-fn print_issue_list(items: &[&Issue], format: Format) {
+fn print_issue_list(items: &[&IssueSummary], format: Format) {
     match format {
         Format::Json => {
             let json = serde_json::to_string_pretty(items).unwrap_or_default();
@@ -560,7 +600,7 @@ fn print_issue_list(items: &[&Issue], format: Format) {
     }
 }
 
-fn filter_done_search(items: &[IssueSearchResult], show_done: bool) -> Vec<&IssueSearchResult> {
+fn filter_done_search(items: &[SearchSummary], show_done: bool) -> Vec<&SearchSummary> {
     if show_done {
         items.iter().collect()
     } else {
@@ -578,7 +618,7 @@ fn filter_done_search(items: &[IssueSearchResult], show_done: bool) -> Vec<&Issu
     }
 }
 
-fn print_search_list(items: &[&IssueSearchResult], format: Format) {
+fn print_search_list(items: &[&SearchSummary], format: Format) {
     match format {
         Format::Json => {
             let json = serde_json::to_string_pretty(items).unwrap_or_default();
