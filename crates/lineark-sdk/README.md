@@ -85,6 +85,48 @@ let results = client.search_issues("bug")
 
 All collection queries support `.first(n)`, `.last(n)`, `.after(cursor)`, `.before(cursor)`, and `.include_archived(bool)`.
 
+## Custom field selection
+
+All queries are generic over `T: DeserializeOwned + GraphQLFields`. By default they use the generated types (which fetch all scalar fields), but you can define custom lean structs to fetch only the fields you need:
+
+```rust
+use lineark_sdk::{Client, GraphQLFields};
+use serde::Deserialize;
+
+#[derive(Deserialize, GraphQLFields)]
+#[serde(rename_all = "camelCase")]
+struct LeanIssue {
+    id: Option<String>,
+    title: Option<String>,
+}
+
+let client = Client::auto()?;
+let issues = client.issues::<LeanIssue>().first(10).send().await?;
+for issue in &issues.nodes {
+    println!("{}", issue.title.as_deref().unwrap_or("?"));
+}
+```
+
+The `#[derive(GraphQLFields)]` macro generates a `selection()` method from the struct's field names, so the query fetches exactly those fields — no overfetching. For nested objects, annotate with `#[graphql(nested)]`:
+
+```rust
+#[derive(Deserialize, GraphQLFields)]
+#[serde(rename_all = "camelCase")]
+struct IssueWithTeam {
+    id: Option<String>,
+    title: Option<String>,
+    #[graphql(nested)]
+    team: Option<LeanTeam>,
+}
+
+#[derive(Deserialize, GraphQLFields)]
+#[serde(rename_all = "camelCase")]
+struct LeanTeam {
+    id: Option<String>,
+    key: Option<String>,
+}
+```
+
 ## Mutations
 
 ```rust
@@ -171,7 +213,7 @@ All methods return `Result<T, LinearError>`. Error variants:
 - `Forbidden` — insufficient permissions
 - `RateLimited` — API rate limit hit (includes `retry_after`)
 - `InvalidInput` — bad request parameters
-- `GraphQL` — errors returned in the GraphQL response
+- `GraphQL` — errors returned in the GraphQL response (includes query name for diagnostics)
 - `Network` — connection/transport failures
 - `HttpError` — non-200 responses not covered above
 - `MissingData` — expected data path not found in response
