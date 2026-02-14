@@ -10,7 +10,8 @@ use crate::output::{self, Format};
 #[serde(rename_all = "camelCase", default)]
 pub struct ViewerRow {
     pub id: String,
-    #[tabled(rename = "name")]
+    pub name: String,
+    #[tabled(rename = "displayName")]
     pub display_name: String,
     pub email: String,
     pub active: bool,
@@ -40,6 +41,6 @@ pub async fn run(client: &Client, format: Format) -> anyhow::Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    output::print_table(&[viewer], format);
+    output::print_one(&viewer, format);
     Ok(())
 }
