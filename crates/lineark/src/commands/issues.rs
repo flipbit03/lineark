@@ -3,13 +3,17 @@ use lineark_sdk::generated::inputs::{
     IssueCreateInput, IssueFilter, IssueUpdateInput, WorkflowStateFilter,
 };
 use lineark_sdk::generated::types::{
-    Issue, IssueRelation, IssueRelationConnection, IssueSearchResult, User, WorkflowState,
+    Comment, CommentConnection, Issue, IssueConnection, IssueRelation, IssueRelationConnection,
+    IssueSearchResult, User, WorkflowState,
 };
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
-use super::helpers::{resolve_issue_id, resolve_team_id};
+use super::helpers::{
+    resolve_cycle_id, resolve_issue_id, resolve_label_ids, resolve_project_id, resolve_team_id,
+    resolve_user_id,
+};
 use crate::output::{self, Format};
 
 /// Manage issues.
@@ -24,9 +28,9 @@ pub enum IssuesAction {
     /// List all issues across the workspace (all teams, statuses, and assignees), newest first. Use --mine to show only your issues. Done/canceled issues are hidden by default.
     List {
         /// Maximum number of issues to return (max 250).
-        #[arg(long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
+        #[arg(short = 'l', long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
         limit: i64,
-        /// Filter by team key (e.g., E) or team UUID.
+        /// Filter by team key, name, or UUID.
         #[arg(long)]
         team: Option<String>,
         /// Show only issues assigned to the authenticated user.
@@ -36,7 +40,7 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         show_done: bool,
     },
-    /// Show full details for a single issue, including assignee, state, labels, and description.
+    /// Show full details for a single issue, including assignee, state, labels, description, sub-issues, and comments.
     Read {
         /// Issue identifier (e.g., E-929) or UUID.
         identifier: String,
@@ -46,11 +50,20 @@ pub enum IssuesAction {
         /// Search query text.
         query: String,
         /// Maximum number of results (max 250).
-        #[arg(long, default_value = "25", value_parser = clap::value_parser!(i64).range(1..=250))]
+        #[arg(short = 'l', long, default_value = "25", value_parser = clap::value_parser!(i64).range(1..=250))]
         limit: i64,
         /// Include done and canceled issues (hidden by default).
         #[arg(long, default_value = "false")]
         show_done: bool,
+        /// Filter by team key, name, or UUID.
+        #[arg(long)]
+        team: Option<String>,
+        /// Filter by assignee name, display name, or UUID.
+        #[arg(long)]
+        assignee: Option<String>,
+        /// Filter by status names (comma-separated).
+        #[arg(long, value_delimiter = ',')]
+        status: Option<Vec<String>>,
     },
     /// Create a new issue. Returns the created issue.
     ///
@@ -61,27 +74,33 @@ pub enum IssuesAction {
     Create {
         /// Issue title.
         title: String,
-        /// Team key (e.g., ENG) or UUID. Required.
+        /// Team key, name, or UUID. Required.
         #[arg(long)]
         team: String,
-        /// Assignee user UUID.
+        /// Assignee: user name, display name, or UUID.
         #[arg(long)]
         assignee: Option<String>,
-        /// Comma-separated label UUIDs.
+        /// Comma-separated label names or UUIDs.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
         priority: Option<i64>,
         /// Issue description (markdown).
-        #[arg(long)]
+        #[arg(short = 'd', long)]
         description: Option<String>,
         /// Parent issue identifier (e.g., ENG-123) or UUID.
         #[arg(long)]
         parent: Option<String>,
         /// Initial status name (resolved against team's workflow states).
-        #[arg(long)]
+        #[arg(short = 's', long)]
         status: Option<String>,
+        /// Project name or UUID.
+        #[arg(long)]
+        project: Option<String>,
+        /// Cycle name, number, or UUID (resolved within the team).
+        #[arg(long)]
+        cycle: Option<String>,
     },
     /// Archive an issue.
     ///
@@ -115,18 +134,18 @@ pub enum IssuesAction {
     ///
     /// Examples:
     ///   lineark issues update ENG-123 --status "In Progress"
-    ///   lineark issues update ENG-123 --priority 1 --assignee USER-UUID
-    ///   lineark issues update ENG-123 --labels LABEL1,LABEL2 --label-by adding
+    ///   lineark issues update ENG-123 --priority 1 --assignee "John Doe"
+    ///   lineark issues update ENG-123 --labels Bug,Frontend --label-by adding
     Update {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
         /// New status name (resolved against the issue's team workflow states).
-        #[arg(long)]
+        #[arg(short = 's', long)]
         status: Option<String>,
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
         priority: Option<i64>,
-        /// Comma-separated label UUIDs. Behavior depends on --label-by.
+        /// Comma-separated label names or UUIDs. Behavior depends on --label-by.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
         /// How to apply --labels: "replacing" (default), "adding", or "removing".
@@ -135,18 +154,27 @@ pub enum IssuesAction {
         /// Remove all labels from the issue.
         #[arg(long, default_value = "false")]
         clear_labels: bool,
-        /// Assignee user UUID.
+        /// Assignee: user name, display name, or UUID.
         #[arg(long)]
         assignee: Option<String>,
         /// Parent issue identifier (e.g., ENG-123) or UUID.
         #[arg(long)]
         parent: Option<String>,
+        /// Remove the parent issue relationship.
+        #[arg(long, default_value = "false", conflicts_with = "parent")]
+        clear_parent: bool,
         /// New title.
-        #[arg(long)]
+        #[arg(short = 't', long)]
         title: Option<String>,
         /// New description (markdown).
-        #[arg(long)]
+        #[arg(short = 'd', long)]
         description: Option<String>,
+        /// Project name or UUID.
+        #[arg(long)]
+        project: Option<String>,
+        /// Cycle name, number, or UUID (resolved within the team).
+        #[arg(long)]
+        cycle: Option<String>,
     },
 }
 
@@ -296,6 +324,10 @@ pub struct IssueDetail {
     pub team: Option<TeamRef>,
     #[graphql(nested)]
     pub relations: Option<RelationConnection>,
+    #[graphql(nested)]
+    pub children: Option<ChildrenConnection>,
+    #[graphql(nested)]
+    pub comments: Option<CommentsConnection>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
@@ -349,6 +381,44 @@ pub struct RelatedIssueRef {
     pub id: Option<String>,
     pub identifier: Option<String>,
     pub title: Option<String>,
+}
+
+// ── Sub-issues (children) and comments for `issues read` ─────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = IssueConnection)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ChildrenConnection {
+    #[graphql(nested)]
+    pub nodes: Vec<ChildIssueRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ChildIssueRef {
+    pub identifier: Option<String>,
+    pub title: Option<String>,
+    #[graphql(nested)]
+    pub state: Option<StateRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = CommentConnection)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CommentsConnection {
+    #[graphql(nested)]
+    pub nodes: Vec<CommentSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = Comment)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CommentSummary {
+    pub body: Option<String>,
+    #[graphql(nested)]
+    pub user: Option<UserRef>,
+    pub created_at: Option<String>,
 }
 
 /// Lean result type for issue mutations.
@@ -420,13 +490,40 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             query,
             limit,
             show_done,
+            team,
+            assignee,
+            status,
         } => {
-            let conn = client
-                .search_issues::<SearchSummary>(query)
-                .first(limit)
-                .send()
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            let mut builder = client.search_issues::<SearchSummary>(query).first(limit);
+
+            if let Some(ref team_key) = team {
+                let team_id = resolve_team_id(client, team_key).await?;
+                builder = builder.team_id(team_id);
+            }
+
+            // Build IssueFilter for assignee and/or status.
+            let mut filter_map = serde_json::Map::new();
+            if let Some(ref assignee_val) = assignee {
+                let user_id = resolve_user_id(client, assignee_val).await?;
+                filter_map.insert(
+                    "assignee".into(),
+                    serde_json::json!({ "id": { "eq": user_id } }),
+                );
+            }
+            if let Some(ref status_names) = status {
+                filter_map.insert(
+                    "state".into(),
+                    serde_json::json!({ "name": { "in": status_names } }),
+                );
+            }
+            if !filter_map.is_empty() {
+                let filter: IssueFilter =
+                    serde_json::from_value(serde_json::Value::Object(filter_map))
+                        .expect("valid IssueFilter");
+                builder = builder.filter(filter);
+            }
+
+            let conn = builder.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
             let items = filter_done_search(&conn.nodes, show_done);
             print_search_list(&items, format);
@@ -440,8 +537,20 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             description,
             parent,
             status,
+            project,
+            cycle,
         } => {
             let team_id = resolve_team_id(client, &team).await?;
+
+            let assignee_id = match assignee {
+                Some(ref a) => Some(resolve_user_id(client, a).await?),
+                None => None,
+            };
+
+            let label_ids = match labels {
+                Some(ref l) => Some(resolve_label_ids(client, l, Some(&team_id)).await?),
+                None => None,
+            };
 
             let state_id = match status {
                 Some(ref name) => Some(resolve_state_id(client, &team_id, name).await?),
@@ -453,15 +562,27 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 None => None,
             };
 
+            let project_id = match project {
+                Some(ref p) => Some(resolve_project_id(client, p).await?),
+                None => None,
+            };
+
+            let cycle_id = match cycle {
+                Some(ref c) => Some(resolve_cycle_id(client, c, &team_id).await?),
+                None => None,
+            };
+
             let input = IssueCreateInput {
                 title: Some(title),
                 team_id: Some(team_id),
-                assignee_id: assignee,
-                label_ids: labels,
+                assignee_id,
+                label_ids,
                 priority,
                 description,
                 parent_id,
                 state_id,
+                project_id,
+                cycle_id,
                 ..Default::default()
             };
 
@@ -515,8 +636,11 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             clear_labels,
             assignee,
             parent,
+            clear_parent,
             title,
             description,
+            project,
+            cycle,
         } => {
             if status.is_none()
                 && priority.is_none()
@@ -524,45 +648,79 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 && !clear_labels
                 && assignee.is_none()
                 && parent.is_none()
+                && !clear_parent
                 && title.is_none()
                 && description.is_none()
+                && project.is_none()
+                && cycle.is_none()
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --status, --priority, --assignee, --labels, --title, --description, or --parent to specify changes."
+                    "No update fields provided. Use --status, --priority, --assignee, --labels, --title, --description, --parent, --project, or --cycle to specify changes."
                 ));
             }
 
             let issue_id = resolve_issue_id(client, &identifier).await?;
 
-            // For status resolution, we need the team ID. Read the issue to get it.
+            // Read the issue to get the team ID (needed for status/labels/cycle resolution).
+            let needs_team = status.is_some() || labels.is_some() || cycle.is_some();
+            let issue_detail = if needs_team {
+                Some(read_issue(client, &identifier).await?)
+            } else {
+                None
+            };
+            let team_id = issue_detail
+                .as_ref()
+                .and_then(|d| d.team.as_ref())
+                .and_then(|t| t.id.clone());
+
             let state_id = match status {
                 Some(ref name) => {
-                    let issue_detail = read_issue(client, &identifier).await?;
-                    let team_id = issue_detail
-                        .team
-                        .as_ref()
-                        .and_then(|t| t.id.clone())
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("Could not determine team for issue '{}'", identifier)
-                        })?;
-                    Some(resolve_state_id(client, &team_id, name).await?)
+                    let tid = team_id.as_deref().ok_or_else(|| {
+                        anyhow::anyhow!("Could not determine team for issue '{}'", identifier)
+                    })?;
+                    Some(resolve_state_id(client, tid, name).await?)
                 }
                 None => None,
             };
 
-            let parent_id = match parent {
-                Some(ref p) => Some(resolve_issue_id(client, p).await?),
+            let assignee_id = match assignee {
+                Some(ref a) => Some(resolve_user_id(client, a).await?),
+                None => None,
+            };
+
+            let parent_id = if clear_parent {
+                Some(String::new())
+            } else {
+                match parent {
+                    Some(ref p) => Some(resolve_issue_id(client, p).await?),
+                    None => None,
+                }
+            };
+
+            let project_id = match project {
+                Some(ref p) => Some(resolve_project_id(client, p).await?),
+                None => None,
+            };
+
+            let cycle_id = match cycle {
+                Some(ref c) => {
+                    let tid = team_id.as_deref().ok_or_else(|| {
+                        anyhow::anyhow!("Could not determine team for issue '{}'", identifier)
+                    })?;
+                    Some(resolve_cycle_id(client, c, tid).await?)
+                }
                 None => None,
             };
 
             // Build label fields based on mode.
             let (label_ids, added_label_ids, removed_label_ids) = if clear_labels {
                 (Some(vec![]), None, None)
-            } else if let Some(ids) = labels {
+            } else if let Some(raw_labels) = labels {
+                let resolved = resolve_label_ids(client, &raw_labels, team_id.as_deref()).await?;
                 match label_by {
-                    LabelMode::Replacing => (Some(ids), None, None),
-                    LabelMode::Adding => (None, Some(ids), None),
-                    LabelMode::Removing => (None, None, Some(ids)),
+                    LabelMode::Replacing => (Some(resolved), None, None),
+                    LabelMode::Adding => (None, Some(resolved), None),
+                    LabelMode::Removing => (None, None, Some(resolved)),
                 }
             } else {
                 (None, None, None)
@@ -571,13 +729,15 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             let input = IssueUpdateInput {
                 title,
                 description,
-                assignee_id: assignee,
+                assignee_id,
                 priority,
                 state_id,
                 parent_id,
                 label_ids,
                 added_label_ids,
                 removed_label_ids,
+                project_id,
+                cycle_id,
                 ..Default::default()
             };
 

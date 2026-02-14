@@ -40,6 +40,8 @@ enum Command {
     Comments(commands::comments::CommentsCmd),
     /// Manage documents.
     Documents(commands::documents::DocumentsCmd),
+    /// Manage project milestones.
+    ProjectMilestones(commands::milestones::MilestonesCmd),
     /// Manage file embeds (download/upload).
     Embeds(commands::embeds::EmbedsCmd),
     /// Print a compact LLM-friendly command reference.
@@ -81,6 +83,7 @@ async fn main() {
         Command::Comments(cmd) => commands::comments::run(cmd, &client, format).await,
         Command::Documents(cmd) => commands::documents::run(cmd, &client, format).await,
         Command::Embeds(cmd) => commands::embeds::run(cmd, &client, format).await,
+        Command::ProjectMilestones(cmd) => commands::milestones::run(cmd, &client, format).await,
         Command::Usage => unreachable!(),
     };
 

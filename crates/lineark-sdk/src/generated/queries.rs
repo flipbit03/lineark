@@ -489,6 +489,93 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueSearc
             .await
     }
 }
+/// Query builder: All milestones for the project.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct ProjectMilestonesQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<ProjectMilestoneFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>>
+    ProjectMilestonesQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: ProjectMilestoneFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "ProjectMilestones",
+            "$filter: ProjectMilestoneFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "projectMilestones",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "projectMilestones")
+            .await
+    }
+}
 /// Query builder: All issues.
 ///
 /// Full type: [`Issue`](super::types::Issue)
@@ -1053,6 +1140,41 @@ pub fn search_issues<'a, T>(
         team_id: None,
         _marker: std::marker::PhantomData,
     }
+}
+/// All milestones for the project.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub fn project_milestones<'a, T>(client: &'a Client) -> ProjectMilestonesQueryBuilder<'a, T> {
+    ProjectMilestonesQueryBuilder {
+        client,
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// One specific project milestone.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "ProjectMilestone", "$id: String!", "projectMilestone", "id: $id", selection
+    );
+    client
+        .execute::<T>(&query, variables, "projectMilestone")
+        .await
 }
 /// All issues.
 ///
