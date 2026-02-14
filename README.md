@@ -177,8 +177,8 @@ The codegen crate parses Linear's GraphQL schema (vendored as `schema.graphql`) 
 
 ```mermaid
 graph TD
-    SDL["schema.graphql<br/><i>419 objects · 71 enums · 340 inputs<br/>145 queries · 345 mutations</i>"]
-    TOML["operations.toml<br/><i>allowlist: 17 queries, 12 mutations</i>"]
+    SDL["schema.graphql<br/><i>Linear's GraphQL SDL</i>"]
+    TOML["operations.toml<br/><i>allowlist</i>"]
 
     SDL & TOML --> Parse["parser::parse()<br/><i>apollo-parser CST → simplified structs</i>"]
 
