@@ -34,6 +34,7 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
     let conn = client
         .search_issues::<IssueSearchResult>(identifier)
         .first(5)
+        .include_archived(true)
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;

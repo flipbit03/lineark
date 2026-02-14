@@ -381,6 +381,93 @@ mod cli_online {
         delete_issue(&issue_id);
     }
 
+    // ── Issues unarchive by human identifier ───────────────────────────────────
+    // Regression test: resolve_issue_id must include archived issues in search,
+    // otherwise `lineark issues unarchive CAD-XXXX` fails with "not found".
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_unarchive_by_human_identifier() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] unarchive by identifier",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"].as_str().unwrap().to_string();
+        let identifier = created["identifier"]
+            .as_str()
+            .expect("created issue should have identifier (e.g. CAD-1234)")
+            .to_string();
+
+        // Archive the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "archive",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "archive should succeed");
+
+        // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
+        // This is the regression case: search_issues must include_archived(true)
+        // for resolve_issue_id to find archived issues.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "unarchive",
+                &identifier,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "unarchive by human identifier should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            unarchived.get("id").is_some(),
+            "unarchive response should contain id"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
+
     // ── Issues delete ──────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
