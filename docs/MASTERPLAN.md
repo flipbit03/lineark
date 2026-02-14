@@ -606,53 +606,25 @@ and ensure all tests pass."
 
 **Goal:** Production-ready distribution and developer experience.
 
-**cargo-dist setup (#29):**
-- [ ] Run `cargo dist init` in workspace root (#29)
-- [ ] Configure targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, aarch64-apple-darwin (#29)
-- [ ] Configure installers: shell, homebrew (#29)
-- [ ] Configure custom runner for aarch64 linux: `ubuntu-24.04-arm` (#29)
-- [ ] Verify generated `release.yml` workflow builds all targets (#29)
-- [ ] Test a release end-to-end (tag, build, GitHub Release with artifacts) (#29)
-
-**release-plz setup (#30):**
-- [ ] Add `release-plz` GitHub Action workflow (#30)
-- [ ] Configure to publish `lineark-sdk` before `lineark` (dependency ordering) (#30)
-- [ ] Configure to create git tags that trigger cargo-dist (#30)
-- [ ] Test automated version bump and release PR flow (#30)
-
-**Schema update automation (#31):**
-- [ ] Write `schema-update.yml` cron workflow (weekly) (#31)
-- [ ] Implement GraphQL introspection query fetch step (#31)
-- [ ] Diff against checked-in `schema/schema.graphql` (#31)
-- [ ] If changed: run codegen, build, test, open PR (#31)
-- [ ] Test the workflow end-to-end (#31)
-
-**Homebrew (#32):**
-- [ ] Create `cadu/homebrew-tap` repository (#32)
-- [ ] Configure cargo-dist to publish formula there (#32)
-- [ ] Verify `brew install cadu/tap/lineark` works (#32)
-
 **Shell completions (#33):**
 - [ ] Enable clap shell completion generation (bash, zsh, fish) (#33)
 - [ ] Include completions in binary releases or document `lineark completions <shell>` command (#33)
 
 **Documentation (#34):**
-- [ ] Write comprehensive README.md with: project overview, installation methods, quick start, SDK usage examples, CLI usage examples (#34)
-- [ ] Ensure all CLI commands have thorough `--help` text (#34)
+- [x] Write comprehensive README.md with: project overview, installation methods, quick start, SDK usage examples, CLI usage examples (#34)
+- [x] Ensure all CLI commands have thorough `--help` text (#34)
 
 **CI workflow (#35):**
 - [x] Create `.github/workflows/ci.yml` with fmt, clippy, test, build (#35)
 
 **Publish (#36):**
-- [ ] Publish `lineark-sdk` to crates.io (#36)
-- [ ] Publish `lineark` to crates.io (#36)
-- [ ] Create first GitHub Release with binaries (#36)
+- [x] Publish `lineark-sdk` to crates.io (#36)
+- [x] Publish `lineark` to crates.io (#36)
+- [x] Create first GitHub Release with binaries (#36)
 
 **Phase 4 acceptance criteria (#37):**
-- [ ] `brew install cadu/tap/lineark` works on macOS (#37)
-- [ ] `curl | sh` installer works on Linux (#37)
-- [ ] `cargo install lineark` works (#37)
-- [ ] Weekly schema update cron opens PRs when Linear's schema changes (#37)
+- [x] `curl | sh` installer works on Linux and macOS (#37)
+- [x] `cargo install lineark` works (#37)
 - [ ] Shell completions available for bash, zsh, fish (#37)
 
 ---
