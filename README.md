@@ -46,29 +46,36 @@ cargo install lineark
 
 ### Usage
 
+Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names.
+
 | Command | Description |
 |---------|-------------|
 | `lineark whoami` | Show authenticated user |
 | `lineark teams list` | List all teams |
 | `lineark users list [--active]` | List users |
 | `lineark projects list` | List all projects |
-| `lineark labels list` | List issue labels |
-| `lineark cycles list [--limit N] [--team KEY]`<br>`[--active]`<br>`[--around-active N]` | List cycles<br>Only the active cycle<br>Active ± N neighbors |
+| `lineark labels list [--team KEY]` | List issue labels |
+| `lineark cycles list [-l N] [--team KEY]`<br>`[--active]`<br>`[--around-active N]` | List cycles<br>Only the active cycle<br>Active ± N neighbors |
 | `lineark cycles read <ID> [--team KEY]` | Read cycle (UUID, name, or number) |
-| `lineark issues list [--limit N] [--team KEY]`<br>`[--mine]`<br>`[--show-done]` | Active issues, newest first<br>Only issues assigned to me<br>Include done/canceled issues |
-| `lineark issues read <IDENTIFIER>` | Full issue detail (e.g., E-929) |
-| `lineark issues search <QUERY> [--limit N]`<br>`[--show-done]` | Full-text search<br>Include done/canceled results |
-| `lineark issues create <TITLE> --team KEY`<br>`[--priority 0-4] [--assignee ID]`<br>`[--labels ID,...] [--description TEXT]`<br>`[--status NAME] [--parent ID]` | Create an issue<br>0=none 1=urgent 2=high 3=medium 4=low<br>Comma-separated label UUIDs<br>Status resolved against team states |
-| `lineark issues update <IDENTIFIER>`<br>`[--status NAME] [--priority 0-4]`<br>`[--assignee ID] [--parent ID]`<br>`[--labels ID,...] [--label-by adding\|replacing\|removing]`<br>`[--clear-labels] [--title TEXT] [--description TEXT]` | Update an issue<br>Status resolved against team states<br>User UUID or issue identifier |
+| `lineark issues list [-l N] [--team KEY]`<br>`[--mine]`<br>`[--show-done]` | Active issues, newest first<br>Only issues assigned to me<br>Include done/canceled issues |
+| `lineark issues read <IDENTIFIER>` | Full issue detail incl. sub-issues & comments |
+| `lineark issues search <QUERY> [-l N]`<br>`[--team KEY] [--assignee NAME-OR-ID]`<br>`[--status NAME,...] [--show-done]` | Full-text search<br>Filter by team, assignee, status<br>Comma-separated status names |
+| `lineark issues create <TITLE> --team KEY`<br>`[-p 0-4] [--assignee NAME-OR-ID]`<br>`[--labels NAME,...] [-d TEXT]`<br>`[-s NAME] [--parent ID]`<br>`[--project NAME-OR-ID] [--cycle NAME-OR-ID]` | Create an issue<br>0=none 1=urgent 2=high 3=medium 4=low<br>Label names (team-scoped)<br>Status resolved against team states<br>Project and cycle assignment |
+| `lineark issues update <IDENTIFIER>`<br>`[-s NAME] [-p 0-4] [--assignee NAME-OR-ID]`<br>`[--labels NAME,...] [--label-by adding\|replacing\|removing]`<br>`[--clear-labels] [-t TEXT] [-d TEXT]`<br>`[--parent ID] [--clear-parent]`<br>`[--project NAME-OR-ID] [--cycle NAME-OR-ID]` | Update an issue<br>Status, priority, assignee<br>Label management<br>Title, description<br>Set or remove parent<br>Project, cycle |
 | `lineark issues archive <IDENTIFIER>` | Archive an issue |
 | `lineark issues unarchive <IDENTIFIER>` | Unarchive a previously archived issue |
 | `lineark issues delete <IDENTIFIER>`<br>`[--permanently]` | Delete (trash) an issue<br>Permanently delete instead of trashing |
 | `lineark comments create <ISSUE-ID> --body TEXT` | Comment on an issue |
-| `lineark documents list [--limit N]` | List documents |
+| `lineark documents list [--limit N]`<br>`[--project NAME-OR-ID] [--issue ID]` | List documents (lean output)<br>Filter by project or issue |
 | `lineark documents read <ID>` | Read document (includes content) |
-| `lineark documents create --title TEXT`<br>`[--content TEXT] [--project ID] [--issue ID]` | Create a document |
+| `lineark documents create --title TEXT`<br>`[--content TEXT] [--project NAME-OR-ID] [--issue ID]` | Create a document |
 | `lineark documents update <ID>`<br>`[--title TEXT] [--content TEXT]` | Update a document |
 | `lineark documents delete <ID>` | Delete (trash) a document |
+| `lineark project-milestones list --project NAME` | List milestones for a project |
+| `lineark project-milestones read <ID> [--project NAME]` | Read a milestone (UUID or name) |
+| `lineark project-milestones create <NAME>`<br>`--project NAME [--target-date DATE]` | Create a milestone |
+| `lineark project-milestones update <ID>`<br>`[--name TEXT] [--target-date DATE]` | Update a milestone |
+| `lineark project-milestones delete <ID>` | Delete a milestone |
 | `lineark embeds upload <FILE> [--public]` | Upload file, returns asset URL |
 | `lineark embeds download <URL>`<br>`[--output PATH] [--overwrite]` | Download a file by URL |
 | `lineark usage` | Compact command reference |
@@ -264,7 +271,7 @@ sequenceDiagram
 Each CLI command module follows the same pattern:
 
 1. Parse command-line args
-2. Resolve human-friendly identifiers to UUIDs (team keys, issue identifiers)
+2. Resolve human-friendly names to UUIDs (teams, users, labels, projects, cycles, issues)
 3. Call SDK builder methods
 4. Format output (tables for terminal, JSON when piped)
 

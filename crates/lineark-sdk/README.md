@@ -82,6 +82,8 @@ let results = client.search_issues::<IssueSearchResult>("bug")
 | `document(id)` | `Document` | Get document by ID |
 | `issue_relations()` | `Connection<IssueRelation>` | List issue relations |
 | `issue_relation(id)` | `IssueRelation` | Get issue relation by ID |
+| `project_milestones()` | `Connection<ProjectMilestone>` | List project milestones |
+| `project_milestone(id)` | `ProjectMilestone` | Get project milestone by ID |
 | `workflow_states()` | `Connection<WorkflowState>` | List workflow states |
 
 All collection queries support `.first(n)`, `.last(n)`, `.after(cursor)`, `.before(cursor)`, and `.include_archived(bool)`.
@@ -169,6 +171,9 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `document_create(input)` | Create a document |
 | `document_update(input, id)` | Update a document |
 | `document_delete(id)` | Delete a document |
+| `project_milestone_create(input)` | Create a project milestone |
+| `project_milestone_update(input, id)` | Update a project milestone |
+| `project_milestone_delete(id)` | Delete a project milestone |
 | `issue_relation_create(override_created_at, input)` | Create an issue relation |
 | `file_upload(meta, public, size, type, name)` | Request a signed upload URL |
 | `image_upload_from_url(url)` | Upload image from URL |
