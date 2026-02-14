@@ -4,7 +4,8 @@
 //! When the token file is missing, tests are automatically skipped with a message.
 
 use assert_cmd::Command;
-use lineark_sdk::generated::types::{Issue, IssueRelation};
+use lineark_sdk::generated::inputs::ProjectCreateInput;
+use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -1734,24 +1735,18 @@ mod cli_online {
         let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let team_id = teams[0]["id"].as_str().unwrap().to_string();
 
-        // Create a project via raw GraphQL (projectCreate is not in operations.toml).
+        // Create a test project via the SDK.
         let client = Client::from_token(api_token()).unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let payload: serde_json::Value = rt.block_on(async {
-            client
-                .execute(
-                    "mutation($input: ProjectCreateInput!) { projectCreate(input: $input) { project { id name } } }",
-                    serde_json::json!({ "input": { "name": "[test] milestones CRUD project", "teamIds": [team_id] } }),
-                    "projectCreate",
-                )
-                .await
-                .unwrap()
+        let project: Project = rt.block_on(async {
+            let input = ProjectCreateInput {
+                name: Some("[test] milestones CRUD project".to_string()),
+                team_ids: Some(vec![team_id]),
+                ..Default::default()
+            };
+            client.project_create::<Project>(None, input).await.unwrap()
         });
-        let project = payload
-            .get("project")
-            .expect("should have project field")
-            .clone();
-        let project_id = project["id"].as_str().unwrap().to_string();
+        let project_id = project.id.as_ref().unwrap().to_string();
 
         // Create a milestone via CLI (use project_id to avoid ambiguity with stale data).
         let output = lineark()
@@ -1885,16 +1880,9 @@ mod cli_online {
             "milestone delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
 
-        // Clean up: delete the project via raw GraphQL.
+        // Clean up: delete the test project.
         rt.block_on(async {
-            let _: serde_json::Value = client
-                .execute(
-                    "mutation($id: String!) { projectDelete(id: $id) { success } }",
-                    serde_json::json!({ "id": project_id }),
-                    "projectDelete",
-                )
-                .await
-                .unwrap();
+            client.project_delete::<Project>(project_id).await.unwrap();
         });
     }
 

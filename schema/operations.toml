@@ -43,3 +43,6 @@ issueRelationCreate = true
 projectMilestoneCreate = true
 projectMilestoneUpdate = true
 projectMilestoneDelete = true
+projectCreate = true
+projectUpdate = true
+projectDelete = true

@@ -49,6 +49,65 @@ pub async fn image_upload_from_url(
         .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
         .await
 }
+/// Creates a new project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    slack_channel_name: Option<String>,
+    input: ProjectCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "slackChannelName" : slack_channel_name, "input" : input }
+    );
+    let query = String::from(
+        "mutation ProjectCreate($slackChannelName: String, $input: ProjectCreateInput!) { projectCreate(slackChannelName: $slackChannelName, input: $input) { success project { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectCreate", "project")
+        .await
+}
+/// Updates a project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    input: ProjectUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation ProjectUpdate($input: ProjectUpdateInput!, $id: String!) { projectUpdate(input: $input, id: $id) { success project { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectUpdate", "project")
+        .await
+}
+/// Deletes (trashes) a project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_delete<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation ProjectDelete($id: String!) { projectDelete(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectDelete", "entity")
+        .await
+}
 /// Creates a new project milestone.
 ///
 /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)

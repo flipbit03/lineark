@@ -182,6 +182,44 @@ impl Client {
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
+    /// Creates a new project.
+    ///
+    /// Full type: [`Project`](super::types::Project)
+    pub async fn project_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+    >(
+        &self,
+        slack_channel_name: Option<String>,
+        input: ProjectCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::project_create::<T>(self, slack_channel_name, input).await
+    }
+    /// Updates a project.
+    ///
+    /// Full type: [`Project`](super::types::Project)
+    pub async fn project_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+    >(
+        &self,
+        input: ProjectUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::project_update::<T>(self, input, id).await
+    }
+    /// Deletes (trashes) a project.
+    ///
+    /// Full type: [`Project`](super::types::Project)
+    pub async fn project_delete<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::project_delete::<T>(self, id).await
+    }
     /// Creates a new project milestone.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
