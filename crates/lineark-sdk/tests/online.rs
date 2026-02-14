@@ -114,7 +114,8 @@ mod online {
     async fn projects_returns_connection() {
         let client = test_client();
         let conn = client.projects::<Project>().first(10).send().await.unwrap();
-        assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+        // Connection should deserialize; verify page_info is present.
+        let _ = conn.page_info;
     }
 
     // ── Issues ──────────────────────────────────────────────────────────────
@@ -182,7 +183,7 @@ mod online {
     async fn search_issues_returns_connection() {
         let client = test_client();
         let conn = client
-            .search_issues::<Issue>("test")
+            .search_issues::<IssueSearchResult>("test")
             .first(5)
             .send()
             .await
@@ -334,18 +335,15 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client
-            .issue_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let issue_id = entity["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Linear's search index is async — retry with backoff.
         let mut matched = false;
         for i in 0..8 {
             tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 1 } else { 3 })).await;
             let found = client
-                .search_issues::<Issue>(&unique)
+                .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
                 .send()
                 .await
@@ -362,7 +360,7 @@ mod online {
 
         // Search for nonsense — should NOT find it.
         let not_found = client
-            .search_issues::<Issue>("xyzzy_nonexistent_99999")
+            .search_issues::<IssueSearchResult>("xyzzy_nonexistent_99999")
             .first(5)
             .send()
             .await
@@ -378,7 +376,7 @@ mod online {
 
         // Clean up.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -399,18 +397,15 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client
-            .issue_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let issue_id = entity["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Linear's search index is async — retry a few times.
         let mut found = false;
         for _ in 0..6 {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             let with_team = client
-                .search_issues::<Issue>(&unique)
+                .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
                 .team_id(&team_id)
                 .send()
@@ -428,7 +423,7 @@ mod online {
 
         // Search with a fake team_id — should NOT find it.
         let with_wrong_team = client
-            .search_issues::<Issue>(&unique)
+            .search_issues::<IssueSearchResult>(&unique)
             .first(5)
             .team_id("00000000-0000-0000-0000-000000000000")
             .send()
@@ -445,7 +440,7 @@ mod online {
 
         // Clean up.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -507,16 +502,13 @@ mod online {
             priority: Some(4), // Low
             ..Default::default()
         };
-        let entity = client
-            .issue_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let issue_id = entity.get("id").and_then(|v| v.as_str()).unwrap();
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
         assert!(!issue_id.is_empty());
 
         // Permanently delete the issue to keep the workspace clean.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id.to_string())
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -537,15 +529,8 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client
-            .issue_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let issue_id = entity
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .to_string();
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Update the issue.
         let update_input = IssueUpdateInput {
@@ -554,15 +539,15 @@ mod online {
             ..Default::default()
         };
         let updated_entity = client
-            .issue_update::<serde_json::Value>(update_input, issue_id.clone())
+            .issue_update::<Issue>(update_input, issue_id.clone())
             .await
             .unwrap();
-        // Value only selects "id" — verify it's present.
-        assert!(updated_entity.get("id").and_then(|v| v.as_str()).is_some());
+        // Verify the returned entity has an id.
+        assert!(updated_entity.id.is_some());
 
         // Clean up: permanently delete.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -583,31 +568,24 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client
-            .issue_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let issue_id = entity
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .to_string();
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Archive the issue — success is verified by not returning an error.
         client
-            .issue_archive::<serde_json::Value>(None, issue_id.clone())
+            .issue_archive::<Issue>(None, issue_id.clone())
             .await
             .unwrap();
 
         // Unarchive the issue.
         client
-            .issue_unarchive::<serde_json::Value>(issue_id.clone())
+            .issue_unarchive::<Issue>(issue_id.clone())
             .await
             .unwrap();
 
         // Clean up: permanently delete.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -628,15 +606,8 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client
-            .issue_create::<serde_json::Value>(issue_input)
-            .await
-            .unwrap();
-        let issue_id = issue_entity
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .to_string();
+        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_id = issue_entity.id.clone().unwrap();
 
         // Create a comment.
         let comment_input = CommentCreateInput {
@@ -645,14 +616,14 @@ mod online {
             ..Default::default()
         };
         let comment_entity = client
-            .comment_create::<serde_json::Value>(comment_input)
+            .comment_create::<Comment>(comment_input)
             .await
             .unwrap();
-        assert!(comment_entity.get("id").and_then(|v| v.as_str()).is_some());
+        assert!(comment_entity.id.is_some());
 
         // Clean up: permanently delete the issue.
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .issue_delete::<Issue>(Some(true), issue_id)
             .await
             .unwrap();
     }
@@ -669,7 +640,7 @@ mod online {
             .await
             .unwrap();
         // Connection should deserialize; may be empty if workspace has no docs.
-        assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+        let _ = conn.page_info;
         for doc in &conn.nodes {
             assert!(doc.id.is_some());
         }
@@ -692,15 +663,8 @@ mod online {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let doc_entity = client
-            .document_create::<serde_json::Value>(input)
-            .await
-            .unwrap();
-        let doc_id = doc_entity
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap()
-            .to_string();
+        let doc_entity = client.document_create::<Document>(input).await.unwrap();
+        let doc_id = doc_entity.id.clone().unwrap();
         assert!(!doc_id.is_empty());
 
         // Read the document by ID.
@@ -717,17 +681,14 @@ mod online {
             content: Some("Updated content.".to_string()),
             ..Default::default()
         };
-        // Value only selects "id" — just verify the update succeeded.
+        // Just verify the update succeeded.
         client
-            .document_update::<serde_json::Value>(update_input, doc_id.clone())
+            .document_update::<Document>(update_input, doc_id.clone())
             .await
             .unwrap();
 
         // Delete the document.
-        client
-            .document_delete::<serde_json::Value>(doc_id)
-            .await
-            .unwrap();
+        client.document_delete::<Document>(doc_id).await.unwrap();
     }
 
     // ── Issue Relations ─────────────────────────────────────────────────────
@@ -742,7 +703,7 @@ mod online {
             .await
             .unwrap();
         // Connection should deserialize; may be empty.
-        assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+        let _ = conn.page_info;
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
@@ -763,11 +724,8 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = client
-            .issue_create::<serde_json::Value>(input_a)
-            .await
-            .unwrap();
-        let issue_a_id = entity_a["id"].as_str().unwrap().to_string();
+        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let issue_a_id = entity_a.id.clone().unwrap();
 
         let input_b = IssueCreateInput {
             title: Some("[test] relation issue B".to_string()),
@@ -775,11 +733,8 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = client
-            .issue_create::<serde_json::Value>(input_b)
-            .await
-            .unwrap();
-        let issue_b_id = entity_b["id"].as_str().unwrap().to_string();
+        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let issue_b_id = entity_b.id.clone().unwrap();
 
         // Create a "blocks" relation: A blocks B.
         let relation_input = IssueRelationCreateInput {
@@ -789,21 +744,13 @@ mod online {
             ..Default::default()
         };
         let relation_entity = client
-            .issue_relation_create::<serde_json::Value>(None, relation_input)
+            .issue_relation_create::<IssueRelation>(None, relation_input)
             .await
             .unwrap();
-        assert!(
-            relation_entity.get("id").and_then(|v| v.as_str()).is_some(),
-            "relation should have an id"
-        );
+        assert!(relation_entity.id.is_some(), "relation should have an id");
 
         // Verify the relation is queryable.
-        let relation_id = relation_entity
-            .get("id")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string();
+        let relation_id = relation_entity.id.clone().unwrap();
         let fetched = client
             .issue_relation::<IssueRelation>(relation_id)
             .await
@@ -812,11 +759,11 @@ mod online {
 
         // Clean up: delete both issues (cascades the relation).
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_a_id)
+            .issue_delete::<Issue>(Some(true), issue_a_id)
             .await
             .unwrap();
         client
-            .issue_delete::<serde_json::Value>(Some(true), issue_b_id)
+            .issue_delete::<Issue>(Some(true), issue_b_id)
             .await
             .unwrap();
     }

@@ -114,6 +114,7 @@ fn resolve_inner_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -
 }
 
 /// Generate `impl GraphQLFields for T` — returns all scalar/enum field names.
+/// Sets `type FullType = Self` so full types validate against themselves.
 fn emit_graphql_fields_impl(
     obj: &ObjectDef,
     type_kind_map: &HashMap<String, TypeKind>,
@@ -139,6 +140,8 @@ fn emit_graphql_fields_impl(
 
     quote! {
         impl GraphQLFields for #name {
+            type FullType = Self;
+
             fn selection() -> String {
                 #selection_str.into()
             }

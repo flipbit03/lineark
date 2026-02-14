@@ -1,8 +1,8 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentUpdateInput};
 use lineark_sdk::generated::types::Document;
-use lineark_sdk::Client;
-use serde::Serialize;
+use lineark_sdk::{Client, GraphQLFields};
+use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
 use super::helpers::resolve_issue_id;
@@ -94,6 +94,16 @@ impl From<&Document> for DocumentRow {
     }
 }
 
+/// Lean result type for document mutations.
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Document)]
+#[serde(rename_all = "camelCase", default)]
+struct DocumentRef {
+    id: Option<String>,
+    title: Option<String>,
+    slug_id: Option<String>,
+}
+
 // ── Command dispatch ─────────────────────────────────────────────────────────
 
 pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -143,8 +153,8 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
                 ..Default::default()
             };
 
-            let doc: serde_json::Value = client
-                .document_create::<serde_json::Value>(input)
+            let doc = client
+                .document_create::<DocumentRef>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -163,20 +173,20 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
                 ..Default::default()
             };
 
-            let doc: serde_json::Value = client
-                .document_update::<serde_json::Value>(input, id)
+            let doc = client
+                .document_update::<DocumentRef>(input, id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&doc, format);
         }
         DocumentsAction::Delete { id } => {
-            let entity: serde_json::Value = client
-                .document_delete::<serde_json::Value>(id)
+            let doc = client
+                .document_delete::<DocumentRef>(id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            output::print_one(&entity, format);
+            output::print_one(&doc, format);
         }
     }
     Ok(())

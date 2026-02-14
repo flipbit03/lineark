@@ -1,4 +1,4 @@
-use lineark_sdk::generated::types::{Issue, Team};
+use lineark_sdk::generated::types::{IssueSearchResult, Team};
 use lineark_sdk::Client;
 
 /// Resolve a team key (e.g., "ENG") to a team UUID.
@@ -32,7 +32,7 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
         return Ok(identifier.to_string());
     }
     let conn = client
-        .search_issues::<Issue>(identifier)
+        .search_issues::<IssueSearchResult>(identifier)
         .first(5)
         .send()
         .await

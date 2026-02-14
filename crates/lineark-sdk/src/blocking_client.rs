@@ -242,8 +242,8 @@ blocking_query_builder! {
 
 blocking_query_builder! {
     query_type = SearchIssuesQueryBuilder,
-    node_type = Issue,
-    return_type = Connection<Issue>,
+    node_type = IssueSearchResult,
+    return_type = Connection<IssueSearchResult>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool), include_comments(bool), team_id(impl Into<String>)]
 }
 
@@ -380,7 +380,7 @@ use crate::generated::inputs::*;
 /// Blocking equivalents of the generated mutation methods on [`Client`].
 impl Client {
     /// Create a comment (blocking).
-    pub fn comment_create<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn comment_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Comment>>(
         &self,
         input: CommentCreateInput,
     ) -> Result<T, LinearError> {
@@ -388,7 +388,7 @@ impl Client {
     }
 
     /// Create an issue (blocking).
-    pub fn issue_create<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         input: IssueCreateInput,
     ) -> Result<T, LinearError> {
@@ -396,7 +396,7 @@ impl Client {
     }
 
     /// Update an issue (blocking).
-    pub fn issue_update<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_update<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         input: IssueUpdateInput,
         id: String,
@@ -405,7 +405,7 @@ impl Client {
     }
 
     /// Archive an issue (blocking).
-    pub fn issue_archive<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_archive<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         trash: Option<bool>,
         id: String,
@@ -414,7 +414,7 @@ impl Client {
     }
 
     /// Unarchive an issue (blocking).
-    pub fn issue_unarchive<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_unarchive<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -422,7 +422,7 @@ impl Client {
     }
 
     /// Delete an issue (blocking).
-    pub fn issue_delete<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_delete<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         permanently_delete: Option<bool>,
         id: String,
@@ -455,7 +455,9 @@ impl Client {
     }
 
     /// Create an issue relation (blocking).
-    pub fn issue_relation_create<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn issue_relation_create<
+        T: DeserializeOwned + crate::GraphQLFields<FullType = IssueRelation>,
+    >(
         &self,
         override_created_at: Option<serde_json::Value>,
         input: IssueRelationCreateInput,
@@ -467,7 +469,7 @@ impl Client {
     }
 
     /// Create a document (blocking).
-    pub fn document_create<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn document_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
         input: DocumentCreateInput,
     ) -> Result<T, LinearError> {
@@ -475,7 +477,7 @@ impl Client {
     }
 
     /// Update a document (blocking).
-    pub fn document_update<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn document_update<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
         input: DocumentUpdateInput,
         id: String,
@@ -484,7 +486,7 @@ impl Client {
     }
 
     /// Delete a document (blocking).
-    pub fn document_delete<T: DeserializeOwned + crate::GraphQLFields>(
+    pub fn document_delete<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {

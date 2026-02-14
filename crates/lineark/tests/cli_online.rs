@@ -4,6 +4,7 @@
 //! When the token file is missing, tests are automatically skipped with a message.
 
 use assert_cmd::Command;
+use lineark_sdk::generated::types::{Issue, IssueRelation};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -35,12 +36,9 @@ fn lineark() -> Command {
 fn delete_issue(issue_id: &str) {
     let client = Client::from_token(api_token()).unwrap();
     let id = issue_id.to_string();
-    tokio::runtime::Runtime::new().unwrap().block_on(async {
-        client
-            .issue_delete::<serde_json::Value>(Some(true), id)
-            .await
-            .unwrap()
-    });
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
 }
 
 test_with::runner!(cli_online);
@@ -1074,7 +1072,7 @@ mod cli_online {
             };
             tokio::runtime::Runtime::new().unwrap().block_on(async {
                 client
-                    .issue_relation_create::<serde_json::Value>(None, input)
+                    .issue_relation_create::<IssueRelation>(None, input)
                     .await
                     .unwrap()
             });

@@ -203,9 +203,8 @@ fn emit_direct_query(
     } else {
         return_type_name
     };
-    let type_hint = format!(
-        " Full type: [`{node_type_name}`](super::types::{node_type_name})"
-    );
+    let node_type_ident = quote::format_ident!("{}", node_type_name);
+    let type_hint = format!(" Full type: [`{node_type_name}`](super::types::{node_type_name})");
     let doc = quote! { #base_doc #[doc = ""] #[doc = #type_hint] };
 
     let call_args: Vec<TokenStream> = args
@@ -239,7 +238,7 @@ fn emit_direct_query(
 
         let standalone_fn = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields>(client: &Client, #(#params),*) -> Result<Connection<T>, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(client: &Client, #(#params),*) -> Result<Connection<T>, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
                 #query_build
                 client.execute_connection::<T>(&query, variables, #data_path).await
@@ -248,7 +247,7 @@ fn emit_direct_query(
 
         let client_method = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields>(&self, #(#params),*) -> Result<Connection<T>, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(&self, #(#params),*) -> Result<Connection<T>, LinearError> {
                 crate::generated::queries::#method_name::<T>(self, #(#call_args),*).await
             }
         };
@@ -281,7 +280,7 @@ fn emit_direct_query(
 
         let standalone_fn = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields>(client: &Client, #(#params),*) -> Result<T, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(client: &Client, #(#params),*) -> Result<T, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
                 #query_build
                 client.execute::<T>(&query, variables, #data_path).await
@@ -290,7 +289,7 @@ fn emit_direct_query(
 
         let client_method = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields>(&self, #(#params),*) -> Result<T, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(&self, #(#params),*) -> Result<T, LinearError> {
                 crate::generated::queries::#method_name::<T>(self, #(#call_args),*).await
             }
         };
@@ -327,9 +326,8 @@ fn emit_builder_query(
     } else {
         return_type_name
     };
-    let type_hint = format!(
-        " Full type: [`{node_type_name}`](super::types::{node_type_name})"
-    );
+    let node_type_ident = quote::format_ident!("{}", node_type_name);
+    let type_hint = format!(" Full type: [`{node_type_name}`](super::types::{node_type_name})");
     let doc = quote! { #base_doc #[doc = ""] #[doc = #type_hint] };
 
     let required_args: Vec<&ArgInfo> = args.iter().filter(|a| a.is_required).collect();
@@ -491,7 +489,7 @@ fn emit_builder_query(
             #(#struct_fields,)*
         }
 
-        impl<'a, T: DeserializeOwned + GraphQLFields> #builder_name<'a, T> {
+        impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>> #builder_name<'a, T> {
             #(#setters)*
 
             pub async fn send(self) -> Result<#send_return_type, LinearError> {

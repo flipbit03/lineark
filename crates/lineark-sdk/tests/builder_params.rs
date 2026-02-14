@@ -127,7 +127,10 @@ async fn users_include_disabled_sets_variable() {
 #[tokio::test]
 async fn search_issues_term_is_required() {
     let (server, client) = setup("searchIssues").await;
-    let _ = client.search_issues::<Issue>("my query").send().await;
+    let _ = client
+        .search_issues::<IssueSearchResult>("my query")
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["term"], "my query");
 }
@@ -136,7 +139,7 @@ async fn search_issues_term_is_required() {
 async fn search_issues_all_optional_params() {
     let (server, client) = setup("searchIssues").await;
     let _ = client
-        .search_issues::<Issue>("bug")
+        .search_issues::<IssueSearchResult>("bug")
         .first(20)
         .include_comments(true)
         .team_id("team-uuid-123")
@@ -160,7 +163,7 @@ async fn search_issues_string_setters_accept_str_ref() {
     let (server, client) = setup("searchIssues").await;
     // All string setters should accept &str (via impl Into<String>).
     let _ = client
-        .search_issues::<Issue>("term")
+        .search_issues::<IssueSearchResult>("term")
         .before("b")
         .after("a")
         .team_id("t")
@@ -438,7 +441,7 @@ async fn document_create_sends_input_variable() {
         content: Some("# Hello".to_string()),
         ..Default::default()
     };
-    let _ = client.document_create::<serde_json::Value>(input).await;
+    let _ = client.document_create::<Document>(input).await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["title"], "Test Document");
     assert_eq!(vars["input"]["content"], "# Hello");
@@ -454,7 +457,7 @@ async fn document_update_sends_input_and_id() {
         ..Default::default()
     };
     let _ = client
-        .document_update::<serde_json::Value>(input, "doc-uuid-123".to_string())
+        .document_update::<Document>(input, "doc-uuid-123".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["title"], "Updated Title");
@@ -465,7 +468,7 @@ async fn document_update_sends_input_and_id() {
 async fn document_delete_sends_id() {
     let (server, client) = setup_mutation("documentDelete").await;
     let _ = client
-        .document_delete::<serde_json::Value>("doc-uuid-456".to_string())
+        .document_delete::<Document>("doc-uuid-456".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "doc-uuid-456");
@@ -484,7 +487,7 @@ async fn issue_relation_create_sends_input() {
         ..Default::default()
     };
     let _ = client
-        .issue_relation_create::<serde_json::Value>(None, input)
+        .issue_relation_create::<IssueRelation>(None, input)
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["issueId"], "issue-a");
@@ -527,7 +530,7 @@ async fn image_upload_from_url_sends_url() {
 async fn issue_archive_sends_id_and_trash() {
     let (server, client) = setup_mutation("issueArchive").await;
     let _ = client
-        .issue_archive::<serde_json::Value>(Some(true), "issue-uuid-arch".to_string())
+        .issue_archive::<Issue>(Some(true), "issue-uuid-arch".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-arch");
@@ -538,7 +541,7 @@ async fn issue_archive_sends_id_and_trash() {
 async fn issue_archive_without_trash_sends_null() {
     let (server, client) = setup_mutation("issueArchive").await;
     let _ = client
-        .issue_archive::<serde_json::Value>(None, "issue-uuid-arch2".to_string())
+        .issue_archive::<Issue>(None, "issue-uuid-arch2".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-arch2");
@@ -549,7 +552,7 @@ async fn issue_archive_without_trash_sends_null() {
 async fn issue_unarchive_sends_id() {
     let (server, client) = setup_mutation("issueUnarchive").await;
     let _ = client
-        .issue_unarchive::<serde_json::Value>("issue-uuid-unarch".to_string())
+        .issue_unarchive::<Issue>("issue-uuid-unarch".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-unarch");
@@ -559,7 +562,7 @@ async fn issue_unarchive_sends_id() {
 async fn issue_delete_sends_id_and_permanently_delete() {
     let (server, client) = setup_mutation("issueDelete").await;
     let _ = client
-        .issue_delete::<serde_json::Value>(Some(true), "issue-uuid-123".to_string())
+        .issue_delete::<Issue>(Some(true), "issue-uuid-123".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-123");
@@ -570,7 +573,7 @@ async fn issue_delete_sends_id_and_permanently_delete() {
 async fn issue_delete_without_permanently_sends_null() {
     let (server, client) = setup_mutation("issueDelete").await;
     let _ = client
-        .issue_delete::<serde_json::Value>(None, "issue-uuid-456".to_string())
+        .issue_delete::<Issue>(None, "issue-uuid-456".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-456");

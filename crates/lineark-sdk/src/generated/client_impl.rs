@@ -28,7 +28,9 @@ impl Client {
     /// The currently authenticated user.
     ///
     /// Full type: [`User`](super::types::User)
-    pub async fn whoami<T: DeserializeOwned + GraphQLFields>(&self) -> Result<T, LinearError> {
+    pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
+        &self,
+    ) -> Result<T, LinearError> {
         crate::generated::queries::whoami::<T>(self).await
     }
     /// All projects.
@@ -40,7 +42,7 @@ impl Client {
     /// One specific project.
     ///
     /// Full type: [`Project`](super::types::Project)
-    pub async fn project<T: DeserializeOwned + GraphQLFields>(
+    pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -55,7 +57,7 @@ impl Client {
     /// One specific team.
     ///
     /// Full type: [`Team`](super::types::Team)
-    pub async fn team<T: DeserializeOwned + GraphQLFields>(
+    pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -76,7 +78,7 @@ impl Client {
     /// One specific issue.
     ///
     /// Full type: [`Issue`](super::types::Issue)
-    pub async fn issue<T: DeserializeOwned + GraphQLFields>(
+    pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -91,7 +93,9 @@ impl Client {
     /// One specific issue relation.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
-    pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
+    pub async fn issue_relation<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>,
+    >(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -112,7 +116,9 @@ impl Client {
     /// One specific document.
     ///
     /// Full type: [`Document`](super::types::Document)
-    pub async fn document<T: DeserializeOwned + GraphQLFields>(
+    pub async fn document<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>,
+    >(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -127,7 +133,7 @@ impl Client {
     /// One specific cycle.
     ///
     /// Full type: [`Cycle`](super::types::Cycle)
-    pub async fn cycle<T: DeserializeOwned + GraphQLFields>(
+    pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
         &self,
         id: String,
     ) -> Result<T, LinearError> {
@@ -163,7 +169,8 @@ impl Client {
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_create<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
     >(
         &self,
         input: IssueCreateInput,
@@ -174,7 +181,8 @@ impl Client {
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_update<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
     >(
         &self,
         input: IssueUpdateInput,
@@ -186,7 +194,8 @@ impl Client {
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_archive<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
     >(
         &self,
         trash: Option<bool>,
@@ -198,7 +207,8 @@ impl Client {
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_unarchive<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
     >(
         &self,
         id: String,
@@ -209,7 +219,8 @@ impl Client {
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_delete<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
     >(
         &self,
         permanently_delete: Option<bool>,
@@ -221,7 +232,8 @@ impl Client {
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub async fn issue_relation_create<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::IssueRelation>,
     >(
         &self,
         override_created_at: Option<serde_json::Value>,
@@ -234,7 +246,8 @@ impl Client {
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document_create<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
     >(
         &self,
         input: DocumentCreateInput,
@@ -245,7 +258,8 @@ impl Client {
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document_update<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
     >(
         &self,
         input: DocumentUpdateInput,
@@ -257,7 +271,8 @@ impl Client {
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document_delete<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
     >(
         &self,
         id: String,
@@ -268,7 +283,8 @@ impl Client {
     ///
     /// Full type: [`Comment`](super::types::Comment)
     pub async fn comment_create<
-        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
     >(
         &self,
         input: CommentCreateInput,

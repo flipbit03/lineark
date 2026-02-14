@@ -1,6 +1,8 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::CommentCreateInput;
-use lineark_sdk::Client;
+use lineark_sdk::generated::types::Comment;
+use lineark_sdk::{Client, GraphQLFields};
+use serde::{Deserialize, Serialize};
 
 use super::helpers::resolve_issue_id;
 use crate::output::{self, Format};
@@ -28,6 +30,15 @@ pub enum CommentsAction {
     },
 }
 
+/// Lean result type for comment mutations.
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Comment)]
+#[serde(rename_all = "camelCase", default)]
+struct CommentRef {
+    id: Option<String>,
+    body: Option<String>,
+}
+
 pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
     match cmd.action {
         CommentsAction::Create { issue, body } => {
@@ -40,8 +51,8 @@ pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::R
                 ..Default::default()
             };
 
-            let comment: serde_json::Value = client
-                .comment_create::<serde_json::Value>(input)
+            let comment = client
+                .comment_create::<CommentRef>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

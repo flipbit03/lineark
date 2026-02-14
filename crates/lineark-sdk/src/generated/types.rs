@@ -21,6 +21,7 @@ pub struct ActorBot {
     pub avatar_url: Option<String>,
 }
 impl GraphQLFields for ActorBot {
+    type FullType = Self;
     fn selection() -> String {
         "id type subType name userDisplayName avatarUrl".into()
     }
@@ -56,6 +57,7 @@ pub struct AgentActivity {
     pub contextual_metadata: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivity {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt sourceMetadata signal signalMetadata ephemeral contextualMetadata"
             .into()
@@ -77,6 +79,7 @@ pub struct AgentActivityActionContent {
     pub result_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityActionContent {
+    type FullType = Self;
     fn selection() -> String {
         "type action parameter result resultData".into()
     }
@@ -89,6 +92,7 @@ pub struct AgentActivityConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for AgentActivityConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -101,6 +105,7 @@ pub struct AgentActivityEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for AgentActivityEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -117,6 +122,7 @@ pub struct AgentActivityElicitationContent {
     pub body_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityElicitationContent {
+    type FullType = Self;
     fn selection() -> String {
         "type body bodyData".into()
     }
@@ -133,6 +139,7 @@ pub struct AgentActivityErrorContent {
     pub body_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityErrorContent {
+    type FullType = Self;
     fn selection() -> String {
         "type body bodyData".into()
     }
@@ -148,6 +155,7 @@ pub struct AgentActivityPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for AgentActivityPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -164,6 +172,7 @@ pub struct AgentActivityPromptContent {
     pub body_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityPromptContent {
+    type FullType = Self;
     fn selection() -> String {
         "type body bodyData".into()
     }
@@ -180,6 +189,7 @@ pub struct AgentActivityResponseContent {
     pub body_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityResponseContent {
+    type FullType = Self;
     fn selection() -> String {
         "type body bodyData".into()
     }
@@ -196,6 +206,7 @@ pub struct AgentActivityThoughtContent {
     pub body_data: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentActivityThoughtContent {
+    type FullType = Self;
     fn selection() -> String {
         "type body bodyData".into()
     }
@@ -257,6 +268,7 @@ pub struct AgentSession {
     pub external_urls: Option<serde_json::Value>,
 }
 impl GraphQLFields for AgentSession {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt status startedAt endedAt dismissedAt externalLink summary sourceMetadata plan context type url externalUrls"
             .into()
@@ -270,6 +282,7 @@ pub struct AgentSessionConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for AgentSessionConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -282,6 +295,7 @@ pub struct AgentSessionEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for AgentSessionEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -296,6 +310,7 @@ pub struct AgentSessionExternalLink {
     pub label: Option<String>,
 }
 impl GraphQLFields for AgentSessionExternalLink {
+    type FullType = Self;
     fn selection() -> String {
         "url label".into()
     }
@@ -311,6 +326,7 @@ pub struct AgentSessionPayload {
     pub agent_session: Option<Box<AgentSession>>,
 }
 impl GraphQLFields for AgentSessionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -334,6 +350,7 @@ pub struct AgentSessionToPullRequest {
     pub agent_session: Option<Box<AgentSession>>,
 }
 impl GraphQLFields for AgentSessionToPullRequest {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt".into()
     }
@@ -346,6 +363,7 @@ pub struct AgentSessionToPullRequestConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for AgentSessionToPullRequestConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -358,6 +376,7 @@ pub struct AgentSessionToPullRequestEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for AgentSessionToPullRequestEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -379,6 +398,7 @@ pub struct AiPromptRules {
     pub updated_by: Option<Box<User>>,
 }
 impl GraphQLFields for AiPromptRules {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt".into()
     }
@@ -403,6 +423,7 @@ pub struct Application {
     pub image_url: Option<String>,
 }
 impl GraphQLFields for Application {
+    type FullType = Self;
     fn selection() -> String {
         "id clientId name description developer developerUrl imageUrl".into()
     }
@@ -421,6 +442,7 @@ pub struct ArchiveResponse {
     pub includes_dependencies: Option<Vec<String>>,
 }
 impl GraphQLFields for ArchiveResponse {
+    type FullType = Self;
     fn selection() -> String {
         "archive totalCount databaseVersion includesDependencies".into()
     }
@@ -440,6 +462,7 @@ pub struct AsksChannelConnectPayload {
     pub add_bot: Option<bool>,
 }
 impl GraphQLFields for AsksChannelConnectPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success addBot".into()
     }
@@ -483,6 +506,7 @@ pub struct AsksWebPage {
     pub issue_canceled_auto_reply_enabled: Option<bool>,
 }
 impl GraphQLFields for AsksWebPage {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title description slugId issueCreatedAutoReply issueCreatedAutoReplyEnabled issueCompletedAutoReply issueCompletedAutoReplyEnabled issueCanceledAutoReply issueCanceledAutoReplyEnabled"
             .into()
@@ -499,6 +523,7 @@ pub struct AsksWebPagePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for AsksWebPagePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -528,6 +553,7 @@ pub struct AsksWebSettings {
     pub identity_provider: Option<Box<IdentityProvider>>,
 }
 impl GraphQLFields for AsksWebSettings {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt domain".into()
     }
@@ -543,6 +569,7 @@ pub struct AsksWebSettingsPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for AsksWebSettingsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -586,6 +613,7 @@ pub struct Attachment {
     pub body_data: Option<String>,
 }
 impl GraphQLFields for Attachment {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title subtitle url metadata source sourceType groupBySource bodyData"
             .into()
@@ -599,6 +627,7 @@ pub struct AttachmentConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for AttachmentConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -611,6 +640,7 @@ pub struct AttachmentEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for AttachmentEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -626,6 +656,7 @@ pub struct AttachmentPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for AttachmentPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -637,6 +668,7 @@ pub struct AttachmentSourcesPayload {
     pub sources: Option<serde_json::Value>,
 }
 impl GraphQLFields for AttachmentSourcesPayload {
+    type FullType = Self;
     fn selection() -> String {
         "sources".into()
     }
@@ -671,6 +703,7 @@ pub struct AuditEntry {
     pub request_information: Option<serde_json::Value>,
 }
 impl GraphQLFields for AuditEntry {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type actorId ip countryCode metadata requestInformation"
             .into()
@@ -684,6 +717,7 @@ pub struct AuditEntryConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for AuditEntryConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -696,6 +730,7 @@ pub struct AuditEntryEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for AuditEntryEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -709,6 +744,7 @@ pub struct AuditEntryType {
     pub description: Option<String>,
 }
 impl GraphQLFields for AuditEntryType {
+    type FullType = Self;
     fn selection() -> String {
         "type description".into()
     }
@@ -745,6 +781,7 @@ pub struct AuthIdentityProvider {
     pub scim_enabled: Option<bool>,
 }
 impl GraphQLFields for AuthIdentityProvider {
+    type FullType = Self;
     fn selection() -> String {
         "createdAt id defaultMigrated type samlEnabled ssoEndpoint ssoBinding ssoSignAlgo issuerEntityId spEntityId ssoSigningCert priority scimEnabled"
             .into()
@@ -789,6 +826,7 @@ pub struct AuthOrganization {
     pub user_count: Option<f64>,
 }
 impl GraphQLFields for AuthOrganization {
+    type FullType = Self;
     fn selection() -> String {
         "createdAt id name enabled urlKey previousUrlKeys logoUrl deletionRequestedAt releaseChannel samlEnabled samlSettings allowedAuthServices scimEnabled serviceId region hideNonPrimaryOrganizations userCount"
             .into()
@@ -819,6 +857,7 @@ pub struct AuthResolverResponse {
     pub token: Option<String>,
 }
 impl GraphQLFields for AuthResolverResponse {
+    type FullType = Self;
     fn selection() -> String {
         "id email allowDomainAccess lastUsedOrganizationId service token".into()
     }
@@ -850,6 +889,7 @@ pub struct AuthUser {
     pub identity_provider: Option<Box<AuthIdentityProvider>>,
 }
 impl GraphQLFields for AuthUser {
+    type FullType = Self;
     fn selection() -> String {
         "createdAt id name displayName email avatarUrl role active userAccountId".into()
     }
@@ -897,6 +937,7 @@ pub struct AuthenticationSessionResponse {
     pub is_current_session: Option<bool>,
 }
 impl GraphQLFields for AuthenticationSessionResponse {
+    type FullType = Self;
     fn selection() -> String {
         "createdAt id type ip locationCountry locationCountryCode countryCodes locationRegionCode locationCity userAgent browserType service lastActiveAt updatedAt location operatingSystem client name isCurrentSession"
             .into()
@@ -987,6 +1028,7 @@ pub struct Comment {
     pub synced_with: Option<Box<Vec<ExternalEntityInfo>>>,
 }
 impl GraphQLFields for Comment {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt body issueId documentContentId projectUpdateId initiativeUpdateId parentId resolvedAt resolvingCommentId editedAt bodyData quotedText reactionData threadSummary isArtificialAgentSessionRoot url hideInLinear"
             .into()
@@ -1000,6 +1042,7 @@ pub struct CommentConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CommentConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1012,6 +1055,7 @@ pub struct CommentEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CommentEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1027,6 +1071,7 @@ pub struct CommentPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CommentPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1038,6 +1083,7 @@ pub struct ContactPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ContactPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -1049,6 +1095,7 @@ pub struct CreateCsvExportReportPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CreateCsvExportReportPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -1060,6 +1107,7 @@ pub struct CreateOrJoinOrganizationResponse {
     pub user: Option<Box<AuthUser>>,
 }
 impl GraphQLFields for CreateOrJoinOrganizationResponse {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1129,6 +1177,7 @@ pub struct CustomView {
     pub initiatives: Option<Box<InitiativeConnection>>,
 }
 impl GraphQLFields for CustomView {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name description icon color filters filterData projectFilterData initiativeFilterData feedItemFilterData shared slugId modelName"
             .into()
@@ -1142,6 +1191,7 @@ pub struct CustomViewConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CustomViewConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1154,6 +1204,7 @@ pub struct CustomViewEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CustomViewEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1165,6 +1216,7 @@ pub struct CustomViewHasSubscribersPayload {
     pub has_subscribers: Option<bool>,
 }
 impl GraphQLFields for CustomViewHasSubscribersPayload {
+    type FullType = Self;
     fn selection() -> String {
         "hasSubscribers".into()
     }
@@ -1210,6 +1262,7 @@ pub struct CustomViewNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for CustomViewNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -1226,6 +1279,7 @@ pub struct CustomViewPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CustomViewPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1241,6 +1295,7 @@ pub struct CustomViewSuggestionPayload {
     pub icon: Option<String>,
 }
 impl GraphQLFields for CustomViewSuggestionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "name description icon".into()
     }
@@ -1290,6 +1345,7 @@ pub struct Customer {
     pub url: Option<String>,
 }
 impl GraphQLFields for Customer {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name logoUrl domains externalIds slackChannelId revenue size approximateNeedCount slugId mainSourceId url"
             .into()
@@ -1303,6 +1359,7 @@ pub struct CustomerConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CustomerConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1315,6 +1372,7 @@ pub struct CustomerEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CustomerEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1358,6 +1416,7 @@ pub struct CustomerNeed {
     pub url: Option<String>,
 }
 impl GraphQLFields for CustomerNeed {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt priority body bodyData url".into()
     }
@@ -1374,6 +1433,7 @@ pub struct CustomerNeedArchivePayload {
     pub entity: Option<Box<CustomerNeed>>,
 }
 impl GraphQLFields for CustomerNeedArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1386,6 +1446,7 @@ pub struct CustomerNeedConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CustomerNeedConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1398,6 +1459,7 @@ pub struct CustomerNeedEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CustomerNeedEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1472,6 +1534,7 @@ pub struct CustomerNeedNotification {
     pub customer_need: Option<Box<CustomerNeed>>,
 }
 impl GraphQLFields for CustomerNeedNotification {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority customerNeedId"
             .into()
@@ -1488,6 +1551,7 @@ pub struct CustomerNeedPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CustomerNeedPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1505,6 +1569,7 @@ pub struct CustomerNeedUpdatePayload {
     pub updated_related_needs: Option<Box<Vec<CustomerNeed>>>,
 }
 impl GraphQLFields for CustomerNeedUpdatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1575,6 +1640,7 @@ pub struct CustomerNotification {
     pub customer: Option<Box<Customer>>,
 }
 impl GraphQLFields for CustomerNotification {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority customerId"
             .into()
@@ -1621,6 +1687,7 @@ pub struct CustomerNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for CustomerNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -1637,6 +1704,7 @@ pub struct CustomerPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CustomerPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1668,6 +1736,7 @@ pub struct CustomerStatus {
     pub r#type: Option<CustomerStatusType>,
 }
 impl GraphQLFields for CustomerStatus {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name color description position displayName type".into()
     }
@@ -1680,6 +1749,7 @@ pub struct CustomerStatusConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CustomerStatusConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1692,6 +1762,7 @@ pub struct CustomerStatusEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CustomerStatusEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1707,6 +1778,7 @@ pub struct CustomerStatusPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CustomerStatusPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1736,6 +1808,7 @@ pub struct CustomerTier {
     pub display_name: Option<String>,
 }
 impl GraphQLFields for CustomerTier {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name color description position displayName".into()
     }
@@ -1748,6 +1821,7 @@ pub struct CustomerTierConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CustomerTierConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1760,6 +1834,7 @@ pub struct CustomerTierEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CustomerTierEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1775,6 +1850,7 @@ pub struct CustomerTierPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CustomerTierPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1846,6 +1922,7 @@ pub struct Cycle {
     pub links: Option<Box<EntityExternalLinkConnection>>,
 }
 impl GraphQLFields for Cycle {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt number name description startsAt endsAt completedAt autoArchivedAt issueCountHistory completedIssueCountHistory scopeHistory completedScopeHistory inProgressScopeHistory progressHistory currentProgress isActive isFuture isPast progress isNext isPrevious"
             .into()
@@ -1863,6 +1940,7 @@ pub struct CycleArchivePayload {
     pub entity: Option<Box<Cycle>>,
 }
 impl GraphQLFields for CycleArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1875,6 +1953,7 @@ pub struct CycleConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for CycleConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -1887,6 +1966,7 @@ pub struct CycleEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for CycleEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -1932,6 +2012,7 @@ pub struct CycleNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for CycleNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -1948,6 +2029,7 @@ pub struct CyclePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for CyclePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -1995,6 +2077,7 @@ pub struct Dashboard {
     pub widgets: Option<serde_json::Value>,
 }
 impl GraphQLFields for Dashboard {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt slugId name description icon color sortOrder shared issueFilter projectFilter widgets"
             .into()
@@ -2012,6 +2095,7 @@ pub struct DeletePayload {
     pub entity_id: Option<String>,
 }
 impl GraphQLFields for DeletePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success entityId".into()
     }
@@ -2073,6 +2157,7 @@ pub struct Document {
     pub url: Option<String>,
 }
 impl GraphQLFields for Document {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url"
             .into()
@@ -2090,6 +2175,7 @@ pub struct DocumentArchivePayload {
     pub entity: Option<Box<Document>>,
 }
 impl GraphQLFields for DocumentArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -2102,6 +2188,7 @@ pub struct DocumentConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for DocumentConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2143,6 +2230,7 @@ pub struct DocumentContent {
     pub restored_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for DocumentContent {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt content contentState restoredAt".into()
     }
@@ -2156,6 +2244,7 @@ pub struct DocumentContentHistoryPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for DocumentContentHistoryPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -2175,6 +2264,7 @@ pub struct DocumentContentHistoryType {
     pub actor_ids: Option<Vec<String>>,
 }
 impl GraphQLFields for DocumentContentHistoryType {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt contentDataSnapshotAt contentData actorIds".into()
     }
@@ -2187,6 +2277,7 @@ pub struct DocumentEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for DocumentEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2261,6 +2352,7 @@ pub struct DocumentNotification {
     pub document_id: Option<String>,
 }
 impl GraphQLFields for DocumentNotification {
+    type FullType = Self;
     fn selection() -> String {
         "commentId parentCommentId reactionEmoji id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority documentId"
             .into()
@@ -2277,6 +2369,7 @@ pub struct DocumentPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for DocumentPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -2293,6 +2386,7 @@ pub struct DocumentSearchPayload {
     pub total_count: Option<f64>,
 }
 impl GraphQLFields for DocumentSearchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "totalCount".into()
     }
@@ -2355,6 +2449,7 @@ pub struct DocumentSearchResult {
     pub metadata: Option<serde_json::Value>,
 }
 impl GraphQLFields for DocumentSearchResult {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url metadata"
             .into()
@@ -2368,6 +2463,7 @@ pub struct DocumentSearchResultEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for DocumentSearchResultEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2417,6 +2513,7 @@ pub struct Draft {
     pub team: Option<Box<Team>>,
 }
 impl GraphQLFields for Draft {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt bodyData data isAutogenerated wasLocalDraft anchor"
             .into()
@@ -2430,6 +2527,7 @@ pub struct DraftConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for DraftConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2442,6 +2540,7 @@ pub struct DraftEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for DraftEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2499,6 +2598,7 @@ pub struct EmailIntakeAddress {
     pub issue_canceled_auto_reply: Option<String>,
 }
 impl GraphQLFields for EmailIntakeAddress {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt address type forwardingEmailAddress senderName enabled repliesEnabled useUserNamesInReplies customerRequestsEnabled issueCreatedAutoReply issueCreatedAutoReplyEnabled issueCompletedAutoReplyEnabled issueCompletedAutoReply issueCanceledAutoReplyEnabled issueCanceledAutoReply"
             .into()
@@ -2515,6 +2615,7 @@ pub struct EmailIntakeAddressPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for EmailIntakeAddressPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -2526,6 +2627,7 @@ pub struct EmailUnsubscribePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for EmailUnsubscribePayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -2539,6 +2641,7 @@ pub struct EmailUserAccountAuthChallengeResponse {
     pub auth_type: Option<String>,
 }
 impl GraphQLFields for EmailUserAccountAuthChallengeResponse {
+    type FullType = Self;
     fn selection() -> String {
         "success authType".into()
     }
@@ -2568,6 +2671,7 @@ pub struct Emoji {
     pub organization: Option<Box<Organization>>,
 }
 impl GraphQLFields for Emoji {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name url source".into()
     }
@@ -2580,6 +2684,7 @@ pub struct EmojiConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for EmojiConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2592,6 +2697,7 @@ pub struct EmojiEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for EmojiEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2607,6 +2713,7 @@ pub struct EmojiPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for EmojiPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -2636,6 +2743,7 @@ pub struct EntityExternalLink {
     pub initiative: Option<Box<Initiative>>,
 }
 impl GraphQLFields for EntityExternalLink {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt url label sortOrder".into()
     }
@@ -2648,6 +2756,7 @@ pub struct EntityExternalLinkConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for EntityExternalLinkConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2660,6 +2769,7 @@ pub struct EntityExternalLinkEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for EntityExternalLinkEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2675,6 +2785,7 @@ pub struct EntityExternalLinkPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for EntityExternalLinkPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -2689,6 +2800,7 @@ pub struct ExternalEntityInfo {
     pub service: Option<ExternalSyncService>,
 }
 impl GraphQLFields for ExternalEntityInfo {
+    type FullType = Self;
     fn selection() -> String {
         "id service".into()
     }
@@ -2705,6 +2817,7 @@ pub struct ExternalEntityInfoGithubMetadata {
     pub number: Option<f64>,
 }
 impl GraphQLFields for ExternalEntityInfoGithubMetadata {
+    type FullType = Self;
     fn selection() -> String {
         "repo owner number".into()
     }
@@ -2721,6 +2834,7 @@ pub struct ExternalEntityInfoJiraMetadata {
     pub issue_type_id: Option<String>,
 }
 impl GraphQLFields for ExternalEntityInfoJiraMetadata {
+    type FullType = Self;
     fn selection() -> String {
         "issueKey projectId issueTypeId".into()
     }
@@ -2739,6 +2853,7 @@ pub struct ExternalEntitySlackMetadata {
     pub message_url: Option<String>,
 }
 impl GraphQLFields for ExternalEntitySlackMetadata {
+    type FullType = Self;
     fn selection() -> String {
         "isFromSlack channelId channelName messageUrl".into()
     }
@@ -2770,6 +2885,7 @@ pub struct ExternalUser {
     pub last_seen: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for ExternalUser {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name displayName email avatarUrl lastSeen".into()
     }
@@ -2782,6 +2898,7 @@ pub struct ExternalUserConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ExternalUserConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2794,6 +2911,7 @@ pub struct ExternalUserEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ExternalUserEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2829,6 +2947,7 @@ pub struct Facet {
     pub target_custom_view: Option<Box<CustomView>>,
 }
 impl GraphQLFields for Facet {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt sortOrder sourcePage".into()
     }
@@ -2841,6 +2960,7 @@ pub struct FacetConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for FacetConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2853,6 +2973,7 @@ pub struct FacetEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for FacetEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2934,6 +3055,7 @@ pub struct Favorite {
     pub icon: Option<String>,
 }
 impl GraphQLFields for Favorite {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type folderName projectTab predefinedViewType initiativeTab sortOrder url title detail color icon"
             .into()
@@ -2947,6 +3069,7 @@ pub struct FavoriteConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for FavoriteConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -2959,6 +3082,7 @@ pub struct FavoriteEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for FavoriteEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -2974,6 +3098,7 @@ pub struct FavoritePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for FavoritePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3005,6 +3130,7 @@ pub struct FeedItem {
     pub post: Option<Box<Post>>,
 }
 impl GraphQLFields for FeedItem {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt".into()
     }
@@ -3017,6 +3143,7 @@ pub struct FeedItemConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for FeedItemConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3029,6 +3156,7 @@ pub struct FeedItemEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for FeedItemEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3046,6 +3174,7 @@ pub struct FetchDataPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for FetchDataPayload {
+    type FullType = Self;
     fn selection() -> String {
         "data query filters success".into()
     }
@@ -3057,6 +3186,7 @@ pub struct FileUploadDeletePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for FileUploadDeletePayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -3072,6 +3202,7 @@ pub struct FrontAttachmentPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for FrontAttachmentPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3101,6 +3232,7 @@ pub struct GitAutomationState {
     pub branch_pattern: Option<String>,
 }
 impl GraphQLFields for GitAutomationState {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt event branchPattern".into()
     }
@@ -3113,6 +3245,7 @@ pub struct GitAutomationStateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for GitAutomationStateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3125,6 +3258,7 @@ pub struct GitAutomationStateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for GitAutomationStateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3140,6 +3274,7 @@ pub struct GitAutomationStatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for GitAutomationStatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3167,6 +3302,7 @@ pub struct GitAutomationTargetBranch {
     pub automation_states: Option<Box<GitAutomationStateConnection>>,
 }
 impl GraphQLFields for GitAutomationTargetBranch {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt branchPattern isRegex".into()
     }
@@ -3182,6 +3318,7 @@ pub struct GitAutomationTargetBranchPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for GitAutomationTargetBranchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3199,6 +3336,7 @@ pub struct GitHubCommitIntegrationPayload {
     pub webhook_secret: Option<String>,
 }
 impl GraphQLFields for GitHubCommitIntegrationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success webhookSecret".into()
     }
@@ -3210,6 +3348,7 @@ pub struct GitHubEnterpriseServerInstallVerificationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for GitHubEnterpriseServerInstallVerificationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -3231,6 +3370,7 @@ pub struct GitHubEnterpriseServerPayload {
     pub webhook_secret: Option<String>,
 }
 impl GraphQLFields for GitHubEnterpriseServerPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success setupUrl installUrl webhookSecret".into()
     }
@@ -3254,6 +3394,7 @@ pub struct GitLabIntegrationCreatePayload {
     pub error_response_headers: Option<String>,
 }
 impl GraphQLFields for GitLabIntegrationCreatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success webhookSecret error errorResponseBody errorResponseHeaders".into()
     }
@@ -3275,6 +3416,7 @@ pub struct GitLabTestConnectionPayload {
     pub error_response_headers: Option<String>,
 }
 impl GraphQLFields for GitLabTestConnectionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success error errorResponseBody errorResponseHeaders".into()
     }
@@ -3324,6 +3466,7 @@ pub struct IdentityProvider {
     pub allow_name_change: Option<bool>,
 }
 impl GraphQLFields for IdentityProvider {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt defaultMigrated type samlEnabled ssoEndpoint ssoBinding ssoSignAlgo ssoSigningCert issuerEntityId spEntityId priority scimEnabled ownersGroupPush adminsGroupPush guestsGroupPush allowNameChange"
             .into()
@@ -3340,6 +3483,7 @@ pub struct ImageUploadFromUrlPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ImageUploadFromUrlPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId url success".into()
     }
@@ -3431,6 +3575,7 @@ pub struct Initiative {
     pub documents: Option<Box<DocumentConnection>>,
 }
 impl GraphQLFields for Initiative {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt updateReminderFrequencyInWeeks updateReminderFrequency frequencyResolution updateRemindersDay updateRemindersHour name description slugId sortOrder color icon trashed targetDate targetDateResolution status health healthUpdatedAt startedAt completedAt url content"
             .into()
@@ -3448,6 +3593,7 @@ pub struct InitiativeArchivePayload {
     pub entity: Option<Box<Initiative>>,
 }
 impl GraphQLFields for InitiativeArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3460,6 +3606,7 @@ pub struct InitiativeConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for InitiativeConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3472,6 +3619,7 @@ pub struct InitiativeEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for InitiativeEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3495,6 +3643,7 @@ pub struct InitiativeHistory {
     pub initiative: Option<Box<Initiative>>,
 }
 impl GraphQLFields for InitiativeHistory {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt entries".into()
     }
@@ -3507,6 +3656,7 @@ pub struct InitiativeHistoryConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for InitiativeHistoryConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3519,6 +3669,7 @@ pub struct InitiativeHistoryEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for InitiativeHistoryEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3605,6 +3756,7 @@ pub struct InitiativeNotification {
     pub parent_comment: Option<Box<Comment>>,
 }
 impl GraphQLFields for InitiativeNotification {
+    type FullType = Self;
     fn selection() -> String {
         "commentId parentCommentId reactionEmoji id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority initiativeId initiativeUpdateId"
             .into()
@@ -3651,6 +3803,7 @@ pub struct InitiativeNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for InitiativeNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -3668,6 +3821,7 @@ pub struct InitiativePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for InitiativePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3695,6 +3849,7 @@ pub struct InitiativeRelation {
     pub sort_order: Option<f64>,
 }
 impl GraphQLFields for InitiativeRelation {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt sortOrder".into()
     }
@@ -3707,6 +3862,7 @@ pub struct InitiativeRelationConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for InitiativeRelationConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3719,6 +3875,7 @@ pub struct InitiativeRelationEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for InitiativeRelationEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3734,6 +3891,7 @@ pub struct InitiativeRelationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for InitiativeRelationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3759,6 +3917,7 @@ pub struct InitiativeToProject {
     pub sort_order: Option<String>,
 }
 impl GraphQLFields for InitiativeToProject {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt sortOrder".into()
     }
@@ -3771,6 +3930,7 @@ pub struct InitiativeToProjectConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for InitiativeToProjectConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3783,6 +3943,7 @@ pub struct InitiativeToProjectEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for InitiativeToProjectEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3799,6 +3960,7 @@ pub struct InitiativeToProjectPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for InitiativeToProjectPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3852,6 +4014,7 @@ pub struct InitiativeUpdate {
     pub comment_count: Option<i64>,
 }
 impl GraphQLFields for InitiativeUpdate {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt body editedAt reactionData bodyData slugId health infoSnapshot isDiffHidden url isStale diff diffMarkdown commentCount"
             .into()
@@ -3869,6 +4032,7 @@ pub struct InitiativeUpdateArchivePayload {
     pub entity: Option<Box<InitiativeUpdate>>,
 }
 impl GraphQLFields for InitiativeUpdateArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3881,6 +4045,7 @@ pub struct InitiativeUpdateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for InitiativeUpdateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3893,6 +4058,7 @@ pub struct InitiativeUpdateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for InitiativeUpdateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3908,6 +4074,7 @@ pub struct InitiativeUpdatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for InitiativeUpdatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3921,6 +4088,7 @@ pub struct InitiativeUpdateReminderPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for InitiativeUpdateReminderPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -3948,6 +4116,7 @@ pub struct Integration {
     pub creator: Option<Box<User>>,
 }
 impl GraphQLFields for Integration {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt service".into()
     }
@@ -3960,6 +4129,7 @@ pub struct IntegrationConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IntegrationConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -3972,6 +4142,7 @@ pub struct IntegrationEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IntegrationEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -3985,6 +4156,7 @@ pub struct IntegrationHasScopesPayload {
     pub missing_scopes: Option<Vec<String>>,
 }
 impl GraphQLFields for IntegrationHasScopesPayload {
+    type FullType = Self;
     fn selection() -> String {
         "hasAllScopes missingScopes".into()
     }
@@ -4000,6 +4172,7 @@ pub struct IntegrationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IntegrationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4011,6 +4184,7 @@ pub struct IntegrationRequestPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IntegrationRequestPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -4024,6 +4198,7 @@ pub struct IntegrationSlackWorkspaceNamePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IntegrationSlackWorkspaceNamePayload {
+    type FullType = Self;
     fn selection() -> String {
         "name success".into()
     }
@@ -4049,6 +4224,7 @@ pub struct IntegrationTemplate {
     pub foreign_entity_id: Option<String>,
 }
 impl GraphQLFields for IntegrationTemplate {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt foreignEntityId".into()
     }
@@ -4061,6 +4237,7 @@ pub struct IntegrationTemplateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IntegrationTemplateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4073,6 +4250,7 @@ pub struct IntegrationTemplateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IntegrationTemplateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -4088,6 +4266,7 @@ pub struct IntegrationTemplatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IntegrationTemplatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4139,6 +4318,7 @@ pub struct IntegrationsSettings {
     pub initiative: Option<Box<Initiative>>,
 }
 impl GraphQLFields for IntegrationsSettings {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType slackIssueCreated slackIssueNewComment slackIssueStatusChangedDone slackIssueAddedToView slackIssueStatusChangedAll slackProjectUpdateCreated slackProjectUpdateCreatedToTeam slackProjectUpdateCreatedToWorkspace slackInitiativeUpdateCreated slackIssueAddedToTriage slackIssueSlaHighRisk slackIssueSlaBreached"
             .into()
@@ -4155,6 +4335,7 @@ pub struct IntegrationsSettingsPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IntegrationsSettingsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4326,6 +4507,7 @@ pub struct Issue {
     pub state_history: Option<Box<IssueStateSpanConnection>>,
 }
 impl GraphQLFields for Issue {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description"
             .into()
@@ -4343,6 +4525,7 @@ pub struct IssueArchivePayload {
     pub entity: Option<Box<Issue>>,
 }
 impl GraphQLFields for IssueArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4358,6 +4541,7 @@ pub struct IssueBatchPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueBatchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4370,6 +4554,7 @@ pub struct IssueConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4439,6 +4624,7 @@ pub struct IssueDraft {
     pub schedule: Option<serde_json::Value>,
 }
 impl GraphQLFields for IssueDraft {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title description priority estimate dueDate labelIds teamId cycleId projectId projectMilestoneId assigneeId delegateId stateId parentId sourceCommentId parentIssueId subIssueSortOrder priorityLabel descriptionData attachments needs schedule"
             .into()
@@ -4452,6 +4638,7 @@ pub struct IssueDraftConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueDraftConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4464,6 +4651,7 @@ pub struct IssueDraftEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueDraftEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -4476,6 +4664,7 @@ pub struct IssueEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -4489,6 +4678,7 @@ pub struct IssueFilterSuggestionPayload {
     pub log_id: Option<String>,
 }
 impl GraphQLFields for IssueFilterSuggestionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "filter logId".into()
     }
@@ -4658,6 +4848,7 @@ pub struct IssueHistory {
     pub triage_rule_metadata: Option<Box<IssueHistoryTriageRuleMetadata>>,
 }
 impl GraphQLFields for IssueHistory {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt actorId updatedDescription fromTitle toTitle fromAssigneeId toAssigneeId fromPriority toPriority fromTeamId toTeamId fromParentId toParentId fromStateId toStateId fromCycleId toCycleId toConvertedProjectId fromProjectId toProjectId fromEstimate toEstimate archived trashed attachmentId addedLabelIds removedLabelIds addedToReleaseIds removedFromReleaseIds autoClosed autoArchived fromDueDate toDueDate customerNeedId changes triageResponsibilityAutoAssigned fromSlaStartedAt toSlaStartedAt fromSlaBreachesAt toSlaBreachesAt fromSlaBreached toSlaBreached fromSlaType toSlaType"
             .into()
@@ -4671,6 +4862,7 @@ pub struct IssueHistoryConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueHistoryConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4683,6 +4875,7 @@ pub struct IssueHistoryEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueHistoryEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -4705,6 +4898,7 @@ pub struct IssueHistoryTriageRuleError {
     pub conflicting_labels: Option<Box<Vec<IssueLabel>>>,
 }
 impl GraphQLFields for IssueHistoryTriageRuleError {
+    type FullType = Self;
     fn selection() -> String {
         "type property conflictForSameChildLabel".into()
     }
@@ -4719,6 +4913,7 @@ pub struct IssueHistoryTriageRuleMetadata {
     pub updated_by_triage_rule: Option<Box<WorkflowDefinition>>,
 }
 impl GraphQLFields for IssueHistoryTriageRuleMetadata {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4760,6 +4955,7 @@ pub struct IssueImport {
     pub display_name: Option<String>,
 }
 impl GraphQLFields for IssueImport {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt teamName creatorId service status mapping error progress csvFileUrl errorMetadata serviceMetadata displayName"
             .into()
@@ -4772,6 +4968,7 @@ pub struct IssueImportCheckPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueImportCheckPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -4787,6 +4984,7 @@ pub struct IssueImportDeletePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueImportDeletePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4803,6 +5001,7 @@ pub struct IssueImportJqlCheckPayload {
     pub error: Option<String>,
 }
 impl GraphQLFields for IssueImportJqlCheckPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success count error".into()
     }
@@ -4818,6 +5017,7 @@ pub struct IssueImportPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueImportPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -4832,6 +5032,7 @@ pub struct IssueImportSyncCheckPayload {
     pub error: Option<String>,
 }
 impl GraphQLFields for IssueImportSyncCheckPayload {
+    type FullType = Self;
     fn selection() -> String {
         "canSync error".into()
     }
@@ -4878,6 +5079,7 @@ pub struct IssueLabel {
     pub children: Option<Box<IssueLabelConnection>>,
 }
 impl GraphQLFields for IssueLabel {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name description color isGroup lastAppliedAt retiredAt"
             .into()
@@ -4891,6 +5093,7 @@ pub struct IssueLabelConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueLabelConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -4903,6 +5106,7 @@ pub struct IssueLabelEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueLabelEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -4918,6 +5122,7 @@ pub struct IssueLabelPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueLabelPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5000,6 +5205,7 @@ pub struct IssueNotification {
     pub team: Option<Box<Team>>,
 }
 impl GraphQLFields for IssueNotification {
+    type FullType = Self;
     fn selection() -> String {
         "commentId parentCommentId reactionEmoji id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority issueId"
             .into()
@@ -5016,6 +5222,7 @@ pub struct IssuePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssuePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5029,6 +5236,7 @@ pub struct IssuePriorityValue {
     pub label: Option<String>,
 }
 impl GraphQLFields for IssuePriorityValue {
+    type FullType = Self;
     fn selection() -> String {
         "priority label".into()
     }
@@ -5054,6 +5262,7 @@ pub struct IssueRelation {
     pub related_issue: Option<Box<Issue>>,
 }
 impl GraphQLFields for IssueRelation {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type".into()
     }
@@ -5066,6 +5275,7 @@ pub struct IssueRelationConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueRelationConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5078,6 +5288,7 @@ pub struct IssueRelationEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueRelationEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5092,6 +5303,7 @@ pub struct IssueRelationHistoryPayload {
     pub r#type: Option<String>,
 }
 impl GraphQLFields for IssueRelationHistoryPayload {
+    type FullType = Self;
     fn selection() -> String {
         "identifier type".into()
     }
@@ -5107,6 +5319,7 @@ pub struct IssueRelationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueRelationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5123,6 +5336,7 @@ pub struct IssueSearchPayload {
     pub total_count: Option<f64>,
 }
 impl GraphQLFields for IssueSearchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "totalCount".into()
     }
@@ -5295,6 +5509,7 @@ pub struct IssueSearchResult {
     pub metadata: Option<serde_json::Value>,
 }
 impl GraphQLFields for IssueSearchResult {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description metadata"
             .into()
@@ -5308,6 +5523,7 @@ pub struct IssueSearchResultEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueSearchResultEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5328,6 +5544,7 @@ pub struct IssueStateSpan {
     pub state: Option<Box<WorkflowState>>,
 }
 impl GraphQLFields for IssueStateSpan {
+    type FullType = Self;
     fn selection() -> String {
         "id stateId startedAt endedAt".into()
     }
@@ -5340,6 +5557,7 @@ pub struct IssueStateSpanConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueStateSpanConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5352,6 +5570,7 @@ pub struct IssueStateSpanEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueStateSpanEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5385,6 +5604,7 @@ pub struct IssueSuggestion {
     pub suggested_label_id: Option<String>,
 }
 impl GraphQLFields for IssueSuggestion {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt issueId type state stateChangedAt dismissalReason suggestedIssueId suggestedUserId suggestedLabelId"
             .into()
@@ -5398,6 +5618,7 @@ pub struct IssueSuggestionConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueSuggestionConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5410,6 +5631,7 @@ pub struct IssueSuggestionEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueSuggestionEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5426,6 +5648,7 @@ pub struct IssueSuggestionMetadata {
     pub applied_automation_rule_id: Option<String>,
 }
 impl GraphQLFields for IssueSuggestionMetadata {
+    type FullType = Self;
     fn selection() -> String {
         "score classification reasons evalLogId rank variant appliedAutomationRuleId".into()
     }
@@ -5441,6 +5664,7 @@ pub struct IssueTitleSuggestionFromCustomerRequestPayload {
     pub log_id: Option<String>,
 }
 impl GraphQLFields for IssueTitleSuggestionFromCustomerRequestPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId title logId".into()
     }
@@ -5466,6 +5690,7 @@ pub struct IssueToRelease {
     pub pull_request: Option<Box<PullRequest>>,
 }
 impl GraphQLFields for IssueToRelease {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt".into()
     }
@@ -5478,6 +5703,7 @@ pub struct IssueToReleaseConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for IssueToReleaseConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5490,6 +5716,7 @@ pub struct IssueToReleaseEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for IssueToReleaseEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5506,6 +5733,7 @@ pub struct IssueToReleasePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for IssueToReleasePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5551,6 +5779,7 @@ pub struct LabelNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for LabelNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -5563,6 +5792,7 @@ pub struct LogoutResponse {
     pub success: Option<bool>,
 }
 impl GraphQLFields for LogoutResponse {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -5577,6 +5807,7 @@ pub struct NotificationArchivePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for NotificationArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5590,6 +5821,7 @@ pub struct NotificationBatchActionPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for NotificationBatchActionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5630,6 +5862,7 @@ pub struct NotificationCategoryPreferences {
     pub feed: Option<Box<NotificationChannelPreferences>>,
 }
 impl GraphQLFields for NotificationCategoryPreferences {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5648,6 +5881,7 @@ pub struct NotificationChannelPreferences {
     pub slack: Option<bool>,
 }
 impl GraphQLFields for NotificationChannelPreferences {
+    type FullType = Self;
     fn selection() -> String {
         "mobile desktop email slack".into()
     }
@@ -5659,6 +5893,7 @@ pub struct NotificationConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for NotificationConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5671,6 +5906,7 @@ pub struct NotificationDeliveryPreferences {
     pub mobile: Option<Box<NotificationDeliveryPreferencesChannel>>,
 }
 impl GraphQLFields for NotificationDeliveryPreferences {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5685,6 +5921,7 @@ pub struct NotificationDeliveryPreferencesChannel {
     pub schedule: Option<Box<NotificationDeliveryPreferencesSchedule>>,
 }
 impl GraphQLFields for NotificationDeliveryPreferencesChannel {
+    type FullType = Self;
     fn selection() -> String {
         "notificationsDisabled".into()
     }
@@ -5699,6 +5936,7 @@ pub struct NotificationDeliveryPreferencesDay {
     pub end: Option<String>,
 }
 impl GraphQLFields for NotificationDeliveryPreferencesDay {
+    type FullType = Self;
     fn selection() -> String {
         "start end".into()
     }
@@ -5725,6 +5963,7 @@ pub struct NotificationDeliveryPreferencesSchedule {
     pub saturday: Option<Box<NotificationDeliveryPreferencesDay>>,
 }
 impl GraphQLFields for NotificationDeliveryPreferencesSchedule {
+    type FullType = Self;
     fn selection() -> String {
         "disabled".into()
     }
@@ -5736,6 +5975,7 @@ pub struct NotificationEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for NotificationEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5749,6 +5989,7 @@ pub struct NotificationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for NotificationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5760,6 +6001,7 @@ pub struct NotificationSubscriptionConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for NotificationSubscriptionConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -5771,6 +6013,7 @@ pub struct NotificationSubscriptionEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for NotificationSubscriptionEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -5784,6 +6027,7 @@ pub struct NotificationSubscriptionPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for NotificationSubscriptionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -5819,6 +6063,7 @@ pub struct OauthClientApproval {
     pub newly_requested_scopes: Option<Vec<String>>,
 }
 impl GraphQLFields for OauthClientApproval {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt oauthClientId requesterId responderId status scopes requestReason denyReason newlyRequestedScopes"
             .into()
@@ -5890,6 +6135,7 @@ pub struct OauthClientApprovalNotification {
     pub oauth_client_approval: Option<Box<OauthClientApproval>>,
 }
 impl GraphQLFields for OauthClientApprovalNotification {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority oauthClientApprovalId"
             .into()
@@ -6040,6 +6286,7 @@ pub struct Organization {
     pub restrict_label_management_to_admins: Option<bool>,
 }
 impl GraphQLFields for Organization {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name urlKey logoUrl periodUploadVolume gitBranchFormat gitLinkbackMessagesEnabled gitPublicLinkbackMessagesEnabled gitLinkbackDescriptionsEnabled roadmapEnabled projectUpdateReminderFrequencyInWeeks projectUpdateRemindersDay projectUpdateRemindersHour initiativeUpdateReminderFrequencyInWeeks initiativeUpdateRemindersDay initiativeUpdateRemindersHour fiscalYearStartMonth workingDays samlEnabled samlSettings scimEnabled scimSettings securitySettings allowedAuthServices allowedFileUploadContentTypes deletionRequestedAt trialEndsAt trialStartsAt previousUrlKeys hipaaComplianceEnabled themeSettings releaseChannel customersConfiguration codeIntelligenceEnabled codeIntelligenceRepository defaultFeedSummarySchedule feedEnabled hideNonPrimaryOrganizations aiAddonEnabled generatedUpdatesEnabled aiThreadSummariesEnabled aiDiscussionSummariesEnabled aiProviderConfiguration linearAgentEnabled slaDayCount projectUpdatesReminderFrequency allowedAiProviders slackProjectChannelPrefix userCount createdIssueCount customerCount customersEnabled allowMembersToInvite restrictTeamCreationToAdmins restrictLabelManagementToAdmins"
             .into()
@@ -6052,6 +6299,7 @@ pub struct OrganizationAcceptedOrExpiredInviteDetailsPayload {
     pub status: Option<OrganizationInviteStatus>,
 }
 impl GraphQLFields for OrganizationAcceptedOrExpiredInviteDetailsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "status".into()
     }
@@ -6063,6 +6311,7 @@ pub struct OrganizationCancelDeletePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationCancelDeletePayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -6074,6 +6323,7 @@ pub struct OrganizationDeletePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationDeletePayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -6109,6 +6359,7 @@ pub struct OrganizationDomain {
     pub disable_organization_creation: Option<bool>,
 }
 impl GraphQLFields for OrganizationDomain {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name verified verificationEmail authType claimed disableOrganizationCreation"
             .into()
@@ -6122,6 +6373,7 @@ pub struct OrganizationDomainClaimPayload {
     pub verification_string: Option<String>,
 }
 impl GraphQLFields for OrganizationDomainClaimPayload {
+    type FullType = Self;
     fn selection() -> String {
         "verificationString".into()
     }
@@ -6138,6 +6390,7 @@ pub struct OrganizationDomainPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationDomainPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -6150,6 +6403,7 @@ pub struct OrganizationDomainSimplePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationDomainSimplePayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -6163,6 +6417,7 @@ pub struct OrganizationExistsPayload {
     pub exists: Option<bool>,
 }
 impl GraphQLFields for OrganizationExistsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success exists".into()
     }
@@ -6200,6 +6455,7 @@ pub struct OrganizationInvite {
     pub organization: Option<Box<Organization>>,
 }
 impl GraphQLFields for OrganizationInvite {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt email role external acceptedAt expiresAt metadata".into()
     }
@@ -6212,6 +6468,7 @@ pub struct OrganizationInviteConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for OrganizationInviteConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6224,6 +6481,7 @@ pub struct OrganizationInviteEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for OrganizationInviteEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -6255,6 +6513,7 @@ pub struct OrganizationInviteFullDetailsPayload {
     pub allowed_auth_services: Option<Vec<String>>,
 }
 impl GraphQLFields for OrganizationInviteFullDetailsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "status inviter email role createdAt organizationName organizationId organizationLogoUrl accepted expired allowedAuthServices"
             .into()
@@ -6271,6 +6530,7 @@ pub struct OrganizationInvitePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationInvitePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -6288,6 +6548,7 @@ pub struct OrganizationIpRestriction {
     pub enabled: Option<bool>,
 }
 impl GraphQLFields for OrganizationIpRestriction {
+    type FullType = Self;
     fn selection() -> String {
         "range type description enabled".into()
     }
@@ -6301,6 +6562,7 @@ pub struct OrganizationMeta {
     pub allowed_auth_services: Option<Vec<String>>,
 }
 impl GraphQLFields for OrganizationMeta {
+    type FullType = Self;
     fn selection() -> String {
         "region allowedAuthServices".into()
     }
@@ -6316,6 +6578,7 @@ pub struct OrganizationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -6327,6 +6590,7 @@ pub struct OrganizationStartTrialPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for OrganizationStartTrialPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -6344,6 +6608,7 @@ pub struct PageInfo {
     pub end_cursor: Option<String>,
 }
 impl GraphQLFields for PageInfo {
+    type FullType = Self;
     fn selection() -> String {
         "hasPreviousPage hasNextPage startCursor endCursor".into()
     }
@@ -6385,6 +6650,7 @@ pub struct PaidSubscription {
     pub next_billing_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for PaidSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type seats seatsMinimum seatsMaximum collectionMethod canceledAt cancelAt pendingChangeType nextBillingAt"
             .into()
@@ -6397,6 +6663,7 @@ pub struct PasskeyLoginStartResponse {
     pub options: Option<serde_json::Value>,
 }
 impl GraphQLFields for PasskeyLoginStartResponse {
+    type FullType = Self;
     fn selection() -> String {
         "success options".into()
     }
@@ -6446,6 +6713,7 @@ pub struct Post {
     pub feed_summary_schedule_at_create: Option<FeedSummarySchedule>,
 }
 impl GraphQLFields for Post {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt body bodyData writtenSummaryData audioSummary title slugId editedAt reactionData ttlUrl type evalLogId feedSummaryScheduleAtCreate"
             .into()
@@ -6521,6 +6789,7 @@ pub struct PostNotification {
     pub post_id: Option<String>,
 }
 impl GraphQLFields for PostNotification {
+    type FullType = Self;
     fn selection() -> String {
         "commentId parentCommentId reactionEmoji id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority postId"
             .into()
@@ -6679,6 +6948,7 @@ pub struct Project {
     pub priority_label: Option<String>,
 }
 impl GraphQLFields for Project {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt updateReminderFrequencyInWeeks updateReminderFrequency frequencyResolution updateRemindersDay updateRemindersHour name description slugId icon color projectUpdateRemindersPausedUntilAt startDate startDateResolution targetDate targetDateResolution startedAt completedAt canceledAt autoArchivedAt trashed sortOrder prioritySortOrder priority health healthUpdatedAt issueCountHistory completedIssueCountHistory scopeHistory completedScopeHistory inProgressScopeHistory progressHistory currentProgress slackNewIssue slackIssueComments slackIssueStatuses labelIds url progress scope content contentState state priorityLabel"
             .into()
@@ -6696,6 +6966,7 @@ pub struct ProjectArchivePayload {
     pub entity: Option<Box<Project>>,
 }
 impl GraphQLFields for ProjectArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -6729,6 +7000,7 @@ pub struct ProjectAttachment {
     pub source_type: Option<String>,
 }
 impl GraphQLFields for ProjectAttachment {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title subtitle url metadata source sourceType".into()
     }
@@ -6741,6 +7013,7 @@ pub struct ProjectAttachmentConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectAttachmentConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6753,6 +7026,7 @@ pub struct ProjectAttachmentEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectAttachmentEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -6765,6 +7039,7 @@ pub struct ProjectConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6777,6 +7052,7 @@ pub struct ProjectEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -6790,6 +7066,7 @@ pub struct ProjectFilterSuggestionPayload {
     pub log_id: Option<String>,
 }
 impl GraphQLFields for ProjectFilterSuggestionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "filter logId".into()
     }
@@ -6813,6 +7090,7 @@ pub struct ProjectHistory {
     pub project: Option<Box<Project>>,
 }
 impl GraphQLFields for ProjectHistory {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt entries".into()
     }
@@ -6825,6 +7103,7 @@ pub struct ProjectHistoryConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectHistoryConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6837,6 +7116,7 @@ pub struct ProjectHistoryEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectHistoryEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -6879,6 +7159,7 @@ pub struct ProjectLabel {
     pub children: Option<Box<ProjectLabelConnection>>,
 }
 impl GraphQLFields for ProjectLabel {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name description color isGroup lastAppliedAt retiredAt"
             .into()
@@ -6892,6 +7173,7 @@ pub struct ProjectLabelConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectLabelConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6904,6 +7186,7 @@ pub struct ProjectLabelEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectLabelEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -6919,6 +7202,7 @@ pub struct ProjectLabelPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectLabelPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -6962,6 +7246,7 @@ pub struct ProjectMilestone {
     pub issues: Option<Box<IssueConnection>>,
 }
 impl GraphQLFields for ProjectMilestone {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name targetDate progressHistory currentProgress sortOrder description status progress"
             .into()
@@ -6975,6 +7260,7 @@ pub struct ProjectMilestoneConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectMilestoneConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -6987,6 +7273,7 @@ pub struct ProjectMilestoneEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectMilestoneEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -7000,6 +7287,7 @@ pub struct ProjectMilestoneMoveIssueToTeam {
     pub team_id: Option<String>,
 }
 impl GraphQLFields for ProjectMilestoneMoveIssueToTeam {
+    type FullType = Self;
     fn selection() -> String {
         "issueId teamId".into()
     }
@@ -7019,6 +7307,7 @@ pub struct ProjectMilestoneMovePayload {
     pub previous_project_team_ids: Option<Box<ProjectMilestoneMoveProjectTeams>>,
 }
 impl GraphQLFields for ProjectMilestoneMovePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7032,6 +7321,7 @@ pub struct ProjectMilestoneMoveProjectTeams {
     pub team_ids: Option<Vec<String>>,
 }
 impl GraphQLFields for ProjectMilestoneMoveProjectTeams {
+    type FullType = Self;
     fn selection() -> String {
         "projectId teamIds".into()
     }
@@ -7047,6 +7337,7 @@ pub struct ProjectMilestonePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectMilestonePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7135,6 +7426,7 @@ pub struct ProjectNotification {
     pub parent_comment: Option<Box<Comment>>,
 }
 impl GraphQLFields for ProjectNotification {
+    type FullType = Self;
     fn selection() -> String {
         "commentId parentCommentId reactionEmoji id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority projectId projectMilestoneId projectUpdateId"
             .into()
@@ -7181,6 +7473,7 @@ pub struct ProjectNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for ProjectNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -7197,6 +7490,7 @@ pub struct ProjectPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7232,6 +7526,7 @@ pub struct ProjectRelation {
     pub user: Option<Box<User>>,
 }
 impl GraphQLFields for ProjectRelation {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type anchorType relatedAnchorType".into()
     }
@@ -7244,6 +7539,7 @@ pub struct ProjectRelationConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectRelationConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -7256,6 +7552,7 @@ pub struct ProjectRelationEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectRelationEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -7271,6 +7568,7 @@ pub struct ProjectRelationPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectRelationPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7287,6 +7585,7 @@ pub struct ProjectSearchPayload {
     pub total_count: Option<f64>,
 }
 impl GraphQLFields for ProjectSearchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "totalCount".into()
     }
@@ -7445,6 +7744,7 @@ pub struct ProjectSearchResult {
     pub metadata: Option<serde_json::Value>,
 }
 impl GraphQLFields for ProjectSearchResult {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt updateReminderFrequencyInWeeks updateReminderFrequency frequencyResolution updateRemindersDay updateRemindersHour name description slugId icon color projectUpdateRemindersPausedUntilAt startDate startDateResolution targetDate targetDateResolution startedAt completedAt canceledAt autoArchivedAt trashed sortOrder prioritySortOrder priority health healthUpdatedAt issueCountHistory completedIssueCountHistory scopeHistory completedScopeHistory inProgressScopeHistory progressHistory currentProgress slackNewIssue slackIssueComments slackIssueStatuses labelIds url progress scope content contentState state priorityLabel metadata"
             .into()
@@ -7458,6 +7758,7 @@ pub struct ProjectSearchResultEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectSearchResultEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -7489,6 +7790,7 @@ pub struct ProjectStatus {
     pub indefinite: Option<bool>,
 }
 impl GraphQLFields for ProjectStatus {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name color description position type indefinite".into()
     }
@@ -7505,6 +7807,7 @@ pub struct ProjectStatusArchivePayload {
     pub entity: Option<Box<ProjectStatus>>,
 }
 impl GraphQLFields for ProjectStatusArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7517,6 +7820,7 @@ pub struct ProjectStatusConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectStatusConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -7532,6 +7836,7 @@ pub struct ProjectStatusCountPayload {
     pub archived_team_count: Option<f64>,
 }
 impl GraphQLFields for ProjectStatusCountPayload {
+    type FullType = Self;
     fn selection() -> String {
         "count privateCount archivedTeamCount".into()
     }
@@ -7544,6 +7849,7 @@ pub struct ProjectStatusEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectStatusEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -7559,6 +7865,7 @@ pub struct ProjectStatusPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectStatusPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7612,6 +7919,7 @@ pub struct ProjectUpdate {
     pub comment_count: Option<i64>,
 }
 impl GraphQLFields for ProjectUpdate {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt body editedAt reactionData bodyData slugId health infoSnapshot isDiffHidden url isStale diff diffMarkdown commentCount"
             .into()
@@ -7629,6 +7937,7 @@ pub struct ProjectUpdateArchivePayload {
     pub entity: Option<Box<ProjectUpdate>>,
 }
 impl GraphQLFields for ProjectUpdateArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7641,6 +7950,7 @@ pub struct ProjectUpdateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ProjectUpdateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -7653,6 +7963,7 @@ pub struct ProjectUpdateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ProjectUpdateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -7668,6 +7979,7 @@ pub struct ProjectUpdatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectUpdatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7681,6 +7993,7 @@ pub struct ProjectUpdateReminderPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ProjectUpdateReminderPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7724,6 +8037,7 @@ pub struct PullRequest {
     pub creator: Option<Box<User>>,
 }
 impl GraphQLFields for PullRequest {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt slugId title number sourceBranch targetBranch url status"
             .into()
@@ -7749,6 +8063,7 @@ pub struct PullRequestCheck {
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for PullRequestCheck {
+    type FullType = Self;
     fn selection() -> String {
         "name workflowName status url isRequired startedAt completedAt".into()
     }
@@ -7775,6 +8090,7 @@ pub struct PullRequestCommit {
     pub author_external_user_ids: Option<Vec<String>>,
 }
 impl GraphQLFields for PullRequestCommit {
+    type FullType = Self;
     fn selection() -> String {
         "sha message committedAt additions deletions changedFiles authorUserIds authorExternalUserIds"
             .into()
@@ -7800,6 +8116,7 @@ pub struct PullRequestMergeSettings {
     pub merge_queue_merge_method: Option<PullRequestMergeMethod>,
 }
 impl GraphQLFields for PullRequestMergeSettings {
+    type FullType = Self;
     fn selection() -> String {
         "isMergeQueueEnabled squashMergeAllowed autoMergeAllowed rebaseMergeAllowed mergeCommitAllowed deleteBranchOnMerge mergeQueueMergeMethod"
             .into()
@@ -7873,6 +8190,7 @@ pub struct PullRequestNotification {
     pub pull_request: Option<Box<PullRequest>>,
 }
 impl GraphQLFields for PullRequestNotification {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority pullRequestId pullRequestCommentId"
             .into()
@@ -7893,6 +8211,7 @@ pub struct PushSubscription {
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for PushSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt".into()
     }
@@ -7908,6 +8227,7 @@ pub struct PushSubscriptionPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for PushSubscriptionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -7919,6 +8239,7 @@ pub struct PushSubscriptionTestPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for PushSubscriptionTestPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -7934,6 +8255,7 @@ pub struct RateLimitPayload {
     pub limits: Option<Box<Vec<RateLimitResultPayload>>>,
 }
 impl GraphQLFields for RateLimitPayload {
+    type FullType = Self;
     fn selection() -> String {
         "identifier kind".into()
     }
@@ -7955,6 +8277,7 @@ pub struct RateLimitResultPayload {
     pub reset: Option<f64>,
 }
 impl GraphQLFields for RateLimitResultPayload {
+    type FullType = Self;
     fn selection() -> String {
         "type requestedAmount allowedAmount period remainingAmount reset".into()
     }
@@ -7990,6 +8313,7 @@ pub struct Reaction {
     pub external_user: Option<Box<ExternalUser>>,
 }
 impl GraphQLFields for Reaction {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt emoji".into()
     }
@@ -8003,6 +8327,7 @@ pub struct ReactionPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ReactionPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8052,6 +8377,7 @@ pub struct Release {
     pub links: Option<Box<EntityExternalLinkConnection>>,
 }
 impl GraphQLFields for Release {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name description version commitSha slugId startDate targetDate startedAt completedAt canceledAt url"
             .into()
@@ -8069,6 +8395,7 @@ pub struct ReleaseArchivePayload {
     pub entity: Option<Box<Release>>,
 }
 impl GraphQLFields for ReleaseArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8081,6 +8408,7 @@ pub struct ReleaseConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ReleaseConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8093,6 +8421,7 @@ pub struct ReleaseEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ReleaseEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8108,6 +8437,7 @@ pub struct ReleasePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ReleasePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8139,6 +8469,7 @@ pub struct ReleasePipeline {
     pub releases: Option<Box<ReleaseConnection>>,
 }
 impl GraphQLFields for ReleasePipeline {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name slugId type includePathPatterns".into()
     }
@@ -8155,6 +8486,7 @@ pub struct ReleasePipelineArchivePayload {
     pub entity: Option<Box<ReleasePipeline>>,
 }
 impl GraphQLFields for ReleasePipelineArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8167,6 +8499,7 @@ pub struct ReleasePipelineConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ReleasePipelineConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8179,6 +8512,7 @@ pub struct ReleasePipelineEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ReleasePipelineEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8194,6 +8528,7 @@ pub struct ReleasePipelinePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ReleasePipelinePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8225,6 +8560,7 @@ pub struct ReleaseStage {
     pub releases: Option<Box<ReleaseConnection>>,
 }
 impl GraphQLFields for ReleaseStage {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name color type position".into()
     }
@@ -8241,6 +8577,7 @@ pub struct ReleaseStageArchivePayload {
     pub entity: Option<Box<ReleaseStage>>,
 }
 impl GraphQLFields for ReleaseStageArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8253,6 +8590,7 @@ pub struct ReleaseStageConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for ReleaseStageConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8265,6 +8603,7 @@ pub struct ReleaseStageEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for ReleaseStageEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8280,6 +8619,7 @@ pub struct ReleaseStagePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ReleaseStagePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8295,6 +8635,7 @@ pub struct RepositorySuggestion {
     pub confidence: Option<f64>,
 }
 impl GraphQLFields for RepositorySuggestion {
+    type FullType = Self;
     fn selection() -> String {
         "repositoryFullName hostname confidence".into()
     }
@@ -8306,6 +8647,7 @@ pub struct RepositorySuggestionsPayload {
     pub suggestions: Option<Box<Vec<RepositorySuggestion>>>,
 }
 impl GraphQLFields for RepositorySuggestionsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8345,6 +8687,7 @@ pub struct Roadmap {
     pub url: Option<String>,
 }
 impl GraphQLFields for Roadmap {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name description slugId sortOrder color url".into()
     }
@@ -8361,6 +8704,7 @@ pub struct RoadmapArchivePayload {
     pub entity: Option<Box<Roadmap>>,
 }
 impl GraphQLFields for RoadmapArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8373,6 +8717,7 @@ pub struct RoadmapConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for RoadmapConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8385,6 +8730,7 @@ pub struct RoadmapEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for RoadmapEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8400,6 +8746,7 @@ pub struct RoadmapPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for RoadmapPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8425,6 +8772,7 @@ pub struct RoadmapToProject {
     pub sort_order: Option<String>,
 }
 impl GraphQLFields for RoadmapToProject {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt sortOrder".into()
     }
@@ -8437,6 +8785,7 @@ pub struct RoadmapToProjectConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for RoadmapToProjectConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8449,6 +8798,7 @@ pub struct RoadmapToProjectEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for RoadmapToProjectEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8464,6 +8814,7 @@ pub struct RoadmapToProjectPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for RoadmapToProjectPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8477,6 +8828,7 @@ pub struct SemanticSearchPayload {
     pub results: Option<Box<Vec<SemanticSearchResult>>>,
 }
 impl GraphQLFields for SemanticSearchPayload {
+    type FullType = Self;
     fn selection() -> String {
         "enabled".into()
     }
@@ -8499,6 +8851,7 @@ pub struct SemanticSearchResult {
     pub document: Option<Box<Document>>,
 }
 impl GraphQLFields for SemanticSearchResult {
+    type FullType = Self;
     fn selection() -> String {
         "id type".into()
     }
@@ -8530,6 +8883,7 @@ pub struct SesDomainIdentity {
     pub dns_records: Option<Box<Vec<SesDomainIdentityDnsRecord>>>,
 }
 impl GraphQLFields for SesDomainIdentity {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt domain region canSendFromCustomDomain".into()
     }
@@ -8548,6 +8902,7 @@ pub struct SesDomainIdentityDnsRecord {
     pub is_verified: Option<bool>,
 }
 impl GraphQLFields for SesDomainIdentityDnsRecord {
+    type FullType = Self;
     fn selection() -> String {
         "type name content isVerified".into()
     }
@@ -8562,6 +8917,7 @@ pub struct SlackAsksTeamSettings {
     pub has_default_ask: Option<bool>,
 }
 impl GraphQLFields for SlackAsksTeamSettings {
+    type FullType = Self;
     fn selection() -> String {
         "id hasDefaultAsk".into()
     }
@@ -8583,6 +8939,7 @@ pub struct SlackChannelConnectPayload {
     pub nudge_to_update_main_slack_integration: Option<bool>,
 }
 impl GraphQLFields for SlackChannelConnectPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success addBot nudgeToConnectMainSlackIntegration nudgeToUpdateMainSlackIntegration"
             .into()
@@ -8622,6 +8979,7 @@ pub struct SlackChannelNameMapping {
     pub ai_titles: Option<bool>,
 }
 impl GraphQLFields for SlackChannelNameMapping {
+    type FullType = Self;
     fn selection() -> String {
         "id name isPrivate isShared botAdded autoCreateOnMessage autoCreateOnEmoji autoCreateOnBotMention autoCreateTemplateId postCancellationUpdates postCompletionUpdates postAcceptedFromTriageUpdates aiTitles"
             .into()
@@ -8636,6 +8994,7 @@ pub struct SsoUrlFromEmailResponse {
     pub saml_sso_url: Option<String>,
 }
 impl GraphQLFields for SsoUrlFromEmailResponse {
+    type FullType = Self;
     fn selection() -> String {
         "success samlSsoUrl".into()
     }
@@ -8649,6 +9008,7 @@ pub struct SuccessPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for SuccessPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8678,6 +9038,7 @@ pub struct Summary {
     pub generated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 impl GraphQLFields for Summary {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt content evalLogId generationStatus generatedAt".into()
     }
@@ -8705,6 +9066,7 @@ pub struct SyncedExternalThread {
     pub is_personal_integration_required: Option<bool>,
 }
 impl GraphQLFields for SyncedExternalThread {
+    type FullType = Self;
     fn selection() -> String {
         "id type subType name displayName url isConnected isPersonalIntegrationConnected isPersonalIntegrationRequired"
             .into()
@@ -8887,6 +9249,7 @@ pub struct Team {
     pub invite_hash: Option<String>,
 }
 impl GraphQLFields for Team {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name key description icon color retiredAt cyclesEnabled cycleStartDay cycleDuration cycleCooldownTime cycleIssueAutoAssignStarted cycleIssueAutoAssignCompleted cycleLockToActive upcomingCycleCount timezone inheritWorkflowStatuses inheritIssueEstimation issueEstimationType issueOrderingNoPriorityFirst issueEstimationAllowZero setIssueSortOrderOnStateChange issueEstimationExtended defaultIssueEstimate triageEnabled requirePriorityToLeaveTriage defaultTemplateForMembersId defaultTemplateForNonMembersId private allMembersCanJoin securitySettings scimManaged scimGroupName progressHistory currentProgress groupIssueHistory aiThreadSummariesEnabled aiDiscussionSummariesEnabled slackNewIssue slackIssueComments slackIssueStatuses autoClosePeriod autoCloseStateId autoArchivePeriod autoCloseParentIssues autoCloseChildIssues joinByDefault cycleCalenderUrl displayName issueCount issueSortOrderDefaultToBottom inviteHash"
             .into()
@@ -8904,6 +9267,7 @@ pub struct TeamArchivePayload {
     pub entity: Option<Box<Team>>,
 }
 impl GraphQLFields for TeamArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -8916,6 +9280,7 @@ pub struct TeamConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for TeamConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8928,6 +9293,7 @@ pub struct TeamEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for TeamEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8955,6 +9321,7 @@ pub struct TeamMembership {
     pub sort_order: Option<f64>,
 }
 impl GraphQLFields for TeamMembership {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt owner sortOrder".into()
     }
@@ -8967,6 +9334,7 @@ pub struct TeamMembershipConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for TeamMembershipConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -8979,6 +9347,7 @@ pub struct TeamMembershipEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for TeamMembershipEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -8994,6 +9363,7 @@ pub struct TeamMembershipPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for TeamMembershipPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9039,6 +9409,7 @@ pub struct TeamNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for TeamNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -9055,6 +9426,7 @@ pub struct TeamPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for TeamPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9098,6 +9470,7 @@ pub struct Template {
     pub has_form_fields: Option<bool>,
 }
 impl GraphQLFields for Template {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type name description templateData sortOrder lastAppliedAt hasFormFields"
             .into()
@@ -9111,6 +9484,7 @@ pub struct TemplateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for TemplateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -9123,6 +9497,7 @@ pub struct TemplateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for TemplateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -9138,6 +9513,7 @@ pub struct TemplatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for TemplatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9169,6 +9545,7 @@ pub struct TimeSchedule {
     pub integration: Option<Box<Integration>>,
 }
 impl GraphQLFields for TimeSchedule {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name externalId externalUrl".into()
     }
@@ -9181,6 +9558,7 @@ pub struct TimeScheduleConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for TimeScheduleConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -9193,6 +9571,7 @@ pub struct TimeScheduleEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for TimeScheduleEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -9210,6 +9589,7 @@ pub struct TimeScheduleEntry {
     pub user_email: Option<String>,
 }
 impl GraphQLFields for TimeScheduleEntry {
+    type FullType = Self;
     fn selection() -> String {
         "startsAt endsAt userId userEmail".into()
     }
@@ -9224,6 +9604,7 @@ pub struct TimeSchedulePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for TimeSchedulePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9253,6 +9634,7 @@ pub struct TriageResponsibility {
     pub current_user: Option<Box<User>>,
 }
 impl GraphQLFields for TriageResponsibility {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt action".into()
     }
@@ -9265,6 +9647,7 @@ pub struct TriageResponsibilityConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for TriageResponsibilityConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -9277,6 +9660,7 @@ pub struct TriageResponsibilityEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for TriageResponsibilityEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -9290,6 +9674,7 @@ pub struct TriageResponsibilityManualSelection {
     pub assignment_index: Option<i64>,
 }
 impl GraphQLFields for TriageResponsibilityManualSelection {
+    type FullType = Self;
     fn selection() -> String {
         "userIds assignmentIndex".into()
     }
@@ -9304,6 +9689,7 @@ pub struct TriageResponsibilityPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for TriageResponsibilityPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9326,6 +9712,7 @@ pub struct UploadFile {
     pub headers: Option<Box<Vec<UploadFileHeader>>>,
 }
 impl GraphQLFields for UploadFile {
+    type FullType = Self;
     fn selection() -> String {
         "filename contentType size uploadUrl assetUrl metaData".into()
     }
@@ -9339,6 +9726,7 @@ pub struct UploadFileHeader {
     pub value: Option<String>,
 }
 impl GraphQLFields for UploadFileHeader {
+    type FullType = Self;
     fn selection() -> String {
         "key value".into()
     }
@@ -9354,6 +9742,7 @@ pub struct UploadPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UploadPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9449,6 +9838,7 @@ pub struct User {
     pub git_hub_user_id: Option<String>,
 }
 impl GraphQLFields for User {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name displayName email avatarUrl disableReason calendarHash description statusEmoji statusLabel statusUntilAt timezone lastSeen initials avatarBackgroundColor guest app isMentionable isAssignable active url createdIssueCount canAccessAnyPublicTeam isMe admin owner supportsAgentSessions inviteHash gitHubUserId"
             .into()
@@ -9461,6 +9851,7 @@ pub struct UserAdminPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UserAdminPayload {
+    type FullType = Self;
     fn selection() -> String {
         "success".into()
     }
@@ -9473,6 +9864,7 @@ pub struct UserConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for UserConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -9485,6 +9877,7 @@ pub struct UserEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for UserEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -9530,6 +9923,7 @@ pub struct UserNotificationSubscription {
     pub notification_subscription_types: Option<Vec<String>>,
 }
 impl GraphQLFields for UserNotificationSubscription {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt contextViewType userContextViewType active notificationSubscriptionTypes"
             .into()
@@ -9546,6 +9940,7 @@ pub struct UserPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UserPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9595,6 +9990,7 @@ pub struct UserSettings {
     pub theme: Option<Box<UserSettingsTheme>>,
 }
 impl GraphQLFields for UserSettings {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt unsubscribedFrom calendarHash subscribedToChangelog subscribedToDPA subscribedToInviteAccepted subscribedToPrivacyLegalUpdates feedSummarySchedule showFullUserNames feedLastSeenTime autoAssignToSelf"
             .into()
@@ -9611,6 +10007,7 @@ pub struct UserSettingsCustomSidebarTheme {
     pub contrast: Option<i64>,
 }
 impl GraphQLFields for UserSettingsCustomSidebarTheme {
+    type FullType = Self;
     fn selection() -> String {
         "accent base contrast".into()
     }
@@ -9628,6 +10025,7 @@ pub struct UserSettingsCustomTheme {
     pub sidebar: Option<Box<UserSettingsCustomSidebarTheme>>,
 }
 impl GraphQLFields for UserSettingsCustomTheme {
+    type FullType = Self;
     fn selection() -> String {
         "accent base contrast".into()
     }
@@ -9645,6 +10043,7 @@ pub struct UserSettingsFlagPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UserSettingsFlagPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId flag value success".into()
     }
@@ -9658,6 +10057,7 @@ pub struct UserSettingsFlagsResetPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UserSettingsFlagsResetPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9673,6 +10073,7 @@ pub struct UserSettingsPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for UserSettingsPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9686,6 +10087,7 @@ pub struct UserSettingsTheme {
     pub custom: Option<Box<UserSettingsCustomTheme>>,
 }
 impl GraphQLFields for UserSettingsTheme {
+    type FullType = Self;
     fn selection() -> String {
         "preset".into()
     }
@@ -9711,6 +10113,7 @@ pub struct ViewPreferences {
     pub preferences: Option<Box<ViewPreferencesValues>>,
 }
 impl GraphQLFields for ViewPreferences {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type viewType".into()
     }
@@ -9726,6 +10129,7 @@ pub struct ViewPreferencesPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for ViewPreferencesPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9743,6 +10147,7 @@ pub struct ViewPreferencesValues {
     pub show_completed_issues: Option<String>,
 }
 impl GraphQLFields for ViewPreferencesValues {
+    type FullType = Self;
     fn selection() -> String {
         "viewOrdering issueGrouping issueSubGrouping showCompletedIssues".into()
     }
@@ -9782,6 +10187,7 @@ pub struct Webhook {
     pub failures: Option<Box<Vec<WebhookFailureEvent>>>,
 }
 impl GraphQLFields for Webhook {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt label url enabled teamIds allPublicTeams secret resourceTypes"
             .into()
@@ -9795,6 +10201,7 @@ pub struct WebhookConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for WebhookConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -9807,6 +10214,7 @@ pub struct WebhookEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for WebhookEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -9831,6 +10239,7 @@ pub struct WebhookFailureEvent {
     pub execution_id: Option<String>,
 }
 impl GraphQLFields for WebhookFailureEvent {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt url httpStatus responseOrError executionId".into()
     }
@@ -9846,6 +10255,7 @@ pub struct WebhookPayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for WebhookPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -9861,6 +10271,7 @@ pub struct WebhookRotateSecretPayload {
     pub secret: Option<String>,
 }
 impl GraphQLFields for WebhookRotateSecretPayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success secret".into()
     }
@@ -9886,6 +10297,7 @@ pub struct WelcomeMessage {
     pub updated_by: Option<Box<User>>,
 }
 impl GraphQLFields for WelcomeMessage {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt title enabled".into()
     }
@@ -9954,6 +10366,7 @@ pub struct WelcomeMessageNotification {
     pub welcome_message_id: Option<String>,
 }
 impl GraphQLFields for WelcomeMessageNotification {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority welcomeMessageId"
             .into()
@@ -10016,6 +10429,7 @@ pub struct WorkflowDefinition {
     pub user_context_view_type: Option<UserContextViewType>,
 }
 impl GraphQLFields for WorkflowDefinition {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name groupName description type trigger triggerType conditions enabled activities sortOrder lastExecutedAt contextViewType userContextViewType"
             .into()
@@ -10052,6 +10466,7 @@ pub struct WorkflowState {
     pub issues: Option<Box<IssueConnection>>,
 }
 impl GraphQLFields for WorkflowState {
+    type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt name color description position type".into()
     }
@@ -10068,6 +10483,7 @@ pub struct WorkflowStateArchivePayload {
     pub entity: Option<Box<WorkflowState>>,
 }
 impl GraphQLFields for WorkflowStateArchivePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }
@@ -10080,6 +10496,7 @@ pub struct WorkflowStateConnection {
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for WorkflowStateConnection {
+    type FullType = Self;
     fn selection() -> String {
         "".into()
     }
@@ -10092,6 +10509,7 @@ pub struct WorkflowStateEdge {
     pub cursor: Option<String>,
 }
 impl GraphQLFields for WorkflowStateEdge {
+    type FullType = Self;
     fn selection() -> String {
         "cursor".into()
     }
@@ -10107,6 +10525,7 @@ pub struct WorkflowStatePayload {
     pub success: Option<bool>,
 }
 impl GraphQLFields for WorkflowStatePayload {
+    type FullType = Self;
     fn selection() -> String {
         "lastSyncId success".into()
     }

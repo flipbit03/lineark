@@ -131,9 +131,9 @@ fn emit_mutation(
 
     if let Some((entity_field_name, entity_type_name)) = entity_info {
         // ── Generic mutation: returns T, SDK handles success + extraction ──
-        let type_hint = format!(
-            " Full type: [`{entity_type_name}`](super::types::{entity_type_name})"
-        );
+        let entity_type_ident = quote::format_ident!("{}", entity_type_name);
+        let type_hint =
+            format!(" Full type: [`{entity_type_name}`](super::types::{entity_type_name})");
         let doc = quote! { #doc #[doc = ""] #[doc = #type_hint] };
         let query_prefix = format!(
             "mutation {}({}) {{ {}({}) {{ success {} {{ ",
@@ -144,7 +144,7 @@ fn emit_mutation(
 
         let standalone_fn = quote! {
             #doc
-            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields>(
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
                 client: &Client, #(#params),*
             ) -> Result<T, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
@@ -155,7 +155,7 @@ fn emit_mutation(
 
         let client_method = quote! {
             #doc
-            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields>(
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
                 &self, #(#params),*
             ) -> Result<T, LinearError> {
                 crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await

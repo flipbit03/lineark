@@ -53,7 +53,8 @@ pub async fn image_upload_from_url(
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_create<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
 >(
     client: &Client,
     input: IssueCreateInput,
@@ -70,7 +71,8 @@ pub async fn issue_create<
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_update<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
 >(
     client: &Client,
     input: IssueUpdateInput,
@@ -88,7 +90,8 @@ pub async fn issue_update<
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_archive<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
 >(
     client: &Client,
     trash: Option<bool>,
@@ -106,7 +109,8 @@ pub async fn issue_archive<
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_unarchive<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
 >(
     client: &Client,
     id: String,
@@ -124,7 +128,8 @@ pub async fn issue_unarchive<
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_delete<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
 >(
     client: &Client,
     permanently_delete: Option<bool>,
@@ -144,7 +149,8 @@ pub async fn issue_delete<
 ///
 /// Full type: [`IssueRelation`](super::types::IssueRelation)
 pub async fn issue_relation_create<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueRelation>,
 >(
     client: &Client,
     override_created_at: Option<serde_json::Value>,
@@ -164,7 +170,8 @@ pub async fn issue_relation_create<
 ///
 /// Full type: [`Document`](super::types::Document)
 pub async fn document_create<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
 >(
     client: &Client,
     input: DocumentCreateInput,
@@ -181,7 +188,8 @@ pub async fn document_create<
 ///
 /// Full type: [`Document`](super::types::Document)
 pub async fn document_update<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
 >(
     client: &Client,
     input: DocumentUpdateInput,
@@ -199,7 +207,8 @@ pub async fn document_update<
 ///
 /// Full type: [`Document`](super::types::Document)
 pub async fn document_delete<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
 >(
     client: &Client,
     id: String,
@@ -217,7 +226,8 @@ pub async fn document_delete<
 ///
 /// Full type: [`Comment`](super::types::Comment)
 pub async fn comment_create<
-    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
 >(
     client: &Client,
     input: CommentCreateInput,

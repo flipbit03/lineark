@@ -30,7 +30,9 @@ pub struct WorkflowStatesQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> WorkflowStatesQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::WorkflowState>>
+    WorkflowStatesQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: WorkflowStateFilter) -> Self {
         self.filter = Some(value);
         self
@@ -117,7 +119,9 @@ pub struct UsersQueryBuilder<'a, T> {
     sort: Option<UserSortInput>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> UsersQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>
+    UsersQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: UserFilter) -> Self {
         self.filter = Some(value);
         self
@@ -217,7 +221,9 @@ pub struct ProjectsQueryBuilder<'a, T> {
     sort: Option<ProjectSortInput>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> ProjectsQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>
+    ProjectsQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: ProjectFilter) -> Self {
         self.filter = Some(value);
         self
@@ -309,7 +315,9 @@ pub struct TeamsQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> TeamsQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
+    TeamsQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: TeamFilter) -> Self {
         self.filter = Some(value);
         self
@@ -397,7 +405,9 @@ pub struct SearchIssuesQueryBuilder<'a, T> {
     team_id: Option<String>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> SearchIssuesQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueSearchResult>>
+    SearchIssuesQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: IssueFilter) -> Self {
         self.filter = Some(value);
         self
@@ -498,7 +508,9 @@ pub struct IssuesQueryBuilder<'a, T> {
     sort: Option<IssueSortInput>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> IssuesQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>
+    IssuesQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: IssueFilter) -> Self {
         self.filter = Some(value);
         self
@@ -589,7 +601,9 @@ pub struct IssueRelationsQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> IssueRelationsQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>>
+    IssueRelationsQueryBuilder<'a, T>
+{
     pub fn before(mut self, value: impl Into<String>) -> Self {
         self.before = Some(value.into());
         self
@@ -667,7 +681,9 @@ pub struct IssueLabelsQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> IssueLabelsQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>>
+    IssueLabelsQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: IssueLabelFilter) -> Self {
         self.filter = Some(value);
         self
@@ -752,7 +768,9 @@ pub struct DocumentsQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> DocumentsQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>
+    DocumentsQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: DocumentFilter) -> Self {
         self.filter = Some(value);
         self
@@ -837,7 +855,9 @@ pub struct CyclesQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields> CyclesQueryBuilder<'a, T> {
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>
+    CyclesQueryBuilder<'a, T>
+{
     pub fn filter(mut self, value: CycleFilter) -> Self {
         self.filter = Some(value);
         self
@@ -941,7 +961,7 @@ pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
 /// The currently authenticated user.
 ///
 /// Full type: [`User`](super::types::User)
-pub async fn whoami<T: DeserializeOwned + GraphQLFields>(
+pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
     client: &Client,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({});
@@ -969,7 +989,7 @@ pub fn projects<'a, T>(client: &'a Client) -> ProjectsQueryBuilder<'a, T> {
 /// One specific project.
 ///
 /// Full type: [`Project`](super::types::Project)
-pub async fn project<T: DeserializeOwned + GraphQLFields>(
+pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1000,7 +1020,7 @@ pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
 /// One specific team.
 ///
 /// Full type: [`Team`](super::types::Team)
-pub async fn team<T: DeserializeOwned + GraphQLFields>(
+pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1054,7 +1074,7 @@ pub fn issues<'a, T>(client: &'a Client) -> IssuesQueryBuilder<'a, T> {
 /// One specific issue.
 ///
 /// Full type: [`Issue`](super::types::Issue)
-pub async fn issue<T: DeserializeOwned + GraphQLFields>(
+pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1084,7 +1104,9 @@ pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<
 /// One specific issue relation.
 ///
 /// Full type: [`IssueRelation`](super::types::IssueRelation)
-pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
+pub async fn issue_relation<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>,
+>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1133,7 +1155,7 @@ pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
 /// One specific document.
 ///
 /// Full type: [`Document`](super::types::Document)
-pub async fn document<T: DeserializeOwned + GraphQLFields>(
+pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1164,7 +1186,7 @@ pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
 /// One specific cycle.
 ///
 /// Full type: [`Cycle`](super::types::Cycle)
-pub async fn cycle<T: DeserializeOwned + GraphQLFields>(
+pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
