@@ -14,6 +14,8 @@ use crate::pagination::Connection;
 use serde::de::DeserializeOwned;
 /// Query builder: All issue workflow states.
 ///
+/// Full type: [`WorkflowState`](super::types::WorkflowState)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -96,6 +98,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> WorkflowStatesQueryBuilder<'a, T> 
     }
 }
 /// Query builder: All users for the organization.
+///
+/// Full type: [`User`](super::types::User)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
@@ -196,6 +200,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> UsersQueryBuilder<'a, T> {
 }
 /// Query builder: All projects.
 ///
+/// Full type: [`Project`](super::types::Project)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -287,6 +293,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> ProjectsQueryBuilder<'a, T> {
 }
 /// Query builder: All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
 ///
+/// Full type: [`Team`](super::types::Team)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -369,6 +377,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> TeamsQueryBuilder<'a, T> {
     }
 }
 /// Query builder: Search issues.
+///
+/// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
@@ -471,6 +481,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> SearchIssuesQueryBuilder<'a, T> {
 }
 /// Query builder: All issues.
 ///
+/// Full type: [`Issue`](super::types::Issue)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -562,6 +574,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> IssuesQueryBuilder<'a, T> {
 }
 /// Query builder: All issue relationships.
 ///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -636,6 +650,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> IssueRelationsQueryBuilder<'a, T> 
     }
 }
 /// Query builder: All issue labels.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
@@ -720,6 +736,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> IssueLabelsQueryBuilder<'a, T> {
 }
 /// Query builder: All documents in the workspace.
 ///
+/// Full type: [`Document`](super::types::Document)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -803,6 +821,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> DocumentsQueryBuilder<'a, T> {
 }
 /// Query builder: All cycles.
 ///
+/// Full type: [`Cycle`](super::types::Cycle)
+///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
@@ -885,6 +905,8 @@ impl<'a, T: DeserializeOwned + GraphQLFields> CyclesQueryBuilder<'a, T> {
     }
 }
 /// All issue workflow states.
+///
+/// Full type: [`WorkflowState`](super::types::WorkflowState)
 pub fn workflow_states<'a, T>(client: &'a Client) -> WorkflowStatesQueryBuilder<'a, T> {
     WorkflowStatesQueryBuilder {
         client,
@@ -899,6 +921,8 @@ pub fn workflow_states<'a, T>(client: &'a Client) -> WorkflowStatesQueryBuilder<
     }
 }
 /// All users for the organization.
+///
+/// Full type: [`User`](super::types::User)
 pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
     UsersQueryBuilder {
         client,
@@ -915,6 +939,8 @@ pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
     }
 }
 /// The currently authenticated user.
+///
+/// Full type: [`User`](super::types::User)
 pub async fn whoami<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
 ) -> Result<T, LinearError> {
@@ -924,6 +950,8 @@ pub async fn whoami<T: DeserializeOwned + GraphQLFields>(
     client.execute::<T>(&query, variables, "viewer").await
 }
 /// All projects.
+///
+/// Full type: [`Project`](super::types::Project)
 pub fn projects<'a, T>(client: &'a Client) -> ProjectsQueryBuilder<'a, T> {
     ProjectsQueryBuilder {
         client,
@@ -939,6 +967,8 @@ pub fn projects<'a, T>(client: &'a Client) -> ProjectsQueryBuilder<'a, T> {
     }
 }
 /// One specific project.
+///
+/// Full type: [`Project`](super::types::Project)
 pub async fn project<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,
@@ -952,6 +982,8 @@ pub async fn project<T: DeserializeOwned + GraphQLFields>(
     client.execute::<T>(&query, variables, "project").await
 }
 /// All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+///
+/// Full type: [`Team`](super::types::Team)
 pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
     TeamsQueryBuilder {
         client,
@@ -966,6 +998,8 @@ pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
     }
 }
 /// One specific team.
+///
+/// Full type: [`Team`](super::types::Team)
 pub async fn team<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,
@@ -979,6 +1013,8 @@ pub async fn team<T: DeserializeOwned + GraphQLFields>(
     client.execute::<T>(&query, variables, "team").await
 }
 /// Search issues.
+///
+/// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
 pub fn search_issues<'a, T>(
     client: &'a Client,
     term: impl Into<String>,
@@ -999,6 +1035,8 @@ pub fn search_issues<'a, T>(
     }
 }
 /// All issues.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub fn issues<'a, T>(client: &'a Client) -> IssuesQueryBuilder<'a, T> {
     IssuesQueryBuilder {
         client,
@@ -1014,6 +1052,8 @@ pub fn issues<'a, T>(client: &'a Client) -> IssuesQueryBuilder<'a, T> {
     }
 }
 /// One specific issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,
@@ -1027,6 +1067,8 @@ pub async fn issue<T: DeserializeOwned + GraphQLFields>(
     client.execute::<T>(&query, variables, "issue").await
 }
 /// All issue relationships.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
 pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<'a, T> {
     IssueRelationsQueryBuilder {
         client,
@@ -1040,6 +1082,8 @@ pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<
     }
 }
 /// One specific issue relation.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
 pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,
@@ -1055,6 +1099,8 @@ pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
         .await
 }
 /// All issue labels.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
 pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T> {
     IssueLabelsQueryBuilder {
         client,
@@ -1069,6 +1115,8 @@ pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T>
     }
 }
 /// All documents in the workspace.
+///
+/// Full type: [`Document`](super::types::Document)
 pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
     DocumentsQueryBuilder {
         client,
@@ -1083,6 +1131,8 @@ pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
     }
 }
 /// One specific document.
+///
+/// Full type: [`Document`](super::types::Document)
 pub async fn document<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,
@@ -1096,6 +1146,8 @@ pub async fn document<T: DeserializeOwned + GraphQLFields>(
     client.execute::<T>(&query, variables, "document").await
 }
 /// All cycles.
+///
+/// Full type: [`Cycle`](super::types::Cycle)
 pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
     CyclesQueryBuilder {
         client,
@@ -1110,6 +1162,8 @@ pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
     }
 }
 /// One specific cycle.
+///
+/// Full type: [`Cycle`](super::types::Cycle)
 pub async fn cycle<T: DeserializeOwned + GraphQLFields>(
     client: &Client,
     id: String,

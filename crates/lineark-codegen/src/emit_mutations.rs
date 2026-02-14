@@ -129,8 +129,12 @@ fn emit_mutation(
         }
     }
 
-    if let Some((entity_field_name, _entity_type_name)) = entity_info {
+    if let Some((entity_field_name, entity_type_name)) = entity_info {
         // ── Generic mutation: returns T, SDK handles success + extraction ──
+        let type_hint = format!(
+            " Full type: [`{entity_type_name}`](super::types::{entity_type_name})"
+        );
+        let doc = quote! { #doc #[doc = ""] #[doc = #type_hint] };
         let query_prefix = format!(
             "mutation {}({}) {{ {}({}) {{ success {} {{ ",
             operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,

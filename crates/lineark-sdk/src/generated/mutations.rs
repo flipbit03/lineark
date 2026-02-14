@@ -50,6 +50,8 @@ pub async fn image_upload_from_url(
         .await
 }
 /// Creates a new issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_create<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -65,6 +67,8 @@ pub async fn issue_create<
         .await
 }
 /// Updates an issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_update<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -81,6 +85,8 @@ pub async fn issue_update<
         .await
 }
 /// Archives an issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_archive<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -97,6 +103,8 @@ pub async fn issue_archive<
         .await
 }
 /// Unarchives an issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_unarchive<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -113,6 +121,8 @@ pub async fn issue_unarchive<
         .await
 }
 /// Deletes (trashes) an issue.
+///
+/// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_delete<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -131,6 +141,8 @@ pub async fn issue_delete<
         .await
 }
 /// Creates a new issue relation.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
 pub async fn issue_relation_create<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -149,6 +161,8 @@ pub async fn issue_relation_create<
         .await
 }
 /// Creates a new document.
+///
+/// Full type: [`Document`](super::types::Document)
 pub async fn document_create<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -164,6 +178,8 @@ pub async fn document_create<
         .await
 }
 /// Updates a document.
+///
+/// Full type: [`Document`](super::types::Document)
 pub async fn document_update<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -180,6 +196,8 @@ pub async fn document_update<
         .await
 }
 /// Deletes (trashes) a document.
+///
+/// Full type: [`Document`](super::types::Document)
 pub async fn document_delete<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(
@@ -196,6 +214,8 @@ pub async fn document_delete<
         .await
 }
 /// Creates a new comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
 pub async fn comment_create<
     T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
 >(

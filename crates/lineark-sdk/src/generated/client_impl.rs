@@ -14,22 +14,32 @@ use crate::field_selection::GraphQLFields;
 use serde::de::DeserializeOwned;
 impl Client {
     /// All issue workflow states.
+    ///
+    /// Full type: [`WorkflowState`](super::types::WorkflowState)
     pub fn workflow_states<T>(&self) -> WorkflowStatesQueryBuilder<'_, T> {
         crate::generated::queries::workflow_states(self)
     }
     /// All users for the organization.
+    ///
+    /// Full type: [`User`](super::types::User)
     pub fn users<T>(&self) -> UsersQueryBuilder<'_, T> {
         crate::generated::queries::users(self)
     }
     /// The currently authenticated user.
+    ///
+    /// Full type: [`User`](super::types::User)
     pub async fn whoami<T: DeserializeOwned + GraphQLFields>(&self) -> Result<T, LinearError> {
         crate::generated::queries::whoami::<T>(self).await
     }
     /// All projects.
+    ///
+    /// Full type: [`Project`](super::types::Project)
     pub fn projects<T>(&self) -> ProjectsQueryBuilder<'_, T> {
         crate::generated::queries::projects(self)
     }
     /// One specific project.
+    ///
+    /// Full type: [`Project`](super::types::Project)
     pub async fn project<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -37,10 +47,14 @@ impl Client {
         crate::generated::queries::project::<T>(self, id).await
     }
     /// All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+    ///
+    /// Full type: [`Team`](super::types::Team)
     pub fn teams<T>(&self) -> TeamsQueryBuilder<'_, T> {
         crate::generated::queries::teams(self)
     }
     /// One specific team.
+    ///
+    /// Full type: [`Team`](super::types::Team)
     pub async fn team<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -48,14 +62,20 @@ impl Client {
         crate::generated::queries::team::<T>(self, id).await
     }
     /// Search issues.
+    ///
+    /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
     pub fn search_issues<T>(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_, T> {
         crate::generated::queries::search_issues(self, term)
     }
     /// All issues.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub fn issues<T>(&self) -> IssuesQueryBuilder<'_, T> {
         crate::generated::queries::issues(self)
     }
     /// One specific issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -63,10 +83,14 @@ impl Client {
         crate::generated::queries::issue::<T>(self, id).await
     }
     /// All issue relationships.
+    ///
+    /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub fn issue_relations<T>(&self) -> IssueRelationsQueryBuilder<'_, T> {
         crate::generated::queries::issue_relations(self)
     }
     /// One specific issue relation.
+    ///
+    /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -74,14 +98,20 @@ impl Client {
         crate::generated::queries::issue_relation::<T>(self, id).await
     }
     /// All issue labels.
+    ///
+    /// Full type: [`IssueLabel`](super::types::IssueLabel)
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
     /// All documents in the workspace.
+    ///
+    /// Full type: [`Document`](super::types::Document)
     pub fn documents<T>(&self) -> DocumentsQueryBuilder<'_, T> {
         crate::generated::queries::documents(self)
     }
     /// One specific document.
+    ///
+    /// Full type: [`Document`](super::types::Document)
     pub async fn document<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -89,10 +119,14 @@ impl Client {
         crate::generated::queries::document::<T>(self, id).await
     }
     /// All cycles.
+    ///
+    /// Full type: [`Cycle`](super::types::Cycle)
     pub fn cycles<T>(&self) -> CyclesQueryBuilder<'_, T> {
         crate::generated::queries::cycles(self)
     }
     /// One specific cycle.
+    ///
+    /// Full type: [`Cycle`](super::types::Cycle)
     pub async fn cycle<T: DeserializeOwned + GraphQLFields>(
         &self,
         id: String,
@@ -126,6 +160,8 @@ impl Client {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
     /// Creates a new issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_create<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -135,6 +171,8 @@ impl Client {
         crate::generated::mutations::issue_create::<T>(self, input).await
     }
     /// Updates an issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_update<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -145,6 +183,8 @@ impl Client {
         crate::generated::mutations::issue_update::<T>(self, input, id).await
     }
     /// Archives an issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_archive<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -155,6 +195,8 @@ impl Client {
         crate::generated::mutations::issue_archive::<T>(self, trash, id).await
     }
     /// Unarchives an issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_unarchive<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -164,6 +206,8 @@ impl Client {
         crate::generated::mutations::issue_unarchive::<T>(self, id).await
     }
     /// Deletes (trashes) an issue.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_delete<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -174,6 +218,8 @@ impl Client {
         crate::generated::mutations::issue_delete::<T>(self, permanently_delete, id).await
     }
     /// Creates a new issue relation.
+    ///
+    /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub async fn issue_relation_create<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -185,6 +231,8 @@ impl Client {
             .await
     }
     /// Creates a new document.
+    ///
+    /// Full type: [`Document`](super::types::Document)
     pub async fn document_create<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -194,6 +242,8 @@ impl Client {
         crate::generated::mutations::document_create::<T>(self, input).await
     }
     /// Updates a document.
+    ///
+    /// Full type: [`Document`](super::types::Document)
     pub async fn document_update<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -204,6 +254,8 @@ impl Client {
         crate::generated::mutations::document_update::<T>(self, input, id).await
     }
     /// Deletes (trashes) a document.
+    ///
+    /// Full type: [`Document`](super::types::Document)
     pub async fn document_delete<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(
@@ -213,6 +265,8 @@ impl Client {
         crate::generated::mutations::document_delete::<T>(self, id).await
     }
     /// Creates a new comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
     pub async fn comment_create<
         T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
     >(

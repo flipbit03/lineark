@@ -166,7 +166,7 @@ fn emit_direct_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
-    _object_map: &HashMap<&str, &ObjectDef>,
+    object_map: &HashMap<&str, &ObjectDef>,
     _type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
     let method_name =
@@ -192,7 +192,21 @@ fn emit_direct_query(
 
     let (gql_args_str, gql_params_str) = build_gql_strings(args);
     let data_path = &field.name;
-    let doc = parser::doc_comment_tokens(&field.description);
+    let base_doc = parser::doc_comment_tokens(&field.description);
+    let return_type_name = field.ty.base_name();
+    let node_type_name = if is_connection {
+        object_map
+            .get(return_type_name)
+            .and_then(|obj| obj.fields.iter().find(|f| f.name == "nodes"))
+            .map(|f| f.ty.base_name())
+            .unwrap_or(return_type_name)
+    } else {
+        return_type_name
+    };
+    let type_hint = format!(
+        " Full type: [`{node_type_name}`](super::types::{node_type_name})"
+    );
+    let doc = quote! { #base_doc #[doc = ""] #[doc = #type_hint] };
 
     let call_args: Vec<TokenStream> = args
         .iter()
@@ -296,13 +310,27 @@ fn emit_builder_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
-    _object_map: &HashMap<&str, &ObjectDef>,
+    object_map: &HashMap<&str, &ObjectDef>,
     _type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
     let rust_name = rename.unwrap_or(field.name.as_str());
     let method_name = quote::format_ident!("{}", rust_name.to_snake_case());
     let builder_name = quote::format_ident!("{}QueryBuilder", rust_name.to_upper_camel_case());
-    let doc = parser::doc_comment_tokens(&field.description);
+    let base_doc = parser::doc_comment_tokens(&field.description);
+    let return_type_name = field.ty.base_name();
+    let node_type_name = if is_connection {
+        object_map
+            .get(return_type_name)
+            .and_then(|obj| obj.fields.iter().find(|f| f.name == "nodes"))
+            .map(|f| f.ty.base_name())
+            .unwrap_or(return_type_name)
+    } else {
+        return_type_name
+    };
+    let type_hint = format!(
+        " Full type: [`{node_type_name}`](super::types::{node_type_name})"
+    );
+    let doc = quote! { #base_doc #[doc = ""] #[doc = #type_hint] };
 
     let required_args: Vec<&ArgInfo> = args.iter().filter(|a| a.is_required).collect();
     let optional_args: Vec<&ArgInfo> = args.iter().filter(|a| !a.is_required).collect();
@@ -445,11 +473,11 @@ fn emit_builder_query(
         Some(desc) => {
             let sanitized = crate::parser::sanitize_doc(desc);
             let text = format!(" Query builder: {}", sanitized);
-            quote::quote! { #[doc = #text] }
+            quote::quote! { #[doc = #text] #[doc = ""] #[doc = #type_hint] }
         }
         None => {
             let text = format!(" Query builder for `{}`.", method_name);
-            quote::quote! { #[doc = #text] }
+            quote::quote! { #[doc = #text] #[doc = ""] #[doc = #type_hint] }
         }
     };
 
