@@ -96,7 +96,7 @@ The derive macro is re-exported by `lineark-sdk` — **you don't need to add `li
 use lineark_sdk::GraphQLFields; // gives you both the trait AND #[derive(GraphQLFields)]
 ```
 
-Add `#[graphql(full_type = X)]` to get compile-time validation that your fields exist on the schema type with compatible types:
+Custom types **must** include `#[graphql(full_type = X)]` pointing to the corresponding generated type — this is required for the type to satisfy the query's `FullType` constraint, and it also validates your fields at compile time (misspelled or nonexistent fields are a compile error):
 
 ```rust
 use lineark_sdk::{Client, GraphQLFields};
@@ -118,7 +118,7 @@ for issue in &issues.nodes {
 }
 ```
 
-The `#[derive(GraphQLFields)]` macro generates a `selection()` method from the struct's field names, so the query fetches exactly those fields — no overfetching. The `#[graphql(full_type = X)]` attribute validates each field against the generated type at compile time — misspelled or nonexistent fields cause a compile error. For nested objects, annotate with `#[graphql(nested)]`:
+The `#[derive(GraphQLFields)]` macro generates a `selection()` method from the struct's field names, so the query fetches exactly those fields — no overfetching. For nested objects, annotate with `#[graphql(nested)]` (each nested type also needs its own `#[graphql(full_type = X)]`):
 
 ```rust
 use lineark_sdk::generated::types::Team;
