@@ -2,9 +2,10 @@
 
 ## Vision
 
-**lineark** is an unofficial Linear ecosystem for Rust, consisting of two crates:
+**lineark** is an unofficial Linear ecosystem for Rust, consisting of three published crates:
 
 - **`lineark-sdk`** — A typed, async-first Rust SDK for the Linear GraphQL API
+- **`lineark-derive`** — Proc macro crate providing `#[derive(GraphQLFields)]` for type-driven field selection
 - **`lineark`** — A CLI that serves both humans and LLMs, powered by `lineark-sdk`
 
 The CLI is designed to be the primary interface for LLM agents interacting with Linear — compact, self-documenting via `--help`, JSON output by default in non-interactive contexts, and zero-config if `~/.linear_api_token` exists.
@@ -30,6 +31,7 @@ lineark/
 │   │       ├── client.rs         # LinearClient (async)
 │   │       ├── blocking_client.rs # Blocking (sync) client wrapper
 │   │       ├── error.rs          # Error types (mirroring Linear's error taxonomy)
+│   │       ├── field_selection.rs # GraphQLFields trait definition
 │   │       ├── pagination.rs     # Connection<T>, PageInfo, cursor helpers
 │   │       ├── auth.rs           # Token resolution (~/.linear_api_token, env, flag)
 │   │       ├── helpers.rs        # HTTP helpers for file download/upload
@@ -39,8 +41,13 @@ lineark/
 │   │           ├── inputs.rs     # Input types (IssueCreateInput, IssueUpdateInput, etc.)
 │   │           ├── enums.rs      # Enums (IssueRelationType, PriorityLevel, etc.)
 │   │           ├── scalars.rs    # Custom scalar mappings (DateTime->chrono, JSON->Value)
-│   │           ├── queries.rs    # Query functions (teams, issues, viewer, etc.)
-│   │           └── mutations.rs  # Mutation functions (create_issue, update_issue, etc.)
+│   │           ├── queries.rs    # Query functions (generic over T: GraphQLFields)
+│   │           └── mutations.rs  # Mutation functions (generic over T: GraphQLFields)
+│   │
+│   ├── lineark-derive/           # Proc-macro crate -> published to crates.io
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── lib.rs            # #[derive(GraphQLFields)] implementation
 │   │
 │   ├── lineark/                  # Binary crate -> published to crates.io + binary releases
 │   │   ├── Cargo.toml
@@ -105,6 +112,7 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 home = "0.5"
 url = "2"
+lineark-derive = { path = "../lineark-derive" }
 
 [features]
 default = []
@@ -149,7 +157,7 @@ let created = client.issue_create(IssueCreateInput {
 - `LinearError::InvalidInput(String)` — bad input
 - `LinearError::Forbidden(String)` — insufficient permissions
 - `LinearError::Network(reqwest::Error)` — transport error
-- `LinearError::GraphQL(Vec<GraphQLError>)` — GraphQL-level errors
+- `LinearError::GraphQL { errors, query_name }` — GraphQL-level errors (includes query name for diagnostics)
 - `LinearError::HttpError { status, body }` — non-2xx HTTP responses
 - `LinearError::MissingData(String)` — expected data path missing
 - `LinearError::AuthConfig(String)` — auth configuration error
@@ -245,12 +253,12 @@ Every command supports `--help` with full descriptions, argument docs, and examp
 
 **Approach:**
 1. Parse schema using the `apollo-parser` crate (modern, error-resilient GraphQL parser that produces a CST)
-2. Walk all `ObjectTypeDefinition` -> emit Rust structs with `#[derive(Debug, Clone, Serialize, Deserialize)]`
+2. Walk all `ObjectTypeDefinition` -> emit Rust structs with `#[derive(Debug, Clone, Serialize, Deserialize)]` + `impl GraphQLFields` blocks
 3. Walk all `InputObjectTypeDefinition` -> emit input structs with `Default` impl
 4. Walk all `EnumTypeDefinition` -> emit Rust enums with serde rename
 5. Walk all `ScalarTypeDefinition` -> emit type aliases (DateTime->chrono::DateTime, JSON->serde_json::Value, etc.)
-6. Walk `Query` type fields -> emit async query functions with builder pattern
-7. Walk `Mutation` type fields -> emit async mutation functions
+6. Walk `Query` type fields -> emit generic async query functions (`T: DeserializeOwned + GraphQLFields`) with builder pattern
+7. Walk `Mutation` type fields -> emit generic async mutation functions
 8. Format output with `prettyplease` (Rust code formatter crate, no need for external rustfmt)
 
 **Key dependency:** `apollo-parser` — modern, actively maintained GraphQL parser from Apollo. Produces a lossless CST with error recovery. Replaces `graphql-parser` which is less maintained.
@@ -269,12 +277,12 @@ cargo run -p lineark-codegen
 ### What gets generated
 
 The Linear GraphQL schema contains approximately:
-- 485 object types -> Rust structs
+- 485 object types -> Rust structs + `impl GraphQLFields` blocks
 - 337 input types -> Rust structs with `Default`
 - 72 enums -> Rust enums
 - 16 custom scalars -> type aliases
-- ~292 root query fields -> query functions
-- ~285 root mutation fields -> mutation functions
+- ~292 root query fields -> generic query functions (`T: DeserializeOwned + GraphQLFields`)
+- ~285 root mutation fields -> generic mutation functions
 
 ### Incremental operation support
 
@@ -344,22 +352,24 @@ Types and enums are always fully generated (they're cheap and needed for complet
 
 ### GraphQL query generation
 
-Each query/mutation function embeds its GraphQL query string as a constant. The codegen determines which fields to request based on the object type's scalar and enum fields (not nested objects — those require separate queries, keeping responses lean).
+Query and mutation functions are generic over `T: DeserializeOwned + GraphQLFields`. At runtime, the query string is built dynamically using `T::selection()`, so the exact fields fetched depend on the type parameter. Generated types return all scalar/enum fields; consumer-defined lean types return only their declared fields.
 
 ```rust
-// Generated example
-impl Client {
-    pub async fn teams(&self) -> Result<Connection<Team>, LinearError> {
-        const QUERY: &str = r#"
-            query Teams($first: Int, $after: String) {
-                teams(first: $first, after: $after) {
-                    nodes { id name key description color }
-                    pageInfo { hasNextPage endCursor }
-                }
-            }
-        "#;
-        // ... execute and deserialize
-    }
+// Generated example (simplified)
+pub fn teams<T: DeserializeOwned + GraphQLFields>(
+    client: &Client,
+    variables: TeamsVariables,
+) -> Result<Connection<T>, LinearError> {
+    let selection = T::selection();
+    let query = format!(
+        "query Teams($first: Int, $after: String) {{
+            teams(first: $first, after: $after) {{
+                nodes {{ {selection} }}
+                pageInfo {{ hasNextPage endCursor }}
+            }}
+        }}"
+    );
+    // ... execute and deserialize
 }
 ```
 
@@ -637,7 +647,7 @@ and ensure all tests pass."
 
 3. **Incremental by design.** Types are always complete. Operations are added via an allowlist. The CLI grows command by command, not all at once.
 
-4. **LLM-maintainable.** The codegen tool, the SDK runtime, and the CLI are each simple enough for a single Claude session to fully understand and modify. No clever abstractions, no deep inheritance hierarchies, no macro magic.
+4. **LLM-maintainable.** The codegen tool, the SDK runtime, and the CLI are each simple enough for a single Claude session to fully understand and modify. No clever abstractions, no deep inheritance hierarchies. The only proc macro is `#[derive(GraphQLFields)]` in `lineark-derive` for type-driven field selection.
 
 5. **Zero config for existing Linear users.** If `~/.linear_api_token` exists (from linearis or manual setup), lineark works immediately.
 

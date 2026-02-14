@@ -14,15 +14,16 @@ cargo add lineark-sdk
 
 ```rust
 use lineark_sdk::Client;
+use lineark_sdk::generated::types::{User, Team};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::auto()?;
 
-    let me = client.whoami().await?;
+    let me = client.whoami::<User>().await?;
     println!("Logged in as: {}", me.name.as_deref().unwrap_or("?"));
 
-    let teams = client.teams().first(10).send().await?;
+    let teams = client.teams::<Team>().first(10).send().await?;
     for team in &teams.nodes {
         println!("{}: {}",
             team.key.as_deref().unwrap_or("?"),
@@ -51,11 +52,11 @@ Collection queries use a builder pattern with optional pagination and filtering:
 
 ```rust
 // Paginate with first/last/after/before
-let issues = client.issues().first(25).send().await?;
-let page2 = client.issues().first(25).after(issues.page_info.end_cursor.unwrap()).send().await?;
+let issues = client.issues::<Issue>().first(25).send().await?;
+let page2 = client.issues::<Issue>().first(25).after(issues.page_info.end_cursor.unwrap()).send().await?;
 
 // Search with extra filters
-let results = client.search_issues("bug")
+let results = client.search_issues::<IssueSearchResult>("bug")
     .first(10)
     .team_id("team-uuid")
     .include_comments(true)
@@ -73,7 +74,7 @@ let results = client.search_issues("bug")
 | `project(id)` | `Project` | Get project by ID |
 | `issues()` | `Connection<Issue>` | List issues |
 | `issue(id)` | `Issue` | Get issue by ID |
-| `search_issues(term)` | `Connection<Issue>` | Full-text issue search |
+| `search_issues(term)` | `Connection<IssueSearchResult>` | Full-text issue search |
 | `issue_labels()` | `Connection<IssueLabel>` | List labels |
 | `cycles()` | `Connection<Cycle>` | List cycles |
 | `cycle(id)` | `Cycle` | Get cycle by ID |
@@ -85,12 +86,71 @@ let results = client.search_issues("bug")
 
 All collection queries support `.first(n)`, `.last(n)`, `.after(cursor)`, `.before(cursor)`, and `.include_archived(bool)`.
 
+## Custom field selection
+
+All queries are generic over `T: DeserializeOwned + GraphQLFields`. By default they use the generated types (which fetch all scalar fields), but you can define custom lean structs to fetch only the fields you need.
+
+The derive macro is re-exported by `lineark-sdk` — **you don't need to add `lineark-derive` to your `Cargo.toml`**. Just import and use:
+
+```rust
+use lineark_sdk::GraphQLFields; // gives you both the trait AND #[derive(GraphQLFields)]
+```
+
+Custom types **must** include `#[graphql(full_type = X)]` pointing to the corresponding generated type — this is required for the type to satisfy the query's `FullType` constraint, and it also validates your fields at compile time (misspelled or nonexistent fields are a compile error):
+
+```rust
+use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::generated::types::Issue;
+use serde::Deserialize;
+
+#[derive(Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase")]
+struct LeanIssue {
+    id: Option<String>,
+    title: Option<String>,
+}
+
+let client = Client::auto()?;
+let issues = client.issues::<LeanIssue>().first(10).send().await?;
+for issue in &issues.nodes {
+    println!("{}", issue.title.as_deref().unwrap_or("?"));
+}
+```
+
+The `#[derive(GraphQLFields)]` macro generates a `selection()` method from the struct's field names, so the query fetches exactly those fields — no overfetching. For nested objects, annotate with `#[graphql(nested)]` (each nested type also needs its own `#[graphql(full_type = X)]`):
+
+```rust
+use lineark_sdk::generated::types::Team;
+
+#[derive(Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase")]
+struct IssueWithTeam {
+    id: Option<String>,
+    title: Option<String>,
+    #[graphql(nested)]
+    team: Option<LeanTeam>,
+}
+
+#[derive(Deserialize, GraphQLFields)]
+#[graphql(full_type = Team)]
+#[serde(rename_all = "camelCase")]
+struct LeanTeam {
+    id: Option<String>,
+    key: Option<String>,
+}
+```
+
 ## Mutations
+
+Mutations are also generic — use turbofish or let the type be inferred:
 
 ```rust
 use lineark_sdk::generated::inputs::IssueCreateInput;
+use lineark_sdk::generated::types::Issue;
 
-let payload = client.issue_create(IssueCreateInput {
+let payload = client.issue_create::<Issue>(IssueCreateInput {
     title: Some("Fix the bug".to_string()),
     team_id: Some("team-uuid".to_string()),
     priority: Some(2),
@@ -141,6 +201,7 @@ The blocking client mirrors the async API exactly:
 
 ```rust
 use lineark_sdk::blocking_client::Client;
+use lineark_sdk::generated::types::Document;
 
 let client = Client::auto()?;
 
@@ -155,8 +216,8 @@ for team in &teams.nodes {
     );
 }
 
-// Mutations work the same way
-let payload = client.document_create(input)?;
+// Mutations are generic — use turbofish or type inference
+let payload = client.document_create::<Document>(input)?;
 
 // File operations too
 let result = client.upload_file("file.txt", "text/plain", bytes, false)?;
@@ -171,7 +232,7 @@ All methods return `Result<T, LinearError>`. Error variants:
 - `Forbidden` — insufficient permissions
 - `RateLimited` — API rate limit hit (includes `retry_after`)
 - `InvalidInput` — bad request parameters
-- `GraphQL` — errors returned in the GraphQL response
+- `GraphQL` — errors returned in the GraphQL response (includes query name for diagnostics)
 - `Network` — connection/transport failures
 - `HttpError` — non-200 responses not covered above
 - `MissingData` — expected data path not found in response

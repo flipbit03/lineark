@@ -104,7 +104,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
                 .expect("valid CycleFilter");
 
             let conn = client
-                .cycles()
+                .cycles::<Cycle>()
                 .filter(filter)
                 .first(limit)
                 .send()
@@ -142,7 +142,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
             // Try UUID first.
             if uuid::Uuid::parse_str(&id).is_ok() {
                 let cycle = client
-                    .cycle(id)
+                    .cycle::<Cycle>(id)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
                 output::print_one(&cycle, format);
@@ -176,7 +176,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
                 .expect("valid CycleFilter");
 
             let conn = client
-                .cycles()
+                .cycles::<Cycle>()
                 .filter(filter)
                 .first(1)
                 .send()
@@ -191,7 +191,7 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
             let cycle_id = cycle.id.ok_or_else(|| anyhow::anyhow!("Cycle has no ID"))?;
 
             let full_cycle = client
-                .cycle(cycle_id)
+                .cycle::<Cycle>(cycle_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

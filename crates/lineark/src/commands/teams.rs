@@ -1,4 +1,5 @@
 use clap::Args;
+use lineark_sdk::generated::types::Team;
 use lineark_sdk::Client;
 use serde::Serialize;
 use tabled::Tabled;
@@ -29,7 +30,7 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
     match cmd.action {
         TeamsAction::List => {
             let conn = client
-                .teams()
+                .teams::<Team>()
                 .first(250)
                 .send()
                 .await

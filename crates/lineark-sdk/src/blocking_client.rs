@@ -158,10 +158,11 @@ impl<'rt, B> BlockingQuery<'rt, B> {
 macro_rules! blocking_query_builder {
     (
         query_type = $QueryType:ident,
+        node_type = $NodeType:ty,
         return_type = $ReturnKind:ident < $ReturnType:ty >,
         methods = [ $( $method:ident ( $arg_ty:ty ) ),* $(,)? ]
     ) => {
-        impl<'rt> BlockingQuery<'rt, crate::generated::queries::$QueryType<'_>> {
+        impl<'rt> BlockingQuery<'rt, crate::generated::queries::$QueryType<'_, $NodeType>> {
             $(
                 pub fn $method(mut self, value: $arg_ty) -> Self {
                     self.builder = self.builder.$method(value);
@@ -192,60 +193,70 @@ use crate::generated::types::*;
 
 blocking_query_builder! {
     query_type = WorkflowStatesQueryBuilder,
+    node_type = WorkflowState,
     return_type = Connection<WorkflowState>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = UsersQueryBuilder,
+    node_type = User,
     return_type = Connection<User>,
     methods = [include_disabled(bool), before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = TeamsQueryBuilder,
+    node_type = Team,
     return_type = Connection<Team>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = ProjectsQueryBuilder,
+    node_type = Project,
     return_type = Connection<Project>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = IssueLabelsQueryBuilder,
+    node_type = IssueLabel,
     return_type = Connection<IssueLabel>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = IssuesQueryBuilder,
+    node_type = Issue,
     return_type = Connection<Issue>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = CyclesQueryBuilder,
+    node_type = Cycle,
     return_type = Connection<Cycle>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = SearchIssuesQueryBuilder,
-    return_type = Connection<Issue>,
+    node_type = IssueSearchResult,
+    return_type = Connection<IssueSearchResult>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool), include_comments(bool), team_id(impl Into<String>)]
 }
 
 blocking_query_builder! {
     query_type = DocumentsQueryBuilder,
+    node_type = Document,
     return_type = Connection<Document>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
 blocking_query_builder! {
     query_type = IssueRelationsQueryBuilder,
+    node_type = IssueRelation,
     return_type = Connection<IssueRelation>,
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
@@ -254,100 +265,115 @@ blocking_query_builder! {
 impl Client {
     /// Query the authenticated user (blocking).
     pub fn whoami(&self) -> Result<User, LinearError> {
-        self.rt.block_on(self.inner.whoami())
+        self.rt.block_on(self.inner.whoami::<User>())
     }
 
     /// List workflow states (blocking).
     pub fn workflow_states(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::WorkflowStatesQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.workflow_states(), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::WorkflowStatesQueryBuilder<'_, WorkflowState>>
+    {
+        BlockingQuery::new(self.inner.workflow_states::<WorkflowState>(), &self.rt)
     }
 
     /// List users (blocking).
-    pub fn users(&self) -> BlockingQuery<'_, crate::generated::queries::UsersQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.users(), &self.rt)
+    pub fn users(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::UsersQueryBuilder<'_, User>> {
+        BlockingQuery::new(self.inner.users::<User>(), &self.rt)
     }
 
     /// List teams (blocking).
-    pub fn teams(&self) -> BlockingQuery<'_, crate::generated::queries::TeamsQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.teams(), &self.rt)
+    pub fn teams(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::TeamsQueryBuilder<'_, Team>> {
+        BlockingQuery::new(self.inner.teams::<Team>(), &self.rt)
     }
 
     /// Query a single team by ID (blocking).
     pub fn team(&self, id: String) -> Result<Team, LinearError> {
-        self.rt.block_on(self.inner.team(id))
+        self.rt.block_on(self.inner.team::<Team>(id))
     }
 
     /// List projects (blocking).
     pub fn projects(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::ProjectsQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.projects(), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::ProjectsQueryBuilder<'_, Project>> {
+        BlockingQuery::new(self.inner.projects::<Project>(), &self.rt)
     }
 
     /// Query a single project by ID (blocking).
     pub fn project(&self, id: String) -> Result<Project, LinearError> {
-        self.rt.block_on(self.inner.project(id))
+        self.rt.block_on(self.inner.project::<Project>(id))
     }
 
     /// List issue labels (blocking).
     pub fn issue_labels(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::IssueLabelsQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.issue_labels(), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueLabelsQueryBuilder<'_, IssueLabel>> {
+        BlockingQuery::new(self.inner.issue_labels::<IssueLabel>(), &self.rt)
     }
 
     /// List issues (blocking).
-    pub fn issues(&self) -> BlockingQuery<'_, crate::generated::queries::IssuesQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.issues(), &self.rt)
+    pub fn issues(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::IssuesQueryBuilder<'_, Issue>> {
+        BlockingQuery::new(self.inner.issues::<Issue>(), &self.rt)
     }
 
     /// Query a single issue by ID (blocking).
     pub fn issue(&self, id: String) -> Result<Issue, LinearError> {
-        self.rt.block_on(self.inner.issue(id))
+        self.rt.block_on(self.inner.issue::<Issue>(id))
     }
 
     /// List cycles (blocking).
-    pub fn cycles(&self) -> BlockingQuery<'_, crate::generated::queries::CyclesQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.cycles(), &self.rt)
+    pub fn cycles(
+        &self,
+    ) -> BlockingQuery<'_, crate::generated::queries::CyclesQueryBuilder<'_, Cycle>> {
+        BlockingQuery::new(self.inner.cycles::<Cycle>(), &self.rt)
     }
 
     /// Query a single cycle by ID (blocking).
     pub fn cycle(&self, id: String) -> Result<Cycle, LinearError> {
-        self.rt.block_on(self.inner.cycle(id))
+        self.rt.block_on(self.inner.cycle::<Cycle>(id))
     }
 
     /// Search issues (blocking).
     pub fn search_issues(
         &self,
         term: impl Into<String>,
-    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.search_issues(term), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::SearchIssuesQueryBuilder<'_, IssueSearchResult>>
+    {
+        BlockingQuery::new(
+            self.inner.search_issues::<IssueSearchResult>(term),
+            &self.rt,
+        )
     }
 
     /// List documents (blocking).
     pub fn documents(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::DocumentsQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.documents(), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::DocumentsQueryBuilder<'_, Document>> {
+        BlockingQuery::new(self.inner.documents::<Document>(), &self.rt)
     }
 
     /// Query a single document by ID (blocking).
     pub fn document(&self, id: String) -> Result<Document, LinearError> {
-        self.rt.block_on(self.inner.document(id))
+        self.rt.block_on(self.inner.document::<Document>(id))
     }
 
     /// List issue relations (blocking).
     pub fn issue_relations(
         &self,
-    ) -> BlockingQuery<'_, crate::generated::queries::IssueRelationsQueryBuilder<'_>> {
-        BlockingQuery::new(self.inner.issue_relations(), &self.rt)
+    ) -> BlockingQuery<'_, crate::generated::queries::IssueRelationsQueryBuilder<'_, IssueRelation>>
+    {
+        BlockingQuery::new(self.inner.issue_relations::<IssueRelation>(), &self.rt)
     }
 
     /// Query a single issue relation by ID (blocking).
     pub fn issue_relation(&self, id: String) -> Result<IssueRelation, LinearError> {
-        self.rt.block_on(self.inner.issue_relation(id))
+        self.rt
+            .block_on(self.inner.issue_relation::<IssueRelation>(id))
     }
 }
 
@@ -358,49 +384,55 @@ use crate::generated::inputs::*;
 /// Blocking equivalents of the generated mutation methods on [`Client`].
 impl Client {
     /// Create a comment (blocking).
-    pub fn comment_create(
+    pub fn comment_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Comment>>(
         &self,
         input: CommentCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.comment_create(input))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.comment_create::<T>(input))
     }
 
     /// Create an issue (blocking).
-    pub fn issue_create(&self, input: IssueCreateInput) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.issue_create(input))
+    pub fn issue_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
+        &self,
+        input: IssueCreateInput,
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.issue_create::<T>(input))
     }
 
     /// Update an issue (blocking).
-    pub fn issue_update(
+    pub fn issue_update<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         input: IssueUpdateInput,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.issue_update(input, id))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.issue_update::<T>(input, id))
     }
 
     /// Archive an issue (blocking).
-    pub fn issue_archive(
+    pub fn issue_archive<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         trash: Option<bool>,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.issue_archive(trash, id))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.issue_archive::<T>(trash, id))
     }
 
     /// Unarchive an issue (blocking).
-    pub fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.issue_unarchive(id))
+    pub fn issue_unarchive<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.issue_unarchive::<T>(id))
     }
 
     /// Delete an issue (blocking).
-    pub fn issue_delete(
+    pub fn issue_delete<T: DeserializeOwned + crate::GraphQLFields<FullType = Issue>>(
         &self,
         permanently_delete: Option<bool>,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
+    ) -> Result<T, LinearError> {
         self.rt
-            .block_on(self.inner.issue_delete(permanently_delete, id))
+            .block_on(self.inner.issue_delete::<T>(permanently_delete, id))
     }
 
     /// Request a file upload URL (blocking).
@@ -427,35 +459,42 @@ impl Client {
     }
 
     /// Create an issue relation (blocking).
-    pub fn issue_relation_create(
+    pub fn issue_relation_create<
+        T: DeserializeOwned + crate::GraphQLFields<FullType = IssueRelation>,
+    >(
         &self,
         override_created_at: Option<serde_json::Value>,
         input: IssueRelationCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt
-            .block_on(self.inner.issue_relation_create(override_created_at, input))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(
+            self.inner
+                .issue_relation_create::<T>(override_created_at, input),
+        )
     }
 
     /// Create a document (blocking).
-    pub fn document_create(
+    pub fn document_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
         input: DocumentCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.document_create(input))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.document_create::<T>(input))
     }
 
     /// Update a document (blocking).
-    pub fn document_update(
+    pub fn document_update<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
         input: DocumentUpdateInput,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.document_update(input, id))
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.document_update::<T>(input, id))
     }
 
     /// Delete a document (blocking).
-    pub fn document_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        self.rt.block_on(self.inner.document_delete(id))
+    pub fn document_delete<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(self.inner.document_delete::<T>(id))
     }
 }
 

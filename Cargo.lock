@@ -880,12 +880,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "lineark-derive"
+version = "0.0.0"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.114",
+]
+
+[[package]]
 name = "lineark-sdk"
 version = "0.0.0"
 dependencies = [
  "chrono",
  "home",
  "libtest-with",
+ "lineark-derive",
  "reqwest",
  "serde",
  "serde_json",

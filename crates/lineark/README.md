@@ -40,14 +40,29 @@ lineark teams list                               List all teams
 lineark users list [--active]                    List users
 lineark projects list                            List all projects
 lineark labels list                              List issue labels
-lineark cycles list [--limit N]                  List cycles
-lineark cycles read <ID>                         Read a specific cycle
+lineark cycles list [--limit N] [--team KEY]     List cycles
+  [--active] [--around-active N]                 Active cycle / ± N neighbors
+lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, number)
 lineark issues list [--limit N] [--team KEY]     Active issues, newest first
-  [--mine]                                       Only issues assigned to me
-  [--show-done]                                  Include done/canceled issues
+  [--mine] [--show-done]                         Filter by assignee / state
 lineark issues read <IDENTIFIER>                 Full issue detail (e.g., E-929)
 lineark issues search <QUERY> [--limit N]        Full-text search
   [--show-done]                                  Include done/canceled results
+lineark issues create <TITLE> --team KEY         Create an issue
+  [--priority 0-4] [--status NAME] ...           See --help for all options
+lineark issues update <IDENTIFIER>               Update an issue
+  [--status NAME] [--priority 0-4] ...           See --help for all options
+lineark issues archive <IDENTIFIER>              Archive an issue
+lineark issues unarchive <IDENTIFIER>            Unarchive an issue
+lineark issues delete <IDENTIFIER>               Delete (trash) an issue
+lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+lineark documents list [--limit N]               List documents
+lineark documents read <ID>                      Read document (includes content)
+lineark documents create --title TEXT             Create a document
+lineark documents update <ID>                    Update a document
+lineark documents delete <ID>                    Delete a document
+lineark embeds upload <FILE> [--public]           Upload file, get asset URL
+lineark embeds download <URL> [--output PATH]    Download a file by URL
 lineark usage                                    Compact command reference
 ```
 

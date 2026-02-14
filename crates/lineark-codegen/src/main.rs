@@ -55,8 +55,8 @@ fn main() {
         .parse()
         .expect("Failed to parse operations.toml");
 
-    let (allowed_queries, query_renames) = parse_operations_section(&operations, "queries");
-    let (allowed_mutations, mutation_renames) = parse_operations_section(&operations, "mutations");
+    let (allowed_queries, query_configs) = parse_operations_section(&operations, "queries");
+    let (allowed_mutations, mutation_configs) = parse_operations_section(&operations, "mutations");
 
     println!(
         "  {} allowed queries, {} allowed mutations",
@@ -84,6 +84,10 @@ fn main() {
     write_formatted(&generated_dir.join("inputs.rs"), inputs_tokens);
 
     // Queries (returns queries module + client impl)
+    let query_renames: HashMap<String, String> = query_configs
+        .iter()
+        .filter_map(|(k, c)| c.rename.as_ref().map(|r| (k.clone(), r.clone())))
+        .collect();
     let query_result = emit_queries::emit(
         &schema.query_fields,
         &allowed_queries,
@@ -97,6 +101,10 @@ fn main() {
     );
 
     // Mutations (returns mutations module + client impl)
+    let mutation_renames: HashMap<String, String> = mutation_configs
+        .iter()
+        .filter_map(|(k, c)| c.rename.as_ref().map(|r| (k.clone(), r.clone())))
+        .collect();
     let mutation_result = emit_mutations::emit(
         &schema.mutation_fields,
         &allowed_mutations,
@@ -125,7 +133,8 @@ fn main() {
 
         use crate::client::Client;
         use crate::error::LinearError;
-        use super::types::*;
+        use crate::field_selection::GraphQLFields;
+        use serde::de::DeserializeOwned;
         use super::queries::*;
         use super::inputs::*;
 
@@ -165,16 +174,24 @@ fn main() {
     println!("Code generation complete.");
 }
 
+/// Per-operation configuration parsed from operations.toml.
+#[derive(Debug, Clone)]
+struct OperationConfig {
+    rename: Option<String>,
+}
+
 /// Parse an operations section from operations.toml.
 ///
-/// Each entry can be either `name = true` (use default method name) or
-/// `name = "rename"` (use a custom Rust method name).
+/// Each entry can be:
+/// - `name = true` — use default method name
+/// - `name = "rename"` — use a custom Rust method name
+/// - `name = { rename = "..." }` — table config with rename
 fn parse_operations_section(
     operations: &toml::Value,
     section: &str,
-) -> (HashSet<String>, HashMap<String, String>) {
+) -> (HashSet<String>, HashMap<String, OperationConfig>) {
     let mut allowed = HashSet::new();
-    let mut renames = HashMap::new();
+    let mut configs = HashMap::new();
 
     if let Some(table) = operations.get(section).and_then(|s| s.as_table()) {
         for (key, value) in table {
@@ -184,14 +201,24 @@ fn parse_operations_section(
                 }
                 toml::Value::String(rename) => {
                     allowed.insert(key.clone());
-                    renames.insert(key.clone(), rename.clone());
+                    configs.insert(
+                        key.clone(),
+                        OperationConfig {
+                            rename: Some(rename.clone()),
+                        },
+                    );
+                }
+                toml::Value::Table(t) => {
+                    allowed.insert(key.clone());
+                    let rename = t.get("rename").and_then(|v| v.as_str()).map(String::from);
+                    configs.insert(key.clone(), OperationConfig { rename });
                 }
                 _ => {}
             }
         }
     }
 
-    (allowed, renames)
+    (allowed, configs)
 }
 
 fn write_formatted(path: &Path, tokens: proc_macro2::TokenStream) {

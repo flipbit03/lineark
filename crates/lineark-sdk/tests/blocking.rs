@@ -5,6 +5,7 @@
 //! When the token file is missing, online tests are automatically skipped.
 
 use lineark_sdk::blocking_client::Client;
+use lineark_sdk::generated::types::{Document, Issue};
 
 fn no_online_test_token() -> Option<String> {
     let path = home::home_dir()?.join(".linear_api_token_test");
@@ -93,17 +94,15 @@ mod blocking {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let payload = client.document_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let doc_id = payload["document"]["id"].as_str().unwrap().to_string();
+        let entity = client.document_create::<Document>(input).unwrap();
+        let doc_id = entity.id.clone().unwrap();
 
         // Read.
         let doc = client.document(doc_id.clone()).unwrap();
         assert_eq!(doc.id, Some(doc_id.clone()));
 
         // Delete.
-        let del = client.document_delete(doc_id).unwrap();
-        assert_eq!(del.get("success").and_then(|v| v.as_bool()), Some(true));
+        let _del = client.document_delete::<Document>(doc_id).unwrap();
     }
 
     // ── Issue Relations ─────────────────────────────────────────────────────
@@ -114,6 +113,18 @@ mod blocking {
         let conn = client.issue_relations().first(5).send().unwrap();
         // Just verify deserialization works — may be empty.
         assert!(conn.page_info.has_next_page || !conn.page_info.has_next_page);
+    }
+
+    // ── Search ────────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn blocking_search_issues() {
+        let client = test_client();
+        let conn = client.search_issues("test").first(5).send().unwrap();
+        // Just verify deserialization works — results may be empty.
+        for result in &conn.nodes {
+            assert!(result.id.is_some());
+        }
     }
 
     // ── Mutations ───────────────────────────────────────────────────────────
@@ -132,12 +143,10 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let payload = client.issue_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
-        let del = client.issue_delete(Some(true), issue_id).unwrap();
-        assert_eq!(del.get("success").and_then(|v| v.as_bool()), Some(true));
+        let _del = client.issue_delete::<Issue>(Some(true), issue_id).unwrap();
     }
 
     // ── Archive / Unarchive ────────────────────────────────────────────────
@@ -156,28 +165,27 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let payload = client.issue_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+        let entity = client.issue_create::<Issue>(input).unwrap();
+        let issue_id = entity.id.clone().unwrap();
 
         // Archive.
-        let arch = client.issue_archive(None, issue_id.clone()).unwrap();
-        assert_eq!(arch.get("success").and_then(|v| v.as_bool()), Some(true));
+        let arch = client
+            .issue_archive::<Issue>(None, issue_id.clone())
+            .unwrap();
         assert!(
-            arch["entity"]["archivedAt"].as_str().is_some(),
+            arch.archived_at.is_some(),
             "archivedAt should be set after archiving"
         );
 
         // Unarchive.
-        let unarch = client.issue_unarchive(issue_id.clone()).unwrap();
-        assert_eq!(unarch.get("success").and_then(|v| v.as_bool()), Some(true));
+        let unarch = client.issue_unarchive::<Issue>(issue_id.clone()).unwrap();
         assert!(
-            unarch["entity"]["archivedAt"].is_null(),
+            unarch.archived_at.is_none(),
             "archivedAt should be null after unarchiving"
         );
 
         // Clean up.
-        client.issue_delete(Some(true), issue_id).unwrap();
+        let _ = client.issue_delete::<Issue>(Some(true), issue_id).unwrap();
     }
 
     // ── File Upload ─────────────────────────────────────────────────────────
@@ -185,7 +193,7 @@ mod blocking {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_file_upload_returns_signed_url() {
         let client = test_client();
-        let payload = client
+        let entity = client
             .file_upload(
                 None,
                 None,
@@ -194,9 +202,9 @@ mod blocking {
                 "blocking-test.txt".to_string(),
             )
             .unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
+        // Non-generic mutation returns the full payload; entity is under "uploadFile".
         assert!(
-            payload["uploadFile"]["uploadUrl"].as_str().is_some(),
+            entity["uploadFile"]["uploadUrl"].as_str().is_some(),
             "should have uploadUrl"
         );
     }

@@ -1,4 +1,4 @@
-use crate::emit_queries::{build_field_selection, gql_type_string};
+use crate::emit_queries::gql_type_string;
 use crate::parser::{self, FieldDef, GqlType, ObjectDef, TypeKind};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
@@ -84,19 +84,11 @@ fn emit_mutation(
     let payload_type_name = field.ty.base_name();
     let payload_obj = object_map.get(payload_type_name)?;
 
-    let response_selection = build_payload_selection(payload_obj, object_map, type_kind_map);
-
     let (params, variables_json, graphql_args, graphql_params) =
         build_mutation_args(&field.arguments, type_kind_map);
 
     let mutation_name = &field.name;
     let operation_name = capitalize_first(mutation_name);
-
-    let mutation_string = format!(
-        "mutation {}({}) {{ {}({}) {{ {} }} }}",
-        operation_name, graphql_params, mutation_name, graphql_args, response_selection
-    );
-
     let data_path = mutation_name.as_str();
     let doc = parser::doc_comment_tokens(&field.description);
 
@@ -110,52 +102,119 @@ fn emit_mutation(
         })
         .collect();
 
-    let standalone_fn = quote! {
-        #doc
-        pub async fn #method_name(client: &Client, #(#params),*) -> Result<serde_json::Value, LinearError> {
-            let variables = serde_json::json!({ #(#variables_json),* });
-            client.execute::<serde_json::Value>(#mutation_string, variables, #data_path).await
-        }
-    };
+    // Find the single entity (Object) field in the payload, if any.
+    // Mutations with an entity field become generic; those without keep Value return.
+    let mut entity_info: Option<(String, String)> = None; // (field_name, type_name)
+    let mut scalar_parts: Vec<String> = Vec::new();
 
-    let client_method = quote! {
-        #doc
-        pub async fn #method_name(&self, #(#params),*) -> Result<serde_json::Value, LinearError> {
-            crate::generated::mutations::#method_name(self, #(#call_args),*).await
-        }
-    };
-
-    Some((standalone_fn, client_method))
-}
-
-/// Build the field selection string for a mutation payload.
-/// Selects `success` plus entity fields with their scalar/enum subfields.
-fn build_payload_selection(
-    payload_obj: &ObjectDef,
-    object_map: &HashMap<&str, &ObjectDef>,
-    type_kind_map: &HashMap<String, TypeKind>,
-) -> String {
-    let mut parts = vec!["success".to_string()];
-
-    for field in &payload_obj.fields {
-        let base = field.ty.base_name();
+    for pf in &payload_obj.fields {
+        let base = pf.ty.base_name();
         match type_kind_map.get(base) {
             Some(TypeKind::Scalar) | Some(TypeKind::Enum) => {
-                if field.name != "lastSyncId" && field.name != "success" {
-                    parts.push(field.name.clone());
+                if pf.name != "lastSyncId" {
+                    scalar_parts.push(pf.name.clone());
                 }
             }
             Some(TypeKind::Object) => {
-                let entity_selection = build_field_selection(base, object_map, type_kind_map);
-                if !entity_selection.is_empty() {
-                    parts.push(format!("{} {{ {} }}", field.name, entity_selection));
+                // Only treat as entity if the Object type implements Node (has an `id` field).
+                if entity_info.is_none() {
+                    if let Some(obj) = object_map.get(base) {
+                        if obj.fields.iter().any(|f| f.name == "id") {
+                            entity_info = Some((pf.name.clone(), base.to_string()));
+                        }
+                    }
                 }
             }
             _ => {}
         }
     }
 
-    parts.join(" ")
+    if let Some((entity_field_name, entity_type_name)) = entity_info {
+        // ── Generic mutation: returns T, SDK handles success + extraction ──
+        let entity_type_ident = quote::format_ident!("{}", entity_type_name);
+        let type_hint =
+            format!(" Full type: [`{entity_type_name}`](super::types::{entity_type_name})");
+        let doc = quote! { #doc #[doc = ""] #[doc = #type_hint] };
+        let query_prefix = format!(
+            "mutation {}({}) {{ {}({}) {{ success {} {{ ",
+            operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
+        );
+        let query_suffix = " } } }";
+        let entity_field_lit = entity_field_name.as_str();
+
+        let standalone_fn = quote! {
+            #doc
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                client: &Client, #(#params),*
+            ) -> Result<T, LinearError> {
+                let variables = serde_json::json!({ #(#variables_json),* });
+                let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
+                client.execute_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
+            }
+        };
+
+        let client_method = quote! {
+            #doc
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                &self, #(#params),*
+            ) -> Result<T, LinearError> {
+                crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
+            }
+        };
+
+        Some((standalone_fn, client_method))
+    } else {
+        // ── Non-entity mutation (e.g. file_upload): keep Value return ──
+        let mut entity_selection_exprs: Vec<TokenStream> = Vec::new();
+
+        for pf in &payload_obj.fields {
+            let base = pf.ty.base_name();
+            if matches!(type_kind_map.get(base), Some(TypeKind::Object)) {
+                let efn = &pf.name;
+                let type_ident = quote::format_ident!("{}", base);
+                entity_selection_exprs.push(quote! {
+                    response_parts.push(format!(
+                        "{} {{ {} }}",
+                        #efn,
+                        <super::types::#type_ident as crate::field_selection::GraphQLFields>::selection()
+                    ));
+                });
+            }
+        }
+
+        let query_prefix = format!(
+            "mutation {}({}) {{ {}({}) {{ ",
+            operation_name, graphql_params, mutation_name, graphql_args,
+        );
+        let query_suffix = " } }";
+
+        let has_entities = !entity_selection_exprs.is_empty();
+        let response_parts_decl = if has_entities {
+            quote! { let mut response_parts: Vec<String> = vec![#(#scalar_parts.to_string()),*]; }
+        } else {
+            quote! { let response_parts: Vec<String> = vec![#(#scalar_parts.to_string()),*]; }
+        };
+
+        let standalone_fn = quote! {
+            #doc
+            pub async fn #method_name(client: &Client, #(#params),*) -> Result<serde_json::Value, LinearError> {
+                let variables = serde_json::json!({ #(#variables_json),* });
+                #response_parts_decl
+                #(#entity_selection_exprs)*
+                let query = String::from(#query_prefix) + &response_parts.join(" ") + #query_suffix;
+                client.execute::<serde_json::Value>(&query, variables, #data_path).await
+            }
+        };
+
+        let client_method = quote! {
+            #doc
+            pub async fn #method_name(&self, #(#params),*) -> Result<serde_json::Value, LinearError> {
+                crate::generated::mutations::#method_name(self, #(#call_args),*).await
+            }
+        };
+
+        Some((standalone_fn, client_method))
+    }
 }
 
 /// Build parameter tokens for mutation arguments.

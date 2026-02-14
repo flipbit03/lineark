@@ -16,6 +16,7 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 home = "0.5"
 url = "2"
+lineark-derive = { path = "../lineark-derive", version = "0.0.0" }
 
 [dev-dependencies]
 wiremock = "0.6"

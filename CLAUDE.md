@@ -4,6 +4,7 @@
 
 lineark is an unofficial Linear (issue tracker) ecosystem for Rust:
 - **lineark-sdk** (`crates/lineark-sdk/`) — Async-first Rust SDK for the Linear GraphQL API
+- **lineark-derive** (`crates/lineark-derive/`) — Proc macro crate providing `#[derive(GraphQLFields)]` for type-driven field selection
 - **lineark** (`crates/lineark/`) — CLI for humans and LLMs, powered by lineark-sdk
 - **lineark-codegen** (`crates/lineark-codegen/`) — Internal tool that reads `schema/schema.graphql` and generates typed Rust code into `crates/lineark-sdk/src/generated/`
 
@@ -15,6 +16,7 @@ See `docs/MASTERPLAN.md` for the full architecture, roadmap, and design decision
 Cargo.toml              # workspace root
 crates/
   lineark-sdk/          # library (published to crates.io)
+  lineark-derive/       # proc macro for #[derive(GraphQLFields)]
   lineark/              # CLI binary (published to crates.io + binary releases)
   lineark-codegen/      # codegen tool (not published)
 schema/
@@ -73,7 +75,8 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 - **Auth precedence:** `--api-token` flag > `$LINEAR_API_TOKEN` env var > `~/.linear_api_token` file.
 - **Output format:** auto-detect with `std::io::IsTerminal` — human tables when interactive, JSON when piped. Override with `--format human|json`.
 - **Async by default.** The SDK uses tokio + reqwest async. A `blocking` feature flag exposes a sync API via the `blocking_client` module.
-- **No macro magic.** No proc macros in the SDK itself. Codegen emits plain Rust structs and functions.
+- **Generic queries.** All query and mutation functions are generic over `T: DeserializeOwned + GraphQLFields`. Generated types have auto-generated `impl GraphQLFields` from codegen. Consumers can define custom lean types with `#[derive(GraphQLFields)]` to avoid overfetching.
+- **Minimal proc macros.** The only proc macro is `#[derive(GraphQLFields)]` in `lineark-derive` — it enables consumer-defined lean types for field selection. Codegen emits plain Rust structs and `impl GraphQLFields` blocks.
 
 ## CLI discoverability
 
@@ -96,6 +99,8 @@ These run on five targets: `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-mus
 
 When opening a PR, include a summary of changes and a test plan. If codegen was modified, verify with `cargo run -p lineark-codegen` that the generated output is clean (codegen runs `cargo fmt` as a post-step).
 
+Before merging, run `/update-docs` to review and update all documentation (top-level README, CLI README, SDK README) so they reflect the current codebase. Documentation must stay in sync with code.
+
 ## Commit style
 
 - Use conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, etc.)
@@ -103,10 +108,20 @@ When opening a PR, include a summary of changes and a test plan. If codegen was 
 - No "Generated with Claude Code" footers
 - Keep messages concise, focused on "why" not "what"
 
+## Versioning
+
+All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. It means "current dev". Actual versions are set dynamically at release time by the GitHub Actions release workflow (`.github/workflows/release.yml`), which:
+
+1. Extracts the version from the git tag (`v1.2.3` → `1.2.3`)
+2. Patches all `0.0.0` placeholders via `sed` (workspace version + inter-crate dep versions)
+3. Publishes in dependency order: `lineark-derive` → `lineark-sdk` → `lineark`
+
+Never manually set version numbers in Cargo.toml files. To release, just push a semver tag like `v0.1.0`.
+
 ## What NOT to do
 
 - Don't hand-edit files in `crates/lineark-sdk/src/generated/` — run codegen instead
-- Don't add proc macro dependencies to the SDK crate
+- Don't add proc macro dependencies beyond `lineark-derive`
 - Don't add webhook support, MCP server, or raw GraphQL escape hatches — these are out of scope
 - Don't generate operations not listed in `schema/operations.toml` — operations are added incrementally
 - Don't break linearis compatibility for auth (keep `~/.linear_api_token` support)
@@ -122,5 +137,6 @@ When opening a PR, include a summary of changes and a test plan. If codegen was 
 | CLI framework | `clap` (derive) |
 | Table output | `tabled` |
 | Terminal colors | `colored` |
+| Derive macro | `lineark-derive` (workspace crate) |
 | Schema parsing | `apollo-parser` (in codegen only) |
 | Code formatting | `prettyplease` (in codegen only) |

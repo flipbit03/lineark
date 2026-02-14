@@ -44,8 +44,7 @@ jobs:
           RUSTDOCFLAGS: -Dwarnings
 
   test:
-    name: Test
-    needs: lint
+    name: Tests (Async API)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,12 +68,39 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Tests
+      - name: Run tests
         run: cargo test --workspace
+
+  test-blocking:
+    name: Tests (Blocking API)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: test-blocking-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: test-blocking-cargo-
+
+      - name: Set up test API token
+        if: env.LINEAR_TEST_TOKEN != ''
+        run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
+        env:
+          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
+
+      - name: Run tests
+        run: cargo test -p lineark-sdk --features blocking --test blocking
 
   build:
     name: Build (${{ matrix.name }})
-    needs: lint
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false

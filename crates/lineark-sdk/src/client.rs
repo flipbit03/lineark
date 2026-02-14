@@ -119,7 +119,14 @@ impl Client {
                 if first_msg.contains("authentication") || first_msg.contains("unauthorized") {
                     return Err(LinearError::Authentication(errors[0].message.clone()));
                 }
-                return Err(LinearError::GraphQL(errors));
+                // Extract operation name from query string (e.g. "query Viewer { ... }" → "Viewer").
+                let query_name = query
+                    .strip_prefix("query ")
+                    .or_else(|| query.strip_prefix("mutation "))
+                    .and_then(|rest| rest.split(['(', ' ', '{']).next())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
+                return Err(LinearError::GraphQL { errors, query_name });
             }
         }
 
@@ -148,6 +155,94 @@ impl Client {
     ) -> Result<Connection<T>, LinearError> {
         self.execute::<Connection<T>>(query, variables, data_path)
             .await
+    }
+
+    /// Execute a typed query using the type's [`GraphQLFields`](crate::GraphQLFields) implementation.
+    ///
+    /// Builds the query from `T::selection()` — define a struct with only
+    /// the fields you need for zero-overfetch queries.
+    ///
+    /// ```ignore
+    /// #[derive(Deserialize)]
+    /// struct MyViewer { name: Option<String>, email: Option<String> }
+    ///
+    /// impl GraphQLFields for MyViewer {
+    ///     fn selection() -> String { "name email".into() }
+    /// }
+    ///
+    /// let me: MyViewer = client.query::<MyViewer>("viewer").await?;
+    /// ```
+    pub async fn query<T: DeserializeOwned + crate::GraphQLFields>(
+        &self,
+        field: &str,
+    ) -> Result<T, LinearError> {
+        let selection = T::selection();
+        let query = format!("query {{ {} {{ {} }} }}", field, selection);
+        self.execute::<T>(&query, serde_json::json!({}), field)
+            .await
+    }
+
+    /// Execute a typed connection query using the node type's
+    /// [`GraphQLFields`](crate::GraphQLFields) implementation.
+    ///
+    /// Builds `{ field { nodes { <T::selection()> } pageInfo { ... } } }`.
+    pub async fn query_connection<T: DeserializeOwned + crate::GraphQLFields>(
+        &self,
+        field: &str,
+    ) -> Result<Connection<T>, LinearError> {
+        let selection = T::selection();
+        let query = format!(
+            "query {{ {} {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            field, selection
+        );
+        self.execute_connection::<T>(&query, serde_json::json!({}), field)
+            .await
+    }
+
+    /// Execute a mutation, check `success`, and extract the entity field.
+    ///
+    /// Many Linear mutations return a payload shaped like
+    /// `{ success: Boolean, entityField: { ... } }`. This helper:
+    /// 1. Executes the query and extracts the payload at `data_path`
+    /// 2. Checks the `success` field — returns an error if false
+    /// 3. Extracts and deserializes `payload[entity_field]` as `T`
+    pub(crate) async fn execute_mutation<T: DeserializeOwned>(
+        &self,
+        query: &str,
+        variables: serde_json::Value,
+        data_path: &str,
+        entity_field: &str,
+    ) -> Result<T, LinearError> {
+        let payload = self
+            .execute::<serde_json::Value>(query, variables, data_path)
+            .await?;
+
+        // Check success field.
+        if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
+            return Err(LinearError::Internal(format!(
+                "Mutation '{}' failed: {}",
+                data_path,
+                serde_json::to_string_pretty(&payload).unwrap_or_default()
+            )));
+        }
+
+        // Extract and deserialize the entity.
+        let entity = payload
+            .get(entity_field)
+            .ok_or_else(|| {
+                LinearError::MissingData(format!(
+                    "No '{}' field in '{}' payload",
+                    entity_field, data_path
+                ))
+            })?
+            .clone();
+
+        serde_json::from_value(entity).map_err(|e| {
+            LinearError::MissingData(format!(
+                "Failed to deserialize '{}' from '{}': {}",
+                entity_field, data_path, e
+            ))
+        })
     }
 
     /// Access the underlying HTTP client.
@@ -326,7 +421,7 @@ mod tests {
             .execute::<serde_json::Value>("query { foo }", serde_json::json!({}), "foo")
             .await;
 
-        assert!(matches!(result, Err(LinearError::GraphQL(_))));
+        assert!(matches!(result, Err(LinearError::GraphQL { .. })));
     }
 
     #[tokio::test]

@@ -1,3 +1,4 @@
+use lineark_sdk::generated::types::{IssueSearchResult, Team};
 use lineark_sdk::Client;
 
 /// Resolve a team key (e.g., "ENG") to a team UUID.
@@ -7,7 +8,7 @@ pub async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<
         return Ok(team_key.to_string());
     }
     let conn = client
-        .teams()
+        .teams::<Team>()
         .first(250)
         .send()
         .await
@@ -31,8 +32,9 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
         return Ok(identifier.to_string());
     }
     let conn = client
-        .search_issues(identifier)
+        .search_issues::<IssueSearchResult>(identifier)
         .first(5)
+        .include_archived(true)
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -46,15 +48,4 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
         })
         .and_then(|n| n.id.clone())
         .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
-}
-
-/// Check the `success` field in a mutation payload.
-pub fn check_success(payload: &serde_json::Value) -> anyhow::Result<()> {
-    if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
-        return Err(anyhow::anyhow!(
-            "Operation failed: {}",
-            serde_json::to_string_pretty(payload).unwrap_or_default()
-        ));
-    }
-    Ok(())
 }
