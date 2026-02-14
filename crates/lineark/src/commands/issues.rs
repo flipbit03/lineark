@@ -2,12 +2,12 @@ use clap::Args;
 use lineark_sdk::generated::inputs::{
     IssueCreateInput, IssueFilter, IssueUpdateInput, WorkflowStateFilter,
 };
-use lineark_sdk::generated::types::Issue;
-use lineark_sdk::Client;
-use serde::Serialize;
+use lineark_sdk::generated::types::{Issue, User, WorkflowState};
+use lineark_sdk::{Client, GraphQLFields};
+use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
-use super::helpers::{check_success, resolve_issue_id, resolve_team_id};
+use super::helpers::{resolve_issue_id, resolve_team_id};
 use crate::output::{self, Format};
 
 /// Manage issues.
@@ -195,6 +195,82 @@ impl From<&Issue> for IssueRow {
     }
 }
 
+// ── IssueDetail — custom type for `issues read` with nested data ─────────
+
+/// Lean issue type for `issues read` — scalars + the nested fields we display.
+/// Zero-overfetch: the struct shape IS the query shape.
+/// `#[derive(GraphQLFields)]` generates `selection()` automatically — no manual
+/// GraphQL strings needed.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct IssueDetail {
+    pub id: Option<String>,
+    pub identifier: Option<String>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub priority: Option<f64>,
+    pub priority_label: Option<String>,
+    pub url: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub archived_at: Option<String>,
+    #[graphql(nested)]
+    pub state: Option<StateRef>,
+    #[graphql(nested)]
+    pub assignee: Option<UserRef>,
+    #[graphql(nested)]
+    pub team: Option<TeamRef>,
+    #[graphql(nested)]
+    pub relations: Option<RelationConnection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct StateRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UserRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct TeamRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RelationConnection {
+    #[graphql(nested)]
+    pub nodes: Vec<RelationNode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RelationNode {
+    pub id: Option<String>,
+    pub r#type: Option<String>,
+    #[graphql(nested)]
+    pub related_issue: Option<RelatedIssueRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RelatedIssueRef {
+    pub id: Option<String>,
+    pub identifier: Option<String>,
+    pub title: Option<String>,
+}
+
 // ── Command dispatch ────────────────────────────────────────────────────────
 
 pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -221,7 +297,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             }
             if mine {
                 let viewer = client
-                    .whoami()
+                    .whoami::<User>()
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
                 let viewer_id = viewer
@@ -237,7 +313,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 .expect("valid IssueFilter");
 
             let conn = client
-                .issues()
+                .issues::<Issue>()
                 .filter(filter)
                 .first(limit)
                 .send()
@@ -257,7 +333,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             show_done,
         } => {
             let conn = client
-                .search_issues(query)
+                .search_issues::<Issue>(query)
                 .first(limit)
                 .send()
                 .await
@@ -300,36 +376,32 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 ..Default::default()
             };
 
-            let payload = client
-                .issue_create(input)
+            let issue: serde_json::Value = client
+                .issue_create::<serde_json::Value>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            let issue = payload.get("issue").cloned().unwrap_or_default();
             output::print_one(&issue, format);
         }
         IssuesAction::Archive { identifier } => {
             let issue_id = resolve_issue_id(client, &identifier).await?;
 
-            let payload = client
-                .issue_archive(None, issue_id)
+            let entity: serde_json::Value = client
+                .issue_archive::<serde_json::Value>(None, issue_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            output::print_one(&payload, format);
+            output::print_one(&entity, format);
         }
         IssuesAction::Unarchive { identifier } => {
             let issue_id = resolve_issue_id(client, &identifier).await?;
 
-            let payload = client
-                .issue_unarchive(issue_id)
+            let entity: serde_json::Value = client
+                .issue_unarchive::<serde_json::Value>(issue_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            output::print_one(&payload, format);
+            output::print_one(&entity, format);
         }
         IssuesAction::Delete {
             identifier,
@@ -338,13 +410,12 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             let issue_id = resolve_issue_id(client, &identifier).await?;
             let permanently_delete = if permanently { Some(true) } else { None };
 
-            let payload = client
-                .issue_delete(permanently_delete, issue_id)
+            let entity: serde_json::Value = client
+                .issue_delete::<serde_json::Value>(permanently_delete, issue_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            output::print_one(&payload, format);
+            output::print_one(&entity, format);
         }
         IssuesAction::Update {
             identifier,
@@ -421,13 +492,11 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 ..Default::default()
             };
 
-            let payload = client
-                .issue_update(input, issue_id)
+            let issue: serde_json::Value = client
+                .issue_update::<serde_json::Value>(input, issue_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            let issue = payload.get("issue").cloned().unwrap_or_default();
             output::print_one(&issue, format);
         }
     }
@@ -469,10 +538,11 @@ fn print_issue_list(items: &[&Issue], format: Format) {
 }
 
 /// Read a single issue by identifier (e.g. E-929) or UUID, with full nested details.
-async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<Issue> {
+/// Uses [`IssueDetail`] — a custom type with exactly the nested fields we display.
+async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<IssueDetail> {
     if uuid::Uuid::parse_str(identifier).is_ok() {
         return client
-            .issue(identifier.to_string())
+            .issue::<IssueDetail>(identifier.to_string())
             .await
             .map_err(|e| anyhow::anyhow!("{}", e));
     }
@@ -480,7 +550,7 @@ async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<Issue> 
         // searchIssues is fuzzy — it may return a different issue if no exact match exists.
         // We fetch a small page and verify the identifier matches exactly.
         let conn = client
-            .search_issues(identifier)
+            .search_issues::<IssueDetail>(identifier)
             .first(5)
             .send()
             .await
@@ -496,7 +566,7 @@ async fn read_issue(client: &Client, identifier: &str) -> anyhow::Result<Issue> 
             .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
     } else {
         client
-            .issue(identifier.to_string())
+            .issue::<IssueDetail>(identifier.to_string())
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))
     }
@@ -513,7 +583,7 @@ async fn resolve_state_id(
             .expect("valid WorkflowStateFilter");
 
     let conn = client
-        .workflow_states()
+        .workflow_states::<WorkflowState>()
         .filter(filter)
         .first(50)
         .send()

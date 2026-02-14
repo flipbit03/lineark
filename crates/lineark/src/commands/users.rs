@@ -1,4 +1,5 @@
 use clap::Args;
+use lineark_sdk::generated::types::User;
 use lineark_sdk::Client;
 use serde::Serialize;
 use tabled::Tabled;
@@ -34,7 +35,7 @@ pub async fn run(cmd: UsersCmd, client: &Client, format: Format) -> anyhow::Resu
     match cmd.action {
         UsersAction::List { active } => {
             let conn = client
-                .users()
+                .users::<User>()
                 .last(250)
                 .send()
                 .await

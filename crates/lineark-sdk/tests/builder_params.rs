@@ -3,6 +3,7 @@
 //! Uses wiremock to intercept HTTP requests and inspect the actual JSON body sent
 //! to verify that each builder setter method produces the expected variable values.
 
+use lineark_sdk::generated::types::*;
 use lineark_sdk::Client;
 use serde_json::Value;
 use wiremock::matchers::method;
@@ -38,7 +39,7 @@ fn extract_variables(server_requests: &[wiremock::Request]) -> Value {
 #[tokio::test]
 async fn teams_first_sets_variable() {
     let (server, client) = setup("teams").await;
-    let _ = client.teams().first(42).send().await;
+    let _ = client.teams::<Team>().first(42).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 42);
     assert_eq!(vars["last"], Value::Null);
@@ -47,7 +48,7 @@ async fn teams_first_sets_variable() {
 #[tokio::test]
 async fn teams_last_sets_variable() {
     let (server, client) = setup("teams").await;
-    let _ = client.teams().last(7).send().await;
+    let _ = client.teams::<Team>().last(7).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["last"], 7);
     assert_eq!(vars["first"], Value::Null);
@@ -57,7 +58,7 @@ async fn teams_last_sets_variable() {
 async fn teams_before_after_set_variables() {
     let (server, client) = setup("teams").await;
     let _ = client
-        .teams()
+        .teams::<Team>()
         .before("cursor-abc")
         .after("cursor-xyz")
         .send()
@@ -70,7 +71,7 @@ async fn teams_before_after_set_variables() {
 #[tokio::test]
 async fn teams_include_archived_sets_variable() {
     let (server, client) = setup("teams").await;
-    let _ = client.teams().include_archived(true).send().await;
+    let _ = client.teams::<Team>().include_archived(true).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["includeArchived"], true);
 }
@@ -79,7 +80,7 @@ async fn teams_include_archived_sets_variable() {
 async fn teams_all_params_chain() {
     let (server, client) = setup("teams").await;
     let _ = client
-        .teams()
+        .teams::<Team>()
         .first(10)
         .after("cur")
         .include_archived(false)
@@ -96,7 +97,7 @@ async fn teams_all_params_chain() {
 #[tokio::test]
 async fn teams_no_params_sends_all_null() {
     let (server, client) = setup("teams").await;
-    let _ = client.teams().send().await;
+    let _ = client.teams::<Team>().send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], Value::Null);
     assert_eq!(vars["last"], Value::Null);
@@ -110,7 +111,12 @@ async fn teams_no_params_sends_all_null() {
 #[tokio::test]
 async fn users_include_disabled_sets_variable() {
     let (server, client) = setup("users").await;
-    let _ = client.users().include_disabled(true).last(5).send().await;
+    let _ = client
+        .users::<User>()
+        .include_disabled(true)
+        .last(5)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["includeDisabled"], true);
     assert_eq!(vars["last"], 5);
@@ -121,7 +127,7 @@ async fn users_include_disabled_sets_variable() {
 #[tokio::test]
 async fn search_issues_term_is_required() {
     let (server, client) = setup("searchIssues").await;
-    let _ = client.search_issues("my query").send().await;
+    let _ = client.search_issues::<Issue>("my query").send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["term"], "my query");
 }
@@ -130,7 +136,7 @@ async fn search_issues_term_is_required() {
 async fn search_issues_all_optional_params() {
     let (server, client) = setup("searchIssues").await;
     let _ = client
-        .search_issues("bug")
+        .search_issues::<Issue>("bug")
         .first(20)
         .include_comments(true)
         .team_id("team-uuid-123")
@@ -154,7 +160,7 @@ async fn search_issues_string_setters_accept_str_ref() {
     let (server, client) = setup("searchIssues").await;
     // All string setters should accept &str (via impl Into<String>).
     let _ = client
-        .search_issues("term")
+        .search_issues::<Issue>("term")
         .before("b")
         .after("a")
         .team_id("t")
@@ -173,7 +179,7 @@ async fn search_issues_string_setters_accept_str_ref() {
 async fn issues_first_and_include_archived() {
     let (server, client) = setup("issues").await;
     let _ = client
-        .issues()
+        .issues::<Issue>()
         .first(100)
         .include_archived(true)
         .send()
@@ -188,7 +194,7 @@ async fn issues_first_and_include_archived() {
 #[tokio::test]
 async fn cycles_first_sets_variable() {
     let (server, client) = setup("cycles").await;
-    let _ = client.cycles().first(50).send().await;
+    let _ = client.cycles::<Cycle>().first(50).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 50);
 }
@@ -198,7 +204,7 @@ async fn cycles_first_sets_variable() {
 #[tokio::test]
 async fn issue_labels_first_sets_variable() {
     let (server, client) = setup("issueLabels").await;
-    let _ = client.issue_labels().first(250).send().await;
+    let _ = client.issue_labels::<IssueLabel>().first(250).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 250);
 }
@@ -208,7 +214,12 @@ async fn issue_labels_first_sets_variable() {
 #[tokio::test]
 async fn projects_last_and_before() {
     let (server, client) = setup("projects").await;
-    let _ = client.projects().last(25).before("cur-end").send().await;
+    let _ = client
+        .projects::<Project>()
+        .last(25)
+        .before("cur-end")
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["last"], 25);
     assert_eq!(vars["before"], "cur-end");
@@ -219,7 +230,11 @@ async fn projects_last_and_before() {
 #[tokio::test]
 async fn workflow_states_first_sets_variable() {
     let (server, client) = setup("workflowStates").await;
-    let _ = client.workflow_states().first(50).send().await;
+    let _ = client
+        .workflow_states::<WorkflowState>()
+        .first(50)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 50);
 }
@@ -229,7 +244,7 @@ async fn workflow_states_first_sets_variable() {
 #[tokio::test]
 async fn documents_first_sets_variable() {
     let (server, client) = setup("documents").await;
-    let _ = client.documents().first(20).send().await;
+    let _ = client.documents::<Document>().first(20).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 20);
 }
@@ -237,7 +252,7 @@ async fn documents_first_sets_variable() {
 #[tokio::test]
 async fn documents_last_sets_variable() {
     let (server, client) = setup("documents").await;
-    let _ = client.documents().last(8).send().await;
+    let _ = client.documents::<Document>().last(8).send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["last"], 8);
     assert_eq!(vars["first"], Value::Null);
@@ -247,7 +262,7 @@ async fn documents_last_sets_variable() {
 async fn documents_after_sets_variable() {
     let (server, client) = setup("documents").await;
     let _ = client
-        .documents()
+        .documents::<Document>()
         .first(10)
         .after("cursor-abc")
         .send()
@@ -259,7 +274,11 @@ async fn documents_after_sets_variable() {
 #[tokio::test]
 async fn documents_before_sets_variable() {
     let (server, client) = setup("documents").await;
-    let _ = client.documents().before("cursor-end").send().await;
+    let _ = client
+        .documents::<Document>()
+        .before("cursor-end")
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["before"], "cursor-end");
 }
@@ -267,7 +286,11 @@ async fn documents_before_sets_variable() {
 #[tokio::test]
 async fn documents_include_archived_sets_variable() {
     let (server, client) = setup("documents").await;
-    let _ = client.documents().include_archived(true).send().await;
+    let _ = client
+        .documents::<Document>()
+        .include_archived(true)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["includeArchived"], true);
 }
@@ -276,7 +299,7 @@ async fn documents_include_archived_sets_variable() {
 async fn documents_all_params_chain() {
     let (server, client) = setup("documents").await;
     let _ = client
-        .documents()
+        .documents::<Document>()
         .first(15)
         .after("cur-start")
         .include_archived(true)
@@ -293,7 +316,7 @@ async fn documents_all_params_chain() {
 #[tokio::test]
 async fn documents_no_params_sends_all_null() {
     let (server, client) = setup("documents").await;
-    let _ = client.documents().send().await;
+    let _ = client.documents::<Document>().send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], Value::Null);
     assert_eq!(vars["last"], Value::Null);
@@ -307,7 +330,11 @@ async fn documents_no_params_sends_all_null() {
 #[tokio::test]
 async fn issue_relations_first_sets_variable() {
     let (server, client) = setup("issueRelations").await;
-    let _ = client.issue_relations().first(25).send().await;
+    let _ = client
+        .issue_relations::<IssueRelation>()
+        .first(25)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], 25);
 }
@@ -315,7 +342,11 @@ async fn issue_relations_first_sets_variable() {
 #[tokio::test]
 async fn issue_relations_last_sets_variable() {
     let (server, client) = setup("issueRelations").await;
-    let _ = client.issue_relations().last(3).send().await;
+    let _ = client
+        .issue_relations::<IssueRelation>()
+        .last(3)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["last"], 3);
     assert_eq!(vars["first"], Value::Null);
@@ -325,7 +356,7 @@ async fn issue_relations_last_sets_variable() {
 async fn issue_relations_before_after_set_variables() {
     let (server, client) = setup("issueRelations").await;
     let _ = client
-        .issue_relations()
+        .issue_relations::<IssueRelation>()
         .before("cursor-b")
         .after("cursor-a")
         .send()
@@ -338,7 +369,11 @@ async fn issue_relations_before_after_set_variables() {
 #[tokio::test]
 async fn issue_relations_include_archived_sets_variable() {
     let (server, client) = setup("issueRelations").await;
-    let _ = client.issue_relations().include_archived(true).send().await;
+    let _ = client
+        .issue_relations::<IssueRelation>()
+        .include_archived(true)
+        .send()
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["includeArchived"], true);
 }
@@ -347,7 +382,7 @@ async fn issue_relations_include_archived_sets_variable() {
 async fn issue_relations_all_params_chain() {
     let (server, client) = setup("issueRelations").await;
     let _ = client
-        .issue_relations()
+        .issue_relations::<IssueRelation>()
         .first(30)
         .after("rel-cursor")
         .include_archived(false)
@@ -364,7 +399,7 @@ async fn issue_relations_all_params_chain() {
 #[tokio::test]
 async fn issue_relations_no_params_sends_all_null() {
     let (server, client) = setup("issueRelations").await;
-    let _ = client.issue_relations().send().await;
+    let _ = client.issue_relations::<IssueRelation>().send().await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["first"], Value::Null);
     assert_eq!(vars["last"], Value::Null);
@@ -403,7 +438,7 @@ async fn document_create_sends_input_variable() {
         content: Some("# Hello".to_string()),
         ..Default::default()
     };
-    let _ = client.document_create(input).await;
+    let _ = client.document_create::<serde_json::Value>(input).await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["title"], "Test Document");
     assert_eq!(vars["input"]["content"], "# Hello");
@@ -419,7 +454,7 @@ async fn document_update_sends_input_and_id() {
         ..Default::default()
     };
     let _ = client
-        .document_update(input, "doc-uuid-123".to_string())
+        .document_update::<serde_json::Value>(input, "doc-uuid-123".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["title"], "Updated Title");
@@ -429,7 +464,9 @@ async fn document_update_sends_input_and_id() {
 #[tokio::test]
 async fn document_delete_sends_id() {
     let (server, client) = setup_mutation("documentDelete").await;
-    let _ = client.document_delete("doc-uuid-456".to_string()).await;
+    let _ = client
+        .document_delete::<serde_json::Value>("doc-uuid-456".to_string())
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "doc-uuid-456");
 }
@@ -446,7 +483,9 @@ async fn issue_relation_create_sends_input() {
         r#type: Some(IssueRelationType::Blocks),
         ..Default::default()
     };
-    let _ = client.issue_relation_create(None, input).await;
+    let _ = client
+        .issue_relation_create::<serde_json::Value>(None, input)
+        .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["input"]["issueId"], "issue-a");
     assert_eq!(vars["input"]["relatedIssueId"], "issue-b");
@@ -488,7 +527,7 @@ async fn image_upload_from_url_sends_url() {
 async fn issue_archive_sends_id_and_trash() {
     let (server, client) = setup_mutation("issueArchive").await;
     let _ = client
-        .issue_archive(Some(true), "issue-uuid-arch".to_string())
+        .issue_archive::<serde_json::Value>(Some(true), "issue-uuid-arch".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-arch");
@@ -499,7 +538,7 @@ async fn issue_archive_sends_id_and_trash() {
 async fn issue_archive_without_trash_sends_null() {
     let (server, client) = setup_mutation("issueArchive").await;
     let _ = client
-        .issue_archive(None, "issue-uuid-arch2".to_string())
+        .issue_archive::<serde_json::Value>(None, "issue-uuid-arch2".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-arch2");
@@ -510,7 +549,7 @@ async fn issue_archive_without_trash_sends_null() {
 async fn issue_unarchive_sends_id() {
     let (server, client) = setup_mutation("issueUnarchive").await;
     let _ = client
-        .issue_unarchive("issue-uuid-unarch".to_string())
+        .issue_unarchive::<serde_json::Value>("issue-uuid-unarch".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-unarch");
@@ -520,7 +559,7 @@ async fn issue_unarchive_sends_id() {
 async fn issue_delete_sends_id_and_permanently_delete() {
     let (server, client) = setup_mutation("issueDelete").await;
     let _ = client
-        .issue_delete(Some(true), "issue-uuid-123".to_string())
+        .issue_delete::<serde_json::Value>(Some(true), "issue-uuid-123".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-123");
@@ -531,7 +570,7 @@ async fn issue_delete_sends_id_and_permanently_delete() {
 async fn issue_delete_without_permanently_sends_null() {
     let (server, client) = setup_mutation("issueDelete").await;
     let _ = client
-        .issue_delete(None, "issue-uuid-456".to_string())
+        .issue_delete::<serde_json::Value>(None, "issue-uuid-456".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "issue-uuid-456");

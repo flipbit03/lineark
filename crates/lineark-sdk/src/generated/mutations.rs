@@ -21,14 +21,17 @@ pub async fn file_upload(
         { "metaData" : meta_data, "makePublic" : make_public, "size" : size,
         "contentType" : content_type, "filename" : filename }
     );
+    let mut response_parts: Vec<String> = vec!["success".to_string()];
+    response_parts.push(format!(
+        "{} {{ {} }}",
+        "uploadFile",
+        <super::types::UploadFile as crate::field_selection::GraphQLFields>::selection()
+    ));
+    let query = String::from(
+        "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { ",
+    ) + &response_parts.join(" ") + " } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { success uploadFile { filename contentType size uploadUrl assetUrl metaData } } }",
-            variables,
-            "fileUpload",
-        )
+        .execute::<serde_json::Value>(&query, variables, "fileUpload")
         .await
 }
 /// Upload an image from an URL to Linear.
@@ -37,182 +40,173 @@ pub async fn image_upload_from_url(
     url: String,
 ) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "url" : url });
+    let response_parts: Vec<String> = vec!["url".to_string(), "success".to_string()];
+    let query = String::from(
+        "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { success url } }",
-            variables,
-            "imageUploadFromUrl",
-        )
+        .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
         .await
 }
 /// Creates a new issue.
-pub async fn issue_create(
+pub async fn issue_create<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     input: IssueCreateInput,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
-            variables,
-            "issueCreate",
-        )
+        .execute_mutation::<T>(&query, variables, "issueCreate", "issue")
         .await
 }
 /// Updates an issue.
-pub async fn issue_update(
+pub async fn issue_update<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     input: IssueUpdateInput,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation IssueUpdate($input: IssueUpdateInput!, $id: String!) { issueUpdate(input: $input, id: $id) { success issue { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueUpdate($input: IssueUpdateInput!, $id: String!) { issueUpdate(input: $input, id: $id) { success issue { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
-            variables,
-            "issueUpdate",
-        )
+        .execute_mutation::<T>(&query, variables, "issueUpdate", "issue")
         .await
 }
 /// Archives an issue.
-pub async fn issue_archive(
+pub async fn issue_archive<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     trash: Option<bool>,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "trash" : trash, "id" : id });
+    let query = String::from(
+        "mutation IssueArchive($trash: Boolean, $id: String!) { issueArchive(trash: $trash, id: $id) { success entity { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueArchive($trash: Boolean, $id: String!) { issueArchive(trash: $trash, id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
-            variables,
-            "issueArchive",
-        )
+        .execute_mutation::<T>(&query, variables, "issueArchive", "entity")
         .await
 }
 /// Unarchives an issue.
-pub async fn issue_unarchive(
+pub async fn issue_unarchive<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueUnarchive($id: String!) { issueUnarchive(id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
-            variables,
-            "issueUnarchive",
-        )
+        .execute_mutation::<T>(&query, variables, "issueUnarchive", "entity")
         .await
 }
 /// Deletes (trashes) an issue.
-pub async fn issue_delete(
+pub async fn issue_delete<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     permanently_delete: Option<bool>,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!(
         { "permanentlyDelete" : permanently_delete, "id" : id }
     );
+    let query = String::from(
+        "mutation IssueDelete($permanentlyDelete: Boolean, $id: String!) { issueDelete(permanentlyDelete: $permanentlyDelete, id: $id) { success entity { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueDelete($permanentlyDelete: Boolean, $id: String!) { issueDelete(permanentlyDelete: $permanentlyDelete, id: $id) { success entity { id createdAt updatedAt archivedAt number title priority estimate boardOrder sortOrder prioritySortOrder startedAt completedAt startedTriageAt triagedAt canceledAt autoClosedAt autoArchivedAt dueDate slaStartedAt slaMediumRiskAt slaHighRiskAt slaBreachesAt slaType addedToProjectAt addedToCycleAt addedToTeamAt trashed snoozedUntilAt suggestionsGeneratedAt activitySummary labelIds previousIdentifiers subIssueSortOrder reactionData priorityLabel integrationSourceType identifier url branchName customerTicketCount description } } }",
-            variables,
-            "issueDelete",
-        )
+        .execute_mutation::<T>(&query, variables, "issueDelete", "entity")
         .await
 }
 /// Creates a new issue relation.
-pub async fn issue_relation_create(
+pub async fn issue_relation_create<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     override_created_at: Option<serde_json::Value>,
     input: IssueRelationCreateInput,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!(
         { "overrideCreatedAt" : override_created_at, "input" : input }
     );
+    let query = String::from(
+        "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { id createdAt updatedAt archivedAt type } } }",
-            variables,
-            "issueRelationCreate",
-        )
+        .execute_mutation::<T>(&query, variables, "issueRelationCreate", "issueRelation")
         .await
 }
 /// Creates a new document.
-pub async fn document_create(
+pub async fn document_create<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     input: DocumentCreateInput,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
-            variables,
-            "documentCreate",
-        )
+        .execute_mutation::<T>(&query, variables, "documentCreate", "document")
         .await
 }
 /// Updates a document.
-pub async fn document_update(
+pub async fn document_update<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     input: DocumentUpdateInput,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
-            variables,
-            "documentUpdate",
-        )
+        .execute_mutation::<T>(&query, variables, "documentUpdate", "document")
         .await
 }
 /// Deletes (trashes) a document.
-pub async fn document_delete(
+pub async fn document_delete<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success entity { id createdAt updatedAt archivedAt title icon color slugId hiddenAt trashed sortOrder content contentState documentContentId url } } }",
-            variables,
-            "documentDelete",
-        )
+        .execute_mutation::<T>(&query, variables, "documentDelete", "entity")
         .await
 }
 /// Creates a new comment.
-pub async fn comment_create(
+pub async fn comment_create<
+    T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+>(
     client: &Client,
     input: CommentCreateInput,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<
-            serde_json::Value,
-        >(
-            "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id createdAt updatedAt archivedAt body issueId documentContentId projectUpdateId initiativeUpdateId parentId resolvedAt resolvingCommentId editedAt bodyData quotedText reactionData threadSummary isArtificialAgentSessionRoot url hideInLinear } } }",
-            variables,
-            "commentCreate",
-        )
+        .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
         .await
 }

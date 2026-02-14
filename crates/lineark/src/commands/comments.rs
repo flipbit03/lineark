@@ -2,7 +2,7 @@ use clap::Args;
 use lineark_sdk::generated::inputs::CommentCreateInput;
 use lineark_sdk::Client;
 
-use super::helpers::{check_success, resolve_issue_id};
+use super::helpers::resolve_issue_id;
 use crate::output::{self, Format};
 
 /// Manage comments.
@@ -40,14 +40,11 @@ pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::R
                 ..Default::default()
             };
 
-            let payload = client
-                .comment_create(input)
+            let comment: serde_json::Value = client
+                .comment_create::<serde_json::Value>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-
-            let comment = payload.get("comment").cloned().unwrap_or_default();
             output::print_one(&comment, format);
         }
     }

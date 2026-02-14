@@ -1,4 +1,5 @@
 use clap::Args;
+use lineark_sdk::generated::types::IssueLabel;
 use lineark_sdk::Client;
 use serde::Serialize;
 use tabled::Tabled;
@@ -29,7 +30,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
     match cmd.action {
         LabelsAction::List => {
             let conn = client
-                .issue_labels()
+                .issue_labels::<IssueLabel>()
                 .first(250)
                 .send()
                 .await

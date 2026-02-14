@@ -1,4 +1,5 @@
 use clap::Args;
+use lineark_sdk::generated::types::Project;
 use lineark_sdk::Client;
 use serde::Serialize;
 use tabled::Tabled;
@@ -29,7 +30,7 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
     match cmd.action {
         ProjectsAction::List => {
             let conn = client
-                .projects()
+                .projects::<Project>()
                 .first(250)
                 .send()
                 .await

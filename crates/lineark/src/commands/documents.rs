@@ -5,7 +5,7 @@ use lineark_sdk::Client;
 use serde::Serialize;
 use tabled::Tabled;
 
-use super::helpers::{check_success, resolve_issue_id};
+use super::helpers::resolve_issue_id;
 use crate::output::{self, Format};
 
 /// Manage documents.
@@ -100,7 +100,7 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
     match cmd.action {
         DocumentsAction::List { limit } => {
             let conn = client
-                .documents()
+                .documents::<Document>()
                 .first(limit)
                 .send()
                 .await
@@ -119,7 +119,7 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
         }
         DocumentsAction::Read { id } => {
             let doc = client
-                .document(id)
+                .document::<Document>(id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             output::print_one(&doc, format);
@@ -143,13 +143,11 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
                 ..Default::default()
             };
 
-            let payload = client
-                .document_create(input)
+            let doc: serde_json::Value = client
+                .document_create::<serde_json::Value>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            let doc = payload.get("document").cloned().unwrap_or_default();
             output::print_one(&doc, format);
         }
         DocumentsAction::Update { id, title, content } => {
@@ -165,23 +163,20 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
                 ..Default::default()
             };
 
-            let payload = client
-                .document_update(input, id)
+            let doc: serde_json::Value = client
+                .document_update::<serde_json::Value>(input, id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            let doc = payload.get("document").cloned().unwrap_or_default();
             output::print_one(&doc, format);
         }
         DocumentsAction::Delete { id } => {
-            let payload = client
-                .document_delete(id)
+            let entity: serde_json::Value = client
+                .document_delete::<serde_json::Value>(id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            check_success(&payload)?;
-            output::print_one(&payload, format);
+            output::print_one(&entity, format);
         }
     }
     Ok(())

@@ -88,15 +88,10 @@ fn main() {
         .iter()
         .filter_map(|(k, c)| c.rename.as_ref().map(|r| (k.clone(), r.clone())))
         .collect();
-    let query_depths: HashMap<String, emit_queries::FieldDepth> = query_configs
-        .iter()
-        .filter_map(|(k, c)| c.depth.map(|d| (k.clone(), d)))
-        .collect();
     let query_result = emit_queries::emit(
         &schema.query_fields,
         &allowed_queries,
         &query_renames,
-        &query_depths,
         &schema.objects,
         &schema.type_kind_map,
     );
@@ -138,7 +133,8 @@ fn main() {
 
         use crate::client::Client;
         use crate::error::LinearError;
-        use super::types::*;
+        use crate::field_selection::GraphQLFields;
+        use serde::de::DeserializeOwned;
         use super::queries::*;
         use super::inputs::*;
 
@@ -182,7 +178,6 @@ fn main() {
 #[derive(Debug, Clone)]
 struct OperationConfig {
     rename: Option<String>,
-    depth: Option<emit_queries::FieldDepth>,
 }
 
 /// Parse an operations section from operations.toml.
@@ -190,7 +185,7 @@ struct OperationConfig {
 /// Each entry can be:
 /// - `name = true` — use default method name
 /// - `name = "rename"` — use a custom Rust method name
-/// - `name = { rename = "...", depth = "flat|nested|detail" }` — full config
+/// - `name = { rename = "..." }` — table config with rename
 fn parse_operations_section(
     operations: &toml::Value,
     section: &str,
@@ -210,23 +205,13 @@ fn parse_operations_section(
                         key.clone(),
                         OperationConfig {
                             rename: Some(rename.clone()),
-                            depth: None,
                         },
                     );
                 }
                 toml::Value::Table(t) => {
                     allowed.insert(key.clone());
                     let rename = t.get("rename").and_then(|v| v.as_str()).map(String::from);
-                    let depth = t.get("depth").and_then(|v| v.as_str()).map(|s| match s {
-                        "flat" => emit_queries::FieldDepth::Flat,
-                        "nested" => emit_queries::FieldDepth::Nested,
-                        "detail" => emit_queries::FieldDepth::Detail,
-                        other => panic!(
-                            "Unknown depth '{}' for operation '{}'. Use flat, nested, or detail.",
-                            other, key
-                        ),
-                    });
-                    configs.insert(key.clone(), OperationConfig { rename, depth });
+                    configs.insert(key.clone(), OperationConfig { rename });
                 }
                 _ => {}
             }

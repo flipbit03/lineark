@@ -8,77 +8,96 @@
 #![allow(clippy::too_many_arguments)]
 use super::inputs::*;
 use super::queries::*;
-use super::types::*;
 use crate::client::Client;
 use crate::error::LinearError;
+use crate::field_selection::GraphQLFields;
+use serde::de::DeserializeOwned;
 impl Client {
     /// All issue workflow states.
-    pub fn workflow_states(&self) -> WorkflowStatesQueryBuilder<'_> {
+    pub fn workflow_states<T>(&self) -> WorkflowStatesQueryBuilder<'_, T> {
         crate::generated::queries::workflow_states(self)
     }
     /// All users for the organization.
-    pub fn users(&self) -> UsersQueryBuilder<'_> {
+    pub fn users<T>(&self) -> UsersQueryBuilder<'_, T> {
         crate::generated::queries::users(self)
     }
     /// The currently authenticated user.
-    pub async fn whoami(&self) -> Result<User, LinearError> {
-        crate::generated::queries::whoami(self).await
+    pub async fn whoami<T: DeserializeOwned + GraphQLFields>(&self) -> Result<T, LinearError> {
+        crate::generated::queries::whoami::<T>(self).await
     }
     /// All projects.
-    pub fn projects(&self) -> ProjectsQueryBuilder<'_> {
+    pub fn projects<T>(&self) -> ProjectsQueryBuilder<'_, T> {
         crate::generated::queries::projects(self)
     }
     /// One specific project.
-    pub async fn project(&self, id: String) -> Result<Project, LinearError> {
-        crate::generated::queries::project(self, id).await
+    pub async fn project<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::project::<T>(self, id).await
     }
     /// All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
-    pub fn teams(&self) -> TeamsQueryBuilder<'_> {
+    pub fn teams<T>(&self) -> TeamsQueryBuilder<'_, T> {
         crate::generated::queries::teams(self)
     }
     /// One specific team.
-    pub async fn team(&self, id: String) -> Result<Team, LinearError> {
-        crate::generated::queries::team(self, id).await
+    pub async fn team<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::team::<T>(self, id).await
     }
     /// Search issues.
-    pub fn search_issues(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_> {
+    pub fn search_issues<T>(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_, T> {
         crate::generated::queries::search_issues(self, term)
     }
     /// All issues.
-    pub fn issues(&self) -> IssuesQueryBuilder<'_> {
+    pub fn issues<T>(&self) -> IssuesQueryBuilder<'_, T> {
         crate::generated::queries::issues(self)
     }
     /// One specific issue.
-    pub async fn issue(&self, id: String) -> Result<Issue, LinearError> {
-        crate::generated::queries::issue(self, id).await
+    pub async fn issue<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::issue::<T>(self, id).await
     }
     /// All issue relationships.
-    pub fn issue_relations(&self) -> IssueRelationsQueryBuilder<'_> {
+    pub fn issue_relations<T>(&self) -> IssueRelationsQueryBuilder<'_, T> {
         crate::generated::queries::issue_relations(self)
     }
     /// One specific issue relation.
-    pub async fn issue_relation(&self, id: String) -> Result<IssueRelation, LinearError> {
-        crate::generated::queries::issue_relation(self, id).await
+    pub async fn issue_relation<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::issue_relation::<T>(self, id).await
     }
     /// All issue labels.
-    pub fn issue_labels(&self) -> IssueLabelsQueryBuilder<'_> {
+    pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
     /// All documents in the workspace.
-    pub fn documents(&self) -> DocumentsQueryBuilder<'_> {
+    pub fn documents<T>(&self) -> DocumentsQueryBuilder<'_, T> {
         crate::generated::queries::documents(self)
     }
     /// One specific document.
-    pub async fn document(&self, id: String) -> Result<Document, LinearError> {
-        crate::generated::queries::document(self, id).await
+    pub async fn document<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::document::<T>(self, id).await
     }
     /// All cycles.
-    pub fn cycles(&self) -> CyclesQueryBuilder<'_> {
+    pub fn cycles<T>(&self) -> CyclesQueryBuilder<'_, T> {
         crate::generated::queries::cycles(self)
     }
     /// One specific cycle.
-    pub async fn cycle(&self, id: String) -> Result<Cycle, LinearError> {
-        crate::generated::queries::cycle(self, id).await
+    pub async fn cycle<T: DeserializeOwned + GraphQLFields>(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::cycle::<T>(self, id).await
     }
     /// XHR request payload to upload an images, video and other attachments directly to Linear's cloud storage.
     pub async fn file_upload(
@@ -107,72 +126,99 @@ impl Client {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
     /// Creates a new issue.
-    pub async fn issue_create(
+    pub async fn issue_create<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         input: IssueCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_create(self, input).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_create::<T>(self, input).await
     }
     /// Updates an issue.
-    pub async fn issue_update(
+    pub async fn issue_update<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         input: IssueUpdateInput,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_update(self, input, id).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_update::<T>(self, input, id).await
     }
     /// Archives an issue.
-    pub async fn issue_archive(
+    pub async fn issue_archive<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         trash: Option<bool>,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_archive(self, trash, id).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_archive::<T>(self, trash, id).await
     }
     /// Unarchives an issue.
-    pub async fn issue_unarchive(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_unarchive(self, id).await
+    pub async fn issue_unarchive<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_unarchive::<T>(self, id).await
     }
     /// Deletes (trashes) an issue.
-    pub async fn issue_delete(
+    pub async fn issue_delete<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         permanently_delete: Option<bool>,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_delete(self, permanently_delete, id).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_delete::<T>(self, permanently_delete, id).await
     }
     /// Creates a new issue relation.
-    pub async fn issue_relation_create(
+    pub async fn issue_relation_create<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         override_created_at: Option<serde_json::Value>,
         input: IssueRelationCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::issue_relation_create(self, override_created_at, input).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_relation_create::<T>(self, override_created_at, input)
+            .await
     }
     /// Creates a new document.
-    pub async fn document_create(
+    pub async fn document_create<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         input: DocumentCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::document_create(self, input).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_create::<T>(self, input).await
     }
     /// Updates a document.
-    pub async fn document_update(
+    pub async fn document_update<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         input: DocumentUpdateInput,
         id: String,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::document_update(self, input, id).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_update::<T>(self, input, id).await
     }
     /// Deletes (trashes) a document.
-    pub async fn document_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::document_delete(self, id).await
+    pub async fn document_delete<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_delete::<T>(self, id).await
     }
     /// Creates a new comment.
-    pub async fn comment_create(
+    pub async fn comment_create<
+        T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields,
+    >(
         &self,
         input: CommentCreateInput,
-    ) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::comment_create(self, input).await
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_create::<T>(self, input).await
     }
 }

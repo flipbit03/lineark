@@ -93,17 +93,15 @@ mod blocking {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let payload = client.document_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let doc_id = payload["document"]["id"].as_str().unwrap().to_string();
+        let entity: serde_json::Value = client.document_create::<serde_json::Value>(input).unwrap();
+        let doc_id = entity["id"].as_str().unwrap().to_string();
 
         // Read.
         let doc = client.document(doc_id.clone()).unwrap();
         assert_eq!(doc.id, Some(doc_id.clone()));
 
         // Delete.
-        let del = client.document_delete(doc_id).unwrap();
-        assert_eq!(del.get("success").and_then(|v| v.as_bool()), Some(true));
+        let _del: serde_json::Value = client.document_delete::<serde_json::Value>(doc_id).unwrap();
     }
 
     // ── Issue Relations ─────────────────────────────────────────────────────
@@ -132,12 +130,12 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let payload = client.issue_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+        let entity: serde_json::Value = client.issue_create::<serde_json::Value>(input).unwrap();
+        let issue_id = entity["id"].as_str().unwrap().to_string();
 
-        let del = client.issue_delete(Some(true), issue_id).unwrap();
-        assert_eq!(del.get("success").and_then(|v| v.as_bool()), Some(true));
+        let _del: serde_json::Value = client
+            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .unwrap();
     }
 
     // ── Archive / Unarchive ────────────────────────────────────────────────
@@ -156,28 +154,31 @@ mod blocking {
             priority: Some(4),
             ..Default::default()
         };
-        let payload = client.issue_create(input).unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
-        let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
+        let entity: serde_json::Value = client.issue_create::<serde_json::Value>(input).unwrap();
+        let issue_id = entity["id"].as_str().unwrap().to_string();
 
         // Archive.
-        let arch = client.issue_archive(None, issue_id.clone()).unwrap();
-        assert_eq!(arch.get("success").and_then(|v| v.as_bool()), Some(true));
+        let arch: serde_json::Value = client
+            .issue_archive::<serde_json::Value>(None, issue_id.clone())
+            .unwrap();
         assert!(
-            arch["entity"]["archivedAt"].as_str().is_some(),
+            arch["archivedAt"].as_str().is_some(),
             "archivedAt should be set after archiving"
         );
 
         // Unarchive.
-        let unarch = client.issue_unarchive(issue_id.clone()).unwrap();
-        assert_eq!(unarch.get("success").and_then(|v| v.as_bool()), Some(true));
+        let unarch: serde_json::Value = client
+            .issue_unarchive::<serde_json::Value>(issue_id.clone())
+            .unwrap();
         assert!(
-            unarch["entity"]["archivedAt"].is_null(),
+            unarch["archivedAt"].is_null(),
             "archivedAt should be null after unarchiving"
         );
 
         // Clean up.
-        client.issue_delete(Some(true), issue_id).unwrap();
+        let _: serde_json::Value = client
+            .issue_delete::<serde_json::Value>(Some(true), issue_id)
+            .unwrap();
     }
 
     // ── File Upload ─────────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ mod blocking {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_file_upload_returns_signed_url() {
         let client = test_client();
-        let payload = client
+        let entity = client
             .file_upload(
                 None,
                 None,
@@ -194,9 +195,9 @@ mod blocking {
                 "blocking-test.txt".to_string(),
             )
             .unwrap();
-        assert_eq!(payload.get("success").and_then(|v| v.as_bool()), Some(true));
+        // Non-generic mutation returns the full payload; entity is under "uploadFile".
         assert!(
-            payload["uploadFile"]["uploadUrl"].as_str().is_some(),
+            entity["uploadFile"]["uploadUrl"].as_str().is_some(),
             "should have uploadUrl"
         );
     }
