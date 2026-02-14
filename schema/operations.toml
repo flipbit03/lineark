@@ -1,6 +1,6 @@
 [queries]
 # Phase 1 — Core reads
-viewer = "whoami"
+viewer = { rename = "whoami", depth = "flat" }
 teams = true
 team = true
 users = true

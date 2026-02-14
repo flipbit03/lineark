@@ -13,10 +13,22 @@ pub struct QueryEmitResult {
     pub client_impl_tokens: TokenStream,
 }
 
+/// Controls how deeply nested fields are selected in generated queries.
+#[derive(Debug, Clone, Copy)]
+pub enum FieldDepth {
+    /// Scalars and enums only — no nested objects or connections.
+    Flat,
+    /// Scalars + one level of nested object refs (identifying fields). No connections.
+    Nested,
+    /// Everything: scalars, nested objects, and connections with node sub-fields.
+    Detail,
+}
+
 pub fn emit(
     query_fields: &[FieldDef],
     allowed: &HashSet<String>,
     renames: &HashMap<String, String>,
+    depths: &HashMap<String, FieldDepth>,
     objects: &[ObjectDef],
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryEmitResult {
@@ -29,7 +41,8 @@ pub fn emit(
 
     for field in query_fields.iter().filter(|f| allowed.contains(&f.name)) {
         let rename = renames.get(&field.name).map(|s| s.as_str());
-        let result = emit_query(field, rename, &object_map, type_kind_map);
+        let depth = depths.get(&field.name).copied();
+        let result = emit_query(field, rename, depth, &object_map, type_kind_map);
         builder_items.extend(result.builders);
         standalone_fns.extend(result.standalone_fns);
         client_methods.push(result.client_method);
@@ -130,6 +143,7 @@ struct QueryResult {
 fn emit_query(
     field: &FieldDef,
     rename: Option<&str>,
+    depth: Option<FieldDepth>,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
@@ -145,6 +159,7 @@ fn emit_query(
             rename,
             &args,
             is_connection,
+            depth,
             object_map,
             type_kind_map,
         )
@@ -154,6 +169,7 @@ fn emit_query(
             rename,
             &args,
             is_connection,
+            depth,
             object_map,
             type_kind_map,
         )
@@ -167,6 +183,7 @@ fn emit_direct_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
+    depth: Option<FieldDepth>,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
@@ -208,7 +225,7 @@ fn emit_direct_query(
     if is_connection {
         let (node_type_name, node_type_ident) = connection_node_type(return_type_name);
         let field_selection =
-            build_field_selection_nested(node_type_name, object_map, type_kind_map);
+            resolve_field_selection(node_type_name, true, depth, object_map, type_kind_map);
         let query_name = field.name.to_upper_camel_case();
         let query_string = build_connection_query_string(
             &query_name,
@@ -241,7 +258,7 @@ fn emit_direct_query(
     } else {
         let return_type_ident = quote::format_ident!("{}", return_type_name);
         let field_selection =
-            build_field_selection_detail(return_type_name, object_map, type_kind_map);
+            resolve_field_selection(return_type_name, false, depth, object_map, type_kind_map);
         let query_name = field.name.to_upper_camel_case();
         let query_string = build_single_query_string(
             &query_name,
@@ -281,6 +298,7 @@ fn emit_builder_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
+    depth: Option<FieldDepth>,
     object_map: &HashMap<&str, &ObjectDef>,
     type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
@@ -369,7 +387,7 @@ fn emit_builder_query(
     let (send_return_type, send_body) = if is_connection {
         let (node_type_name, node_type_ident) = connection_node_type(return_type_name);
         let field_selection =
-            build_field_selection_nested(node_type_name, object_map, type_kind_map);
+            resolve_field_selection(node_type_name, true, depth, object_map, type_kind_map);
         let query_name = field.name.to_upper_camel_case();
         let query_string = build_connection_query_string(
             &query_name,
@@ -388,7 +406,7 @@ fn emit_builder_query(
     } else {
         let return_type_ident = quote::format_ident!("{}", return_type_name);
         let field_selection =
-            build_field_selection_detail(return_type_name, object_map, type_kind_map);
+            resolve_field_selection(return_type_name, false, depth, object_map, type_kind_map);
         let query_name = field.name.to_upper_camel_case();
         let query_string = build_single_query_string(
             &query_name,
@@ -502,6 +520,28 @@ fn emit_builder_query(
 }
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
+
+/// Resolve field selection for a type based on the requested depth.
+/// For connection queries, `depth` overrides the default (nested).
+/// For single-object queries, `depth` overrides the default (detail).
+fn resolve_field_selection(
+    type_name: &str,
+    is_connection: bool,
+    depth: Option<FieldDepth>,
+    object_map: &HashMap<&str, &ObjectDef>,
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> String {
+    let effective_depth = depth.unwrap_or(if is_connection {
+        FieldDepth::Nested
+    } else {
+        FieldDepth::Detail
+    });
+    match effective_depth {
+        FieldDepth::Flat => build_field_selection(type_name, object_map, type_kind_map),
+        FieldDepth::Nested => build_field_selection_nested(type_name, object_map, type_kind_map),
+        FieldDepth::Detail => build_field_selection_detail(type_name, object_map, type_kind_map),
+    }
+}
 
 fn connection_node_type(connection_type_name: &str) -> (&str, proc_macro2::Ident) {
     let node_type_name = connection_type_name

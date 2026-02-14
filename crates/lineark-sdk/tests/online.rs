@@ -286,10 +286,10 @@ mod online {
         let payload = client.issue_create(input).await.unwrap();
         let issue_id = payload["issue"]["id"].as_str().unwrap().to_string();
 
-        // Linear's search index is async — retry a few times.
+        // Linear's search index is async — retry with backoff.
         let mut matched = false;
-        for _ in 0..6 {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        for i in 0..8 {
+            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 1 } else { 3 })).await;
             let found = client.search_issues(&unique).first(5).send().await.unwrap();
             matched = found
                 .nodes
