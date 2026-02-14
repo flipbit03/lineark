@@ -44,6 +44,18 @@ The script automatically selects between `linux/x86_64`, `linux/aarch64` or `mac
 cargo install lineark
 ```
 
+### LLM / AI Agent Setup
+
+Add this to your LLM's context (e.g. `CLAUDE.md`, `.cursorrules`, system prompt):
+
+```
+We track our tickets and projects in Linear (https://linear.app), a project management tool.
+We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
+`lineark` executable. Run `lineark usage` to see usage information.
+```
+
+`lineark usage` gives your agent a complete command reference in under 1,000 tokens.
+
 ### Usage
 
 Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names.
@@ -83,18 +95,6 @@ Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UU
 Every command supports `--help` for full details.
 
 Output auto-detects format (tables in terminal, JSON when piped) — override with `--format {human,json}`.
-
-### LLM / AI Agent Setup
-
-Add this to your LLM's context (e.g. `CLAUDE.md`, `.cursorrules`, system prompt):
-
-```
-We track our tickets and projects in Linear (https://linear.app), a project management tool.
-We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
-`lineark` executable. Run `lineark usage` to see usage information.
-```
-
-`lineark usage` gives your agent a complete command reference in under 1,000 tokens.
 
 ## SDK: `lineark-sdk`
 
