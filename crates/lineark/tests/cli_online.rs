@@ -1396,6 +1396,508 @@ mod cli_online {
         delete_issue(&issue_b_id);
     }
 
+    // ── Issues read: sub-issues and comments ─────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_read_shows_children_and_comments() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a parent issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] parent with children",
+                "--team",
+                &team_key,
+                "-p",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "parent issue creation should succeed"
+        );
+        let parent: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let parent_id = parent["id"].as_str().unwrap().to_string();
+
+        // Create a child issue with --parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] child issue",
+                "--team",
+                &team_key,
+                "-p",
+                "4",
+                "--parent",
+                &parent_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "child issue creation should succeed"
+        );
+        let child: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let child_id = child["id"].as_str().unwrap().to_string();
+
+        // Add a comment on the parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "create",
+                &parent_id,
+                "--body",
+                "Test comment for children+comments test",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "comment creation should succeed");
+
+        // Read the parent — should include children and comments.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &parent_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(output.status.success(), "issues read should succeed");
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+        // Verify children field.
+        let children = detail
+            .get("children")
+            .and_then(|c| c.get("nodes"))
+            .and_then(|n| n.as_array());
+        assert!(
+            children.is_some(),
+            "issues read should include children field"
+        );
+        assert!(
+            !children.unwrap().is_empty(),
+            "children should contain the sub-issue"
+        );
+
+        // Verify comments field.
+        let comments = detail
+            .get("comments")
+            .and_then(|c| c.get("nodes"))
+            .and_then(|n| n.as_array());
+        assert!(
+            comments.is_some(),
+            "issues read should include comments field"
+        );
+        assert!(
+            !comments.unwrap().is_empty(),
+            "comments should contain at least one comment"
+        );
+
+        // Clean up.
+        delete_issue(&child_id);
+        delete_issue(&parent_id);
+    }
+
+    // ── Issues search with filters ──────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_search_with_team_filter() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Search with --team filter.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "search",
+                "test",
+                "--team",
+                &team_key,
+                "--limit",
+                "5",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues search with --team should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = json.as_array().expect("should be an array");
+        // All results should belong to the specified team.
+        for issue in arr {
+            assert_eq!(
+                issue["team"].as_str(),
+                Some(team_key.as_str()),
+                "all search results should belong to team {team_key}"
+            );
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_search_with_status_filter() {
+        let token = api_token();
+
+        // Search with --status filter.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "search",
+                "test",
+                "--status",
+                "Backlog",
+                "--limit",
+                "5",
+                "--show-done",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues search with --status should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = json.as_array().expect("should be an array");
+        for issue in arr {
+            assert_eq!(
+                issue["state"].as_str(),
+                Some("Backlog"),
+                "all search results should have status Backlog"
+            );
+        }
+    }
+
+    // ── Issues create/update with --clear-parent ────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_parent_and_clear_parent() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] clear-parent parent",
+                "--team",
+                &team_key,
+                "-p",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let parent: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let parent_id = parent["id"].as_str().unwrap().to_string();
+
+        // Create child with --parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] clear-parent child",
+                "--team",
+                &team_key,
+                "-p",
+                "4",
+                "--parent",
+                &parent_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let child: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let child_id = child["id"].as_str().unwrap().to_string();
+
+        // Update child with --clear-parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &child_id,
+                "--clear-parent",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update --clear-parent should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Read parent and verify child is no longer in children.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &parent_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let children = detail["children"]["nodes"].as_array().unwrap();
+        assert!(
+            children.is_empty(),
+            "after --clear-parent, parent should have no children"
+        );
+
+        // Clean up.
+        delete_issue(&child_id);
+        delete_issue(&parent_id);
+    }
+
+    // ── Project milestones CRUD ──────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn project_milestones_full_crud() {
+        let token = api_token();
+
+        // Get a team ID (projectCreate requires teamIds).
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+
+        // Create a project via raw GraphQL (projectCreate is not in operations.toml).
+        let client = Client::from_token(api_token()).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let payload: serde_json::Value = rt.block_on(async {
+            client
+                .execute(
+                    "mutation($input: ProjectCreateInput!) { projectCreate(input: $input) { project { id name } } }",
+                    serde_json::json!({ "input": { "name": "[test] milestones CRUD project", "teamIds": [team_id] } }),
+                    "projectCreate",
+                )
+                .await
+                .unwrap()
+        });
+        let project = payload
+            .get("project")
+            .expect("should have project field")
+            .clone();
+        let project_id = project["id"].as_str().unwrap().to_string();
+
+        // Create a milestone via CLI (use project_id to avoid ambiguity with stale data).
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "project-milestones",
+                "create",
+                "[test] Beta Release",
+                "--project",
+                &project_id,
+                "--target-date",
+                "2026-12-31",
+                "--description",
+                "Test milestone for CLI CRUD.",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "milestone create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let milestone_id = created["id"]
+            .as_str()
+            .expect("milestone should have id")
+            .to_string();
+
+        // List milestones.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "project-milestones",
+                "list",
+                "--project",
+                &project_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(output.status.success(), "milestone list should succeed");
+        let milestones: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = milestones.as_array().expect("should be an array");
+        assert!(
+            arr.iter().any(|m| m["id"].as_str() == Some(&milestone_id)),
+            "list should include the created milestone"
+        );
+
+        // Read the milestone by name (uses name resolution).
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "project-milestones",
+                "read",
+                "[test] Beta Release",
+                "--project",
+                &project_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "milestone read by name should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let read_ms: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            read_ms["id"].as_str(),
+            Some(milestone_id.as_str()),
+            "read should return the same milestone"
+        );
+
+        // Update the milestone.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "project-milestones",
+                "update",
+                &milestone_id,
+                "--name",
+                "[test] GA Release",
+                "--target-date",
+                "2027-03-15",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "milestone update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            updated["name"].as_str(),
+            Some("[test] GA Release"),
+            "updated name should match"
+        );
+
+        // Delete the milestone.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "project-milestones",
+                "delete",
+                &milestone_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "milestone delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up: delete the project via raw GraphQL.
+        rt.block_on(async {
+            let _: serde_json::Value = client
+                .execute(
+                    "mutation($id: String!) { projectDelete(id: $id) { success } }",
+                    serde_json::json!({ "id": project_id }),
+                    "projectDelete",
+                )
+                .await
+                .unwrap();
+        });
+    }
+
     // ── Comments create ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
