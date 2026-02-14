@@ -206,10 +206,10 @@ Detection uses `std::io::IsTerminal` from Rust stdlib (no external crate).
 ```
 1. --api-token <token>     (CLI flag, highest priority)
 2. $LINEAR_API_TOKEN        (environment variable)
-3. ~/.linear_api_token      (file, linearis-compatible)
+3. ~/.linear_api_token      (file)
 ```
 
-**Command structure** (linearis-inspired, clap-powered):
+**Command structure** (clap-powered):
 
 ```
 lineark issues list [--team KEY] [--mine] [--show-done] [--limit N]
@@ -608,7 +608,7 @@ and ensure all tests pass."
 - [x] Can upload files and reference them in comments (#28)
 - [x] Full document CRUD works (#28)
 - [x] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers (#28)
-- [x] Feature parity with linearis (#28)
+- [x] Feature parity with target CLI feature set (#28)
 
 ---
 
@@ -649,7 +649,7 @@ and ensure all tests pass."
 
 4. **LLM-maintainable.** The codegen tool, the SDK runtime, and the CLI are each simple enough for a single Claude session to fully understand and modify. No clever abstractions, no deep inheritance hierarchies. The only proc macro is `#[derive(GraphQLFields)]` in `lineark-derive` for type-driven field selection.
 
-5. **Zero config for existing Linear users.** If `~/.linear_api_token` exists (from linearis or manual setup), lineark works immediately.
+5. **Zero config for existing Linear users.** If `~/.linear_api_token` exists, lineark works immediately.
 
 6. **Async-first, sync-optional.** The SDK defaults to async (tokio + reqwest). The `blocking` feature flag enables sync for consumers who need it. The CLI uses async internally.
 

@@ -261,6 +261,13 @@ blocking_query_builder! {
     methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
 }
 
+blocking_query_builder! {
+    query_type = ProjectMilestonesQueryBuilder,
+    node_type = ProjectMilestone,
+    return_type = Connection<ProjectMilestone>,
+    methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool)]
+}
+
 /// Blocking equivalents of the generated query constructor methods on [`Client`].
 impl Client {
     /// Query the authenticated user (blocking).
@@ -374,6 +381,25 @@ impl Client {
     pub fn issue_relation(&self, id: String) -> Result<IssueRelation, LinearError> {
         self.rt
             .block_on(self.inner.issue_relation::<IssueRelation>(id))
+    }
+
+    /// List project milestones (blocking).
+    pub fn project_milestones(
+        &self,
+    ) -> BlockingQuery<
+        '_,
+        crate::generated::queries::ProjectMilestonesQueryBuilder<'_, ProjectMilestone>,
+    > {
+        BlockingQuery::new(
+            self.inner.project_milestones::<ProjectMilestone>(),
+            &self.rt,
+        )
+    }
+
+    /// Query a single project milestone by ID (blocking).
+    pub fn project_milestone(&self, id: String) -> Result<ProjectMilestone, LinearError> {
+        self.rt
+            .block_on(self.inner.project_milestone::<ProjectMilestone>(id))
     }
 }
 
@@ -495,6 +521,34 @@ impl Client {
         id: String,
     ) -> Result<T, LinearError> {
         self.rt.block_on(self.inner.document_delete::<T>(id))
+    }
+
+    /// Create a project milestone (blocking).
+    pub fn project_milestone_create<
+        T: DeserializeOwned + crate::GraphQLFields<FullType = ProjectMilestone>,
+    >(
+        &self,
+        input: ProjectMilestoneCreateInput,
+    ) -> Result<T, LinearError> {
+        self.rt
+            .block_on(self.inner.project_milestone_create::<T>(input))
+    }
+
+    /// Update a project milestone (blocking).
+    pub fn project_milestone_update<
+        T: DeserializeOwned + crate::GraphQLFields<FullType = ProjectMilestone>,
+    >(
+        &self,
+        input: ProjectMilestoneUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        self.rt
+            .block_on(self.inner.project_milestone_update::<T>(input, id))
+    }
+
+    /// Delete a project milestone (blocking).
+    pub fn project_milestone_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        self.rt.block_on(self.inner.project_milestone_delete(id))
     }
 }
 

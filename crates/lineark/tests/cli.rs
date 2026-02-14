@@ -377,6 +377,193 @@ fn documents_update_no_flags_prints_error() {
         .stderr(predicate::str::contains("No update fields provided"));
 }
 
+// ── Project milestones ──────────────────────────────────────────────────────
+
+#[test]
+fn milestones_help_shows_subcommands() {
+    lineark()
+        .args(["project-milestones", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn milestones_list_help_shows_project_flag() {
+    lineark()
+        .args(["project-milestones", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--limit"));
+}
+
+#[test]
+fn milestones_create_help_shows_flags() {
+    lineark()
+        .args(["project-milestones", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--target-date"))
+        .stdout(predicate::str::contains("--description"));
+}
+
+#[test]
+fn milestones_update_help_shows_flags() {
+    lineark()
+        .args(["project-milestones", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--name"))
+        .stdout(predicate::str::contains("--target-date"))
+        .stdout(predicate::str::contains("--description"));
+}
+
+#[test]
+fn milestones_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "project-milestones",
+            "update",
+            "some-uuid",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn usage_includes_milestones_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("project-milestones list"))
+        .stdout(predicate::str::contains("project-milestones read"))
+        .stdout(predicate::str::contains("project-milestones create"))
+        .stdout(predicate::str::contains("project-milestones update"))
+        .stdout(predicate::str::contains("project-milestones delete"));
+}
+
+// ── Issues: new flags ──────────────────────────────────────────────────────
+
+#[test]
+fn issues_create_help_shows_project_and_cycle() {
+    lineark()
+        .args(["issues", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--cycle"))
+        .stdout(predicate::str::contains("--status"));
+}
+
+#[test]
+fn issues_update_help_shows_clear_parent_and_project() {
+    lineark()
+        .args(["issues", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--clear-parent"))
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--cycle"));
+}
+
+#[test]
+fn issues_search_help_shows_filter_flags() {
+    lineark()
+        .args(["issues", "search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--assignee"))
+        .stdout(predicate::str::contains("--status"));
+}
+
+#[test]
+fn issues_update_clear_parent_conflicts_with_parent() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake",
+            "issues",
+            "update",
+            "ENG-123",
+            "--parent",
+            "ENG-456",
+            "--clear-parent",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+// ── Documents: filter flags ────────────────────────────────────────────────
+
+#[test]
+fn documents_list_help_shows_filter_flags() {
+    lineark()
+        .args(["documents", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--issue"));
+}
+
+// ── Short flag aliases ─────────────────────────────────────────────────────
+
+#[test]
+fn issues_list_accepts_short_limit_flag() {
+    // -l should be accepted as --limit alias (will fail on API call, but parsing should succeed)
+    lineark()
+        .args(["--api-token", "fake", "issues", "list", "-l", "5"])
+        .assert()
+        .failure() // fails on API, not on arg parsing
+        .stderr(predicate::str::contains("limit").not()); // should not complain about limit flag
+}
+
+#[test]
+fn issues_create_accepts_short_flags() {
+    lineark()
+        .args(["issues", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("-p"))
+        .stdout(predicate::str::contains("-d"))
+        .stdout(predicate::str::contains("-s"));
+}
+
+#[test]
+fn issues_update_accepts_short_flags() {
+    lineark()
+        .args(["issues", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("-p"))
+        .stdout(predicate::str::contains("-d"))
+        .stdout(predicate::str::contains("-t"))
+        .stdout(predicate::str::contains("-s"));
+}
+
+// ── Usage includes name resolution info ────────────────────────────────────
+
+#[test]
+fn usage_includes_name_resolution() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("NAME RESOLUTION"));
+}
+
 // ── Cycle number parsing rejects NaN/inf (issue #6) ─────────────────────────
 
 #[test]

@@ -125,7 +125,7 @@ Never manually set version numbers in Cargo.toml files. To release, create a Git
 - Don't add proc macro dependencies beyond `lineark-derive`
 - Don't add webhook support, MCP server, or raw GraphQL escape hatches — these are out of scope
 - Don't generate operations not listed in `schema/operations.toml` — operations are added incrementally
-- Don't break linearis compatibility for auth (keep `~/.linear_api_token` support)
+- Don't remove `~/.linear_api_token` auth support
 
 ## Dependencies (key choices, don't change without good reason)
 

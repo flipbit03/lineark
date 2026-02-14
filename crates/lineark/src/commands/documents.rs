@@ -1,11 +1,11 @@
 use clap::Args;
-use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentUpdateInput};
+use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentFilter, DocumentUpdateInput};
 use lineark_sdk::generated::types::Document;
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
-use super::helpers::resolve_issue_id;
+use super::helpers::{resolve_issue_id, resolve_project_id};
 use crate::output::{self, Format};
 
 /// Manage documents.
@@ -22,10 +22,17 @@ pub enum DocumentsAction {
     /// Examples:
     ///   lineark documents list
     ///   lineark documents list --project "My Project"
+    ///   lineark documents list --issue ENG-123
     List {
         /// Maximum number of documents to return (max 250).
         #[arg(long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
         limit: i64,
+        /// Filter by project name or UUID.
+        #[arg(long)]
+        project: Option<String>,
+        /// Filter by issue identifier (e.g., ENG-123) or UUID.
+        #[arg(long)]
+        issue: Option<String>,
     },
     /// Read a specific document by ID (includes content).
     Read {
@@ -36,7 +43,7 @@ pub enum DocumentsAction {
     ///
     /// Examples:
     ///   lineark documents create --title "Design Doc" --content "# Overview\n..."
-    ///   lineark documents create --title "Spec" --content "Details" --project PROJECT-UUID
+    ///   lineark documents create --title "Spec" --content "Details" --project "My Project"
     Create {
         /// Document title.
         #[arg(long)]
@@ -44,7 +51,7 @@ pub enum DocumentsAction {
         /// Document content in markdown format.
         #[arg(long)]
         content: Option<String>,
-        /// Related project UUID.
+        /// Related project name or UUID.
         #[arg(long)]
         project: Option<String>,
         /// Related issue identifier (e.g., ENG-123) or UUID.
@@ -73,25 +80,18 @@ pub enum DocumentsAction {
     },
 }
 
-// ── List row ─────────────────────────────────────────────────────────────────
+// ── Lean types ───────────────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Tabled)]
-struct DocumentRow {
-    id: String,
-    title: String,
-    slug: String,
-    updated_at: String,
-}
-
-impl From<&Document> for DocumentRow {
-    fn from(d: &Document) -> Self {
-        Self {
-            id: d.id.clone().unwrap_or_default(),
-            title: d.title.clone().unwrap_or_default(),
-            slug: d.slug_id.clone().unwrap_or_default(),
-            updated_at: d.updated_at.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
-        }
-    }
+/// Lean document type for list views — avoids fetching contentState and other noise.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Document)]
+#[serde(rename_all = "camelCase", default)]
+struct DocumentSummary {
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
 
 /// Lean result type for document mutations.
@@ -104,17 +104,66 @@ struct DocumentRef {
     slug_id: Option<String>,
 }
 
+// ── List row ─────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Tabled)]
+struct DocumentRow {
+    id: String,
+    title: String,
+    url: String,
+    updated_at: String,
+}
+
+impl From<&DocumentSummary> for DocumentRow {
+    fn from(d: &DocumentSummary) -> Self {
+        Self {
+            id: d.id.clone().unwrap_or_default(),
+            title: d.title.clone().unwrap_or_default(),
+            url: d.url.clone().unwrap_or_default(),
+            updated_at: d.updated_at.clone().unwrap_or_default(),
+        }
+    }
+}
+
 // ── Command dispatch ─────────────────────────────────────────────────────────
 
 pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
     match cmd.action {
-        DocumentsAction::List { limit } => {
-            let conn = client
-                .documents::<Document>()
-                .first(limit)
-                .send()
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
+        DocumentsAction::List {
+            limit,
+            project,
+            issue,
+        } => {
+            let mut query = client.documents::<DocumentSummary>().first(limit);
+
+            // Build filter from --project / --issue flags
+            let has_filter = project.is_some() || issue.is_some();
+            if has_filter {
+                let mut filter_json = serde_json::Map::new();
+
+                if let Some(ref project_name) = project {
+                    let project_id = resolve_project_id(client, project_name).await?;
+                    filter_json.insert(
+                        "project".into(),
+                        serde_json::json!({ "id": { "eq": project_id } }),
+                    );
+                }
+
+                if let Some(ref issue_ident) = issue {
+                    let issue_id = resolve_issue_id(client, issue_ident).await?;
+                    filter_json.insert(
+                        "issue".into(),
+                        serde_json::json!({ "id": { "eq": issue_id } }),
+                    );
+                }
+
+                let filter: DocumentFilter =
+                    serde_json::from_value(serde_json::Value::Object(filter_json))
+                        .expect("valid DocumentFilter");
+                query = query.filter(filter);
+            }
+
+            let conn = query.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
             match format {
                 Format::Json => {
@@ -140,6 +189,10 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             project,
             issue,
         } => {
+            let project_id = match project {
+                Some(ref name) => Some(resolve_project_id(client, name).await?),
+                None => None,
+            };
             let issue_id = match issue {
                 Some(ref id) => Some(resolve_issue_id(client, id).await?),
                 None => None,
@@ -148,7 +201,7 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             let input = DocumentCreateInput {
                 title: Some(title),
                 content,
-                project_id: project,
+                project_id,
                 issue_id,
                 ..Default::default()
             };

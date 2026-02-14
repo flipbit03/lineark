@@ -19,6 +19,8 @@ documents = true
 document = true
 issueRelations = true
 issueRelation = true
+projectMilestones = true
+projectMilestone = true
 
 [mutations]
 # Phase 2 — Core writes
@@ -38,3 +40,9 @@ documentDelete = true
 fileUpload = true
 imageUploadFromUrl = true
 issueRelationCreate = true
+projectMilestoneCreate = true
+projectMilestoneUpdate = true
+projectMilestoneDelete = true
+projectCreate = true
+projectUpdate = true
+projectDelete = true

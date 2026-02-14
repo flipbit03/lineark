@@ -49,6 +49,127 @@ pub async fn image_upload_from_url(
         .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
         .await
 }
+/// Creates a new project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    slack_channel_name: Option<String>,
+    input: ProjectCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "slackChannelName" : slack_channel_name, "input" : input }
+    );
+    let query = String::from(
+        "mutation ProjectCreate($slackChannelName: String, $input: ProjectCreateInput!) { projectCreate(slackChannelName: $slackChannelName, input: $input) { success project { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectCreate", "project")
+        .await
+}
+/// Updates a project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    input: ProjectUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation ProjectUpdate($input: ProjectUpdateInput!, $id: String!) { projectUpdate(input: $input, id: $id) { success project { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectUpdate", "project")
+        .await
+}
+/// Deletes (trashes) a project.
+///
+/// Full type: [`Project`](super::types::Project)
+pub async fn project_delete<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation ProjectDelete($id: String!) { projectDelete(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "projectDelete", "entity")
+        .await
+}
+/// Creates a new project milestone.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
+>(
+    client: &Client,
+    input: ProjectMilestoneCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation ProjectMilestoneCreate($input: ProjectMilestoneCreateInput!) { projectMilestoneCreate(input: $input) { success projectMilestone { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(
+            &query,
+            variables,
+            "projectMilestoneCreate",
+            "projectMilestone",
+        )
+        .await
+}
+/// Updates a project milestone.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
+>(
+    client: &Client,
+    input: ProjectMilestoneUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation ProjectMilestoneUpdate($input: ProjectMilestoneUpdateInput!, $id: String!) { projectMilestoneUpdate(input: $input, id: $id) { success projectMilestone { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(
+            &query,
+            variables,
+            "projectMilestoneUpdate",
+            "projectMilestone",
+        )
+        .await
+}
+/// Deletes a project milestone.
+pub async fn project_milestone_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from(
+        "mutation ProjectMilestoneDelete($id: String!) { projectMilestoneDelete(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "projectMilestoneDelete")
+        .await
+}
 /// Creates a new issue.
 ///
 /// Full type: [`Issue`](super::types::Issue)
