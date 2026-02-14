@@ -12,6 +12,8 @@ pub struct GraphQLError {
     pub message: String,
     #[serde(default)]
     pub extensions: Option<serde_json::Value>,
+    #[serde(default)]
+    pub path: Option<Vec<serde_json::Value>>,
 }
 
 /// Errors that can occur when interacting with the Linear API.
@@ -31,7 +33,10 @@ pub enum LinearError {
     /// Network or HTTP transport error.
     Network(reqwest::Error),
     /// GraphQL errors returned by the API.
-    GraphQL(Vec<GraphQLError>),
+    GraphQL {
+        errors: Vec<GraphQLError>,
+        query_name: Option<String>,
+    },
     /// The requested data path was not found in the response.
     MissingData(String),
     /// Non-2xx HTTP response not covered by a more specific variant.
@@ -50,18 +55,27 @@ impl fmt::Display for LinearError {
             Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
             Self::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
             Self::Network(e) => write!(f, "Network error: {}", e),
-            Self::GraphQL(errors) => {
+            Self::GraphQL { errors, query_name } => {
                 let msgs: Vec<String> = errors
                     .iter()
                     .map(|e| {
-                        if let Some(ext) = &e.extensions {
-                            format!("{} ({})", e.message, ext)
-                        } else {
-                            e.message.clone()
+                        let mut parts = vec![e.message.clone()];
+                        if let Some(path) = &e.path {
+                            let path_str: Vec<String> =
+                                path.iter().map(|p| p.to_string()).collect();
+                            parts.push(format!("at {}", path_str.join(".")));
                         }
+                        if let Some(ext) = &e.extensions {
+                            parts.push(format!("({})", ext));
+                        }
+                        parts.join(" ")
                     })
                     .collect();
-                write!(f, "GraphQL errors: {}", msgs.join("; "))
+                if let Some(name) = query_name {
+                    write!(f, "GraphQL errors in {}: {}", name, msgs.join("; "))
+                } else {
+                    write!(f, "GraphQL errors: {}", msgs.join("; "))
+                }
             }
             Self::HttpError { status, body } => {
                 write!(f, "HTTP error {}: {}", status, body)
@@ -121,19 +135,27 @@ mod tests {
 
     #[test]
     fn display_graphql_error_single() {
-        let err = LinearError::GraphQL(vec![GraphQLError {
-            message: "Field not found".to_string(),
-            extensions: None,
-        }]);
+        let err = LinearError::GraphQL {
+            errors: vec![GraphQLError {
+                message: "Field not found".to_string(),
+                extensions: None,
+                path: None,
+            }],
+            query_name: None,
+        };
         assert_eq!(err.to_string(), "GraphQL errors: Field not found");
     }
 
     #[test]
     fn display_graphql_error_with_extensions() {
-        let err = LinearError::GraphQL(vec![GraphQLError {
-            message: "Error".to_string(),
-            extensions: Some(serde_json::json!({"code": "VALIDATION"})),
-        }]);
+        let err = LinearError::GraphQL {
+            errors: vec![GraphQLError {
+                message: "Error".to_string(),
+                extensions: Some(serde_json::json!({"code": "VALIDATION"})),
+                path: None,
+            }],
+            query_name: None,
+        };
         let display = err.to_string();
         assert!(display.contains("Error"));
         assert!(display.contains("VALIDATION"));
@@ -141,20 +163,47 @@ mod tests {
 
     #[test]
     fn display_graphql_error_multiple() {
-        let err = LinearError::GraphQL(vec![
-            GraphQLError {
-                message: "Error 1".to_string(),
-                extensions: None,
-            },
-            GraphQLError {
-                message: "Error 2".to_string(),
-                extensions: None,
-            },
-        ]);
+        let err = LinearError::GraphQL {
+            errors: vec![
+                GraphQLError {
+                    message: "Error 1".to_string(),
+                    extensions: None,
+                    path: None,
+                },
+                GraphQLError {
+                    message: "Error 2".to_string(),
+                    extensions: None,
+                    path: None,
+                },
+            ],
+            query_name: None,
+        };
         let display = err.to_string();
         assert!(display.contains("Error 1"));
         assert!(display.contains("Error 2"));
         assert!(display.contains("; "));
+    }
+
+    #[test]
+    fn display_graphql_error_with_query_name() {
+        let err = LinearError::GraphQL {
+            errors: vec![GraphQLError {
+                message: "Internal server error".to_string(),
+                extensions: None,
+                path: Some(vec![
+                    serde_json::json!("viewer"),
+                    serde_json::json!("drafts"),
+                    serde_json::json!("nodes"),
+                    serde_json::json!(0),
+                    serde_json::json!("customerNeed"),
+                ]),
+            }],
+            query_name: Some("Viewer".to_string()),
+        };
+        let display = err.to_string();
+        assert!(display.contains("in Viewer"));
+        assert!(display.contains("at \"viewer\""));
+        assert!(display.contains("\"customerNeed\""));
     }
 
     #[test]
@@ -205,6 +254,7 @@ mod tests {
         let err = GraphQLError {
             message: "test".to_string(),
             extensions: None,
+            path: None,
         };
         let json = serde_json::to_value(&err).unwrap();
         assert_eq!(json["message"], "test");

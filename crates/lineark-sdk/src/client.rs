@@ -119,7 +119,14 @@ impl Client {
                 if first_msg.contains("authentication") || first_msg.contains("unauthorized") {
                     return Err(LinearError::Authentication(errors[0].message.clone()));
                 }
-                return Err(LinearError::GraphQL(errors));
+                // Extract operation name from query string (e.g. "query Viewer { ... }" → "Viewer").
+                let query_name = query
+                    .strip_prefix("query ")
+                    .or_else(|| query.strip_prefix("mutation "))
+                    .and_then(|rest| rest.split(['(', ' ', '{']).next())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
+                return Err(LinearError::GraphQL { errors, query_name });
             }
         }
 
@@ -326,7 +333,7 @@ mod tests {
             .execute::<serde_json::Value>("query { foo }", serde_json::json!({}), "foo")
             .await;
 
-        assert!(matches!(result, Err(LinearError::GraphQL(_))));
+        assert!(matches!(result, Err(LinearError::GraphQL { .. })));
     }
 
     #[tokio::test]

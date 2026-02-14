@@ -568,6 +568,7 @@ fn build_single_query_string(
 const EXCLUDED_FIELDS: &[&str] = &[
     "descriptionState", // Yjs CRDT binary blob, useless for display
     "featureFlags",     // exposed in introspection but not queryable
+    "customerNeed",     // causes Internal Server Error on some Linear accounts
 ];
 
 /// Check if a field has required (non-null) arguments that prevent automatic selection.
@@ -704,7 +705,7 @@ fn build_node_fields_with_refs(
     let mut parts: Vec<String> = Vec::new();
 
     for f in &obj.fields {
-        if has_required_arguments(f) {
+        if EXCLUDED_FIELDS.contains(&f.name.as_str()) || has_required_arguments(f) {
             continue;
         }
         let base = f.ty.base_name();

@@ -1,6 +1,7 @@
 use colored::Colorize;
 use serde::Serialize;
 use std::io::IsTerminal;
+use tabled::settings::Style;
 use tabled::{Table, Tabled};
 
 /// Output format selection.
@@ -36,7 +37,7 @@ pub fn print_table<T: Serialize + Tabled>(items: &[T], format: Format) {
                 println!("No results.");
                 return;
             }
-            let table = Table::new(items).to_string();
+            let table = Table::new(items).with(Style::blank()).to_string();
             println!("{}", table);
         }
     }
