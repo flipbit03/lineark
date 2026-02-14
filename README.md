@@ -99,17 +99,18 @@ cargo add lineark-sdk
 
 ```rust
 use lineark_sdk::Client;
+use lineark_sdk::generated::types::{User, Team, IssueSearchResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // auto() tries all token methods (env var, ~/.linear_api_token file)
     let client = Client::auto()?;
 
-    let me = client.whoami().await?;
+    let me = client.whoami::<User>().await?;
     println!("{:?}", me);
 
     // Queries with optional args use a builder pattern:
-    let teams = client.teams().first(10).include_archived(false).send().await?;
+    let teams = client.teams::<Team>().first(10).include_archived(false).send().await?;
     for team in &teams.nodes {
         println!("{}: {}",
             team.key.as_deref().unwrap_or("?"),
@@ -118,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Search uses a required `term` arg + optional builder params:
-    let results = client.search_issues("bug").first(5).send().await?;
+    let results = client.search_issues::<IssueSearchResult>("bug").first(5).send().await?;
     println!("Found {} issues", results.nodes.len());
 
     Ok(())
@@ -132,7 +133,7 @@ lineark is four crates that form a clean pipeline:
 - **lineark-codegen** reads Linear API's GraphQL schema and generates typed Rust code into the SDK
 - **lineark-sdk** combines a small hand-written core with the generated types, queries, and mutations into a cohesive and reusable client library
 - **lineark-derive** provides `#[derive(GraphQLFields)]` — a proc macro that lets consumers define custom lean types for zero-overfetch queries
-- **lineark** consumes the SDK as a normal library — zero GraphQL, just typed method calls
+- **lineark** consumes the SDK as a normal library — zero GraphQL, typed method calls with custom lean types via `#[derive(GraphQLFields)]`
 
 ### The Big Picture
 
@@ -228,11 +229,11 @@ graph TD
 
 The key trick: `Client` is defined in hand-written `client.rs`, but codegen adds methods to it via a separate `impl Client` block in `client_impl.rs`. Rust's open `impl` blocks make this seamless — consumers see one unified `Client` type with both hand-written and generated methods.
 
-All query/mutation methods are generic over `T: DeserializeOwned + GraphQLFields`. The generated types implement `GraphQLFields` automatically (via codegen), and consumers can define custom lean structs with `#[derive(GraphQLFields)]` from `lineark-derive` to fetch only the fields they need.
+All query/mutation methods are generic over `T: DeserializeOwned + GraphQLFields`. The generated types implement `GraphQLFields` automatically (via codegen), and consumers can define custom lean structs with `#[derive(GraphQLFields)]` from `lineark-derive` to fetch only the fields they need. The `#[graphql(full_type = X)]` attribute enables compile-time validation that custom fields exist on the schema type with compatible types.
 
 ### How the CLI Plugs In
 
-The CLI is a pure consumer of the SDK. It has **zero GraphQL strings** and **zero custom response structs**:
+The CLI is a pure consumer of the SDK. It has **zero GraphQL strings** and uses custom lean types with `#[derive(GraphQLFields)]` to fetch only the fields it needs:
 
 ```mermaid
 sequenceDiagram
@@ -249,12 +250,12 @@ sequenceDiagram
     SDK-->>CLI: team UUID
 
     CLI->>CLI: Build IssueFilter via serde_json
-    CLI->>SDK: client.issues().filter(f).first(50).send()
+    CLI->>SDK: client.issues::<IssueRow>().filter(f).first(50).send()
     SDK->>SDK: Build GraphQL query + variables
     SDK->>API: POST /graphql
     API-->>SDK: JSON response
-    SDK-->>SDK: Deserialize into Connection<Issue>
-    SDK-->>CLI: Connection<Issue>
+    SDK-->>SDK: Deserialize into Connection<IssueRow>
+    SDK-->>CLI: Connection<IssueRow>
 
     CLI->>CLI: Format as table or JSON
     CLI-->>User: Output

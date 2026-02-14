@@ -99,6 +99,8 @@ These run on five targets: `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-mus
 
 When opening a PR, include a summary of changes and a test plan. If codegen was modified, verify with `cargo run -p lineark-codegen` that the generated output is clean (codegen runs `cargo fmt` as a post-step).
 
+Before merging, run `/update-docs` to review and update all documentation (top-level README, CLI README, SDK README) so they reflect the current codebase. Documentation must stay in sync with code.
+
 ## Commit style
 
 - Use conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, etc.)
