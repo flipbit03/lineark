@@ -44,7 +44,7 @@ jobs:
           RUSTDOCFLAGS: -Dwarnings
 
   test:
-    name: Test (async)
+    name: Tests (Async API)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +72,7 @@ jobs:
         run: cargo test --workspace
 
   test-blocking:
-    name: Test (blocking)
+    name: Tests (Blocking API)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
