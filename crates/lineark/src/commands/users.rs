@@ -24,9 +24,11 @@ pub enum UsersAction {
 }
 
 #[derive(Debug, Serialize, Tabled)]
+#[serde(rename_all = "camelCase")]
 pub struct UserRow {
     pub id: String,
     pub name: String,
+    pub display_name: String,
     pub email: String,
     pub active: bool,
 }
@@ -47,7 +49,8 @@ pub async fn run(cmd: UsersCmd, client: &Client, format: Format) -> anyhow::Resu
                 .filter(|u| !active || u.active.unwrap_or(false))
                 .map(|u| UserRow {
                     id: u.id.clone().unwrap_or_default(),
-                    name: u.display_name.clone().unwrap_or_default(),
+                    name: u.name.clone().unwrap_or_default(),
+                    display_name: u.display_name.clone().unwrap_or_default(),
                     email: u.email.clone().unwrap_or_default(),
                     active: u.active.unwrap_or(false),
                 })

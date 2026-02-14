@@ -58,13 +58,9 @@ mod cli_online {
         assert!(output.status.success(), "whoami should succeed");
         let json: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
-        let arr = json.as_array().expect("whoami JSON should be an array");
-        assert!(!arr.is_empty(), "whoami array should not be empty");
-        assert!(arr[0].get("id").is_some(), "whoami entry should contain id");
-        assert!(
-            arr[0].get("email").is_some(),
-            "whoami entry should contain email"
-        );
+        assert!(json.is_object(), "whoami JSON should be an object");
+        assert!(json.get("id").is_some(), "whoami should contain id");
+        assert!(json.get("email").is_some(), "whoami should contain email");
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
