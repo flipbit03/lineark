@@ -92,13 +92,10 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Run CLI online tests
-        run: cargo test -p lineark --test cli_online -- --test-threads=1
+      - name: Run online tests
+        run: cargo test --workspace --test online -- --test-threads=1
 
-      - name: Run SDK online tests
-        run: cargo test -p lineark-sdk --test online -- --test-threads=1
-
-      - name: Run SDK blocking online tests
+      - name: Run blocking online tests
         run: cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1
 
   build:
