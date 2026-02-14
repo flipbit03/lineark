@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use colored::Colorize;
 use serde::Serialize;
 use std::io::IsTerminal;
@@ -53,6 +55,16 @@ pub fn print_one<T: Serialize>(item: &T, format: Format) {
             let value = serde_json::to_value(item).unwrap();
             print_value_human(&value, 0);
         }
+    }
+}
+
+/// Display helper for `Option<T>` fields in `#[derive(Tabled)]` structs.
+///
+/// Usage: `#[tabled(display_with = "output::display_opt")]`
+pub fn display_opt<T: Display>(o: &Option<T>) -> String {
+    match o {
+        Some(v) => v.to_string(),
+        None => String::new(),
     }
 }
 

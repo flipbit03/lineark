@@ -17,6 +17,8 @@ pub struct ViewerRow {
     #[tabled(rename = "org")]
     #[graphql(nested)]
     pub organization: OrgRef,
+    #[tabled(rename = "githubUserId", display_with = "output::display_opt")]
+    pub git_hub_user_id: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
