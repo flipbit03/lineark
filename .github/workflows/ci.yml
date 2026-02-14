@@ -44,7 +44,7 @@ jobs:
           RUSTDOCFLAGS: -Dwarnings
 
   test:
-    name: Test
+    name: Test (async)
     needs: lint
     runs-on: ubuntu-latest
     steps:
@@ -69,7 +69,7 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Tests
+      - name: Run tests
         run: cargo test --workspace
 
   test-blocking:
@@ -98,7 +98,7 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Tests (blocking feature)
+      - name: Run tests
         run: cargo test -p lineark-sdk --features blocking
 
   build:
