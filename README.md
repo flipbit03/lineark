@@ -16,7 +16,7 @@ For context-constrained tools like Claude Code, that's a huge tax. Claude Code's
 
 lineark takes a different approach: it's a **CLI that your agent calls via Bash**. There's no tool schema to inject. When your agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's a **~13x reduction** in context overhead compared to the MCP approach — context your agent can spend on actually understanding your codebase and solving problems.
 
-It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) for building your own Linear integrations.
+It's also a standalone **Rust SDK** ([lineark-sdk](crates/lineark-sdk/)) for building your own Linear integrations.
 
 ## Quick start
 
