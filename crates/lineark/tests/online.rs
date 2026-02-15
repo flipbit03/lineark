@@ -42,6 +42,32 @@ fn delete_issue(issue_id: &str) {
         .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
 }
 
+/// Retry a closure up to `max_attempts` times with backoff.
+/// Returns `Ok(T)` on the first successful attempt, or `Err(last_error_message)`.
+fn retry_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
+where
+    F: FnMut() -> Result<T, String>,
+{
+    let mut last_err = String::new();
+    for attempt in 0..max_attempts {
+        let delay = if attempt == 0 {
+            0
+        } else if attempt < 3 {
+            1
+        } else {
+            3
+        };
+        if delay > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(delay));
+        }
+        match f() {
+            Ok(val) => return Ok(val),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
+}
+
 test_with::runner!(online);
 
 #[test_with::module]
@@ -605,13 +631,7 @@ mod online {
         //
         // Linear's search index is async — the newly created+archived issue may
         // not be searchable immediately. Retry with backoff to avoid flakiness.
-        let mut last_stdout = String::new();
-        let mut last_stderr = String::new();
-        let mut succeeded = false;
-        for attempt in 0..8 {
-            let delay = if attempt < 3 { 1 } else { 3 };
-            std::thread::sleep(std::time::Duration::from_secs(delay));
-
+        let stdout = retry_with_backoff(8, || {
             let output = lineark()
                 .args([
                     "--api-token",
@@ -624,18 +644,16 @@ mod online {
                 ])
                 .output()
                 .expect("failed to execute lineark");
-            last_stdout = String::from_utf8_lossy(&output.stdout).to_string();
-            last_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             if output.status.success() {
-                succeeded = true;
-                break;
+                Ok(stdout)
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                Err(format!("stdout: {stdout}\nstderr: {stderr}"))
             }
-        }
-        assert!(
-            succeeded,
-            "unarchive by human identifier should succeed (after retries).\nstdout: {last_stdout}\nstderr: {last_stderr}"
-        );
-        let unarchived: serde_json::Value = serde_json::from_str(&last_stdout).unwrap();
+        })
+        .expect("unarchive by human identifier should succeed (after retries)");
+        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert!(
             unarchived.get("id").is_some(),
             "unarchive response should contain id"
@@ -1343,50 +1361,48 @@ mod online {
         }
 
         // Read issue A via CLI — should show the relation.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_a_id,
-            ])
-            .output()
-            .expect("failed to execute lineark");
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            output.status.success(),
-            "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
-        );
-        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-
-        // Verify the relations field is present and contains our relation.
-        let relations = detail
-            .get("relations")
-            .and_then(|r| r.get("nodes"))
-            .and_then(|n| n.as_array());
-        assert!(
-            relations.is_some(),
-            "issues read should include relations field"
-        );
-        let relations = relations.unwrap();
-        assert!(
-            !relations.is_empty(),
-            "relations should contain at least one entry"
-        );
-        let has_our_relation = relations.iter().any(|r| {
-            r.get("relatedIssue")
-                .and_then(|ri| ri.get("id"))
-                .and_then(|id| id.as_str())
-                == Some(&issue_b_id)
-        });
-        assert!(
-            has_our_relation,
-            "relations should contain the relation to issue B"
-        );
+        // Linear's API may take a moment to propagate relations, so retry.
+        let issue_b_id_clone = issue_b_id.clone();
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_a_id,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("issues read failed: {stdout}"));
+            }
+            let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let relations = detail
+                .get("relations")
+                .and_then(|r| r.get("nodes"))
+                .and_then(|n| n.as_array());
+            let Some(relations) = relations else {
+                return Err("relations field missing".to_string());
+            };
+            if relations.is_empty() {
+                return Err("relations is empty".to_string());
+            }
+            let has_our_relation = relations.iter().any(|r| {
+                r.get("relatedIssue")
+                    .and_then(|ri| ri.get("id"))
+                    .and_then(|id| id.as_str())
+                    == Some(&issue_b_id_clone)
+            });
+            if !has_our_relation {
+                return Err("relation to issue B not found".to_string());
+            }
+            Ok(())
+        })
+        .expect("relations should contain the relation to issue B (after retries)");
 
         // Clean up.
         delete_issue(&issue_a_id);
@@ -1475,49 +1491,51 @@ mod online {
         assert!(output.status.success(), "comment creation should succeed");
 
         // Read the parent — should include children and comments.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &parent_id,
-            ])
-            .output()
-            .unwrap();
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(output.status.success(), "issues read should succeed");
-        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        // Linear may take a moment to propagate children/comments, so retry.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &parent_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("issues read failed: {stdout}"));
+            }
+            let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
 
-        // Verify children field.
-        let children = detail
-            .get("children")
-            .and_then(|c| c.get("nodes"))
-            .and_then(|n| n.as_array());
-        assert!(
-            children.is_some(),
-            "issues read should include children field"
-        );
-        assert!(
-            !children.unwrap().is_empty(),
-            "children should contain the sub-issue"
-        );
+            let children = detail
+                .get("children")
+                .and_then(|c| c.get("nodes"))
+                .and_then(|n| n.as_array());
+            let Some(children) = children else {
+                return Err("children field missing".to_string());
+            };
+            if children.is_empty() {
+                return Err("children is empty".to_string());
+            }
 
-        // Verify comments field.
-        let comments = detail
-            .get("comments")
-            .and_then(|c| c.get("nodes"))
-            .and_then(|n| n.as_array());
-        assert!(
-            comments.is_some(),
-            "issues read should include comments field"
-        );
-        assert!(
-            !comments.unwrap().is_empty(),
-            "comments should contain at least one comment"
-        );
+            let comments = detail
+                .get("comments")
+                .and_then(|c| c.get("nodes"))
+                .and_then(|n| n.as_array());
+            let Some(comments) = comments else {
+                return Err("comments field missing".to_string());
+            };
+            if comments.is_empty() {
+                return Err("comments is empty".to_string());
+            }
+
+            Ok(())
+        })
+        .expect("parent should have children and comments (after retries)");
 
         // Clean up.
         delete_issue(&child_id);
@@ -1776,55 +1794,68 @@ mod online {
             .to_string();
 
         // List milestones.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "project-milestones",
-                "list",
-                "--project",
-                &project_id,
-            ])
-            .output()
-            .unwrap();
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(output.status.success(), "milestone list should succeed");
-        let milestones: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        let arr = milestones.as_array().expect("should be an array");
-        assert!(
-            arr.iter().any(|m| m["id"].as_str() == Some(&milestone_id)),
-            "list should include the created milestone"
-        );
+        // Linear may take a moment to propagate the new milestone, so retry.
+        let milestone_id_clone = milestone_id.clone();
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "project-milestones",
+                    "list",
+                    "--project",
+                    &project_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("milestone list failed: {stdout}"));
+            }
+            let milestones: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let arr = milestones.as_array().ok_or("not an array")?;
+            if arr
+                .iter()
+                .any(|m| m["id"].as_str() == Some(&milestone_id_clone))
+            {
+                Ok(())
+            } else {
+                Err("created milestone not in list".to_string())
+            }
+        })
+        .expect("list should include the created milestone (after retries)");
 
         // Read the milestone by name (uses name resolution).
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "project-milestones",
-                "read",
-                "[test] Beta Release",
-                "--project",
-                &project_id,
-            ])
-            .output()
-            .unwrap();
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            output.status.success(),
-            "milestone read by name should succeed.\nstdout: {stdout}\nstderr: {stderr}"
-        );
-        let read_ms: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert_eq!(
-            read_ms["id"].as_str(),
-            Some(milestone_id.as_str()),
-            "read should return the same milestone"
-        );
+        // Name resolution queries the same list, so also retry.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "project-milestones",
+                    "read",
+                    "[test] Beta Release",
+                    "--project",
+                    &project_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("milestone read by name failed: {stdout}"));
+            }
+            let read_ms: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            if read_ms["id"].as_str() == Some(milestone_id.as_str()) {
+                Ok(())
+            } else {
+                Err("read returned wrong milestone".to_string())
+            }
+        })
+        .expect("milestone read by name should return the created milestone (after retries)");
 
         // Update the milestone.
         let output = lineark()
