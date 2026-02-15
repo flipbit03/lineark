@@ -62,10 +62,13 @@ jobs:
           key: test-offline-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: test-offline-cargo-
 
-      - name: Run async tests (offline — no token file)
-        run: cargo test --workspace
+      - name: Run unit tests
+        run: cargo test --workspace --lib
 
-      - name: Run blocking tests (offline — no token file)
+      - name: Run offline integration tests
+        run: cargo test --workspace --test offline
+
+      - name: Run blocking offline integration tests
         run: cargo test -p lineark-sdk --features blocking --test blocking_online
 
   test-online:
