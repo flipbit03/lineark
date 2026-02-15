@@ -16,7 +16,7 @@ For context-constrained tools like Claude Code, that's a huge tax. Claude Code's
 
 lineark takes a different approach: it's a **CLI that your agent calls via Bash**. There's no tool schema to inject. When your agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's a **~13x reduction** in context overhead compared to the MCP approach — context your agent can spend on actually understanding your codebase and solving problems.
 
-It's also a standalone **Rust SDK** ([lineark-sdk](crates/lineark-sdk/)) for building your own Linear integrations.
+It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) for building your own Linear integrations.
 
 ## Quick start
 
@@ -112,7 +112,12 @@ All query methods are generic over `T: DeserializeOwned + GraphQLFields` — def
 
 ## Architecture
 
-lineark is four crates: a codegen tool that reads Linear's GraphQL schema, an SDK with generated types and a hand-written core, a proc-macro crate for zero-overfetch custom types, and a CLI that consumes the SDK with no raw GraphQL.
+lineark is four crates:
+
+- **lineark-codegen** — reads Linear's GraphQL schema and generates typed Rust code
+- **lineark-sdk** — generated types + hand-written core (client, auth, pagination)
+- **lineark-derive** — `#[derive(GraphQLFields)]` for custom lean types with zero overfetching
+- **lineark** — the CLI, a pure SDK consumer with no raw GraphQL
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams and detailed walkthrough.
 
