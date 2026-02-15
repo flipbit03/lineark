@@ -68,9 +68,6 @@ jobs:
       - name: Run offline integration tests
         run: cargo test --workspace --test offline
 
-      - name: Run blocking offline integration tests
-        run: cargo test -p lineark-sdk --features blocking --test blocking_online
-
   test-online:
     name: Tests (Online)
     runs-on: ubuntu-latest
