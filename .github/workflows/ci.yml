@@ -43,8 +43,8 @@ jobs:
         env:
           RUSTDOCFLAGS: -Dwarnings
 
-  test:
-    name: Tests (Async API)
+  test-offline:
+    name: Tests (Offline)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,20 +59,17 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: test-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: test-cargo-
+          key: test-offline-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: test-offline-cargo-
 
-      - name: Set up test API token
-        if: env.LINEAR_TEST_TOKEN != ''
-        run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
-        env:
-          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
+      - name: Run unit tests
+        run: cargo test --workspace --lib
 
-      - name: Run tests
-        run: cargo test --workspace
+      - name: Run offline integration tests
+        run: cargo test --workspace --test offline
 
-  test-blocking:
-    name: Tests (Blocking API)
+  test-online:
+    name: Tests (Online)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,17 +84,19 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: test-blocking-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: test-blocking-cargo-
+          key: test-online-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: test-online-cargo-
 
       - name: Set up test API token
-        if: env.LINEAR_TEST_TOKEN != ''
         run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
-      - name: Run tests
-        run: cargo test -p lineark-sdk --features blocking --test blocking
+      - name: Run online tests
+        run: cargo test --workspace --test online -- --test-threads=1
+
+      - name: Run blocking online tests
+        run: cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1
 
   build:
     name: Build (${{ matrix.name }})

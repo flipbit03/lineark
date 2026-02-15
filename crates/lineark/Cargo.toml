@@ -31,5 +31,5 @@ test-with = { version = "0.15", default-features = false, features = ["runtime"]
 libtest-with = "0.8.1-13"
 
 [[test]]
-name = "cli_online"
+name = "online"
 harness = false

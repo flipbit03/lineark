@@ -31,7 +31,7 @@ name = "online"
 harness = false
 
 [[test]]
-name = "blocking"
+name = "blocking_online"
 harness = false
 required-features = ["blocking"]
 

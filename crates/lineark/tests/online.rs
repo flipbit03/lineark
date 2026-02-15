@@ -42,10 +42,10 @@ fn delete_issue(issue_id: &str) {
         .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
 }
 
-test_with::runner!(cli_online);
+test_with::runner!(online);
 
 #[test_with::module]
-mod cli_online {
+mod online {
     // ── Whoami ────────────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

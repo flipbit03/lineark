@@ -27,10 +27,10 @@ fn test_client() -> Client {
     Client::from_token(token).expect("failed to create blocking test client")
 }
 
-test_with::runner!(blocking);
+test_with::runner!(blocking_online);
 
 #[test_with::module]
-mod blocking {
+mod blocking_online {
     // ── Viewer ──────────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
