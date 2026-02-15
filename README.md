@@ -1,52 +1,56 @@
-# lineark / lineark-sdk
+# lineark
 
-Unofficial [Linear](https://linear.app) CLI and Rust SDK — for humans and LLMs.
+Give your AI agent full access to Linear — without burning half its context window.
 
 [![CI](https://github.com/flipbit03/lineark/actions/workflows/ci.yml/badge.svg)](https://github.com/flipbit03/lineark/actions/workflows/ci.yml)
-[![crates.io lineark](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
-[![crates.io lineark-sdk](https://img.shields.io/crates/v/lineark-sdk?label=lineark-sdk)](https://crates.io/crates/lineark-sdk)
-[![CLI downloads](https://img.shields.io/crates/d/lineark?label=CLI%20downloads)](https://crates.io/crates/lineark)
-[![SDK downloads](https://img.shields.io/crates/d/lineark-sdk?label=SDK%20downloads)](https://crates.io/crates/lineark-sdk)
+[![crates.io](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
+[![crates.io](https://img.shields.io/crates/v/lineark-sdk?label=lineark-sdk)](https://crates.io/crates/lineark-sdk)
 [![docs.rs](https://img.shields.io/docsrs/lineark-sdk?label=docs.rs)](https://docs.rs/lineark-sdk)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Getting Started
+## Why lineark?
 
-Create a [Linear API token](https://linear.app/settings/account/security) (Settings > Security & Access > Personal API Keys) and save it:
+MCP tools are the standard way to connect AI agents to external services. But they come at a cost: **the Linear MCP server alone consumes ~16,000 tokens** of context just to describe its tools and schemas to the model — before your agent does any actual work.
 
-```sh
-echo "lin_api_..." > ~/.linear_api_token
-```
+For context-constrained tools like Claude Code, that's a huge tax. Claude Code's own system prompt and tools already use ~20K tokens, leaving a tight budget for your code, your conversation, and the agent's reasoning.
 
-Or use an environment variable:
+lineark takes a different approach: it's a **CLI that your agent calls via Bash**. There's no tool schema to inject. When your agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's a **~16x reduction** in context overhead compared to the MCP approach — context your agent can spend on actually understanding your codebase and solving problems.
 
-```sh
-export LINEAR_API_TOKEN="lin_api_..."
-```
+It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) for building your own Linear integrations.
 
-Then proceed to install the [CLI](#cli-lineark) or [SDK](#sdk-lineark-sdk).
+## Quick start
 
-## CLI: `lineark`
-
-### Installation
-
-#### Pre-built binary (static binary, no Rust toolchain needed)
+### Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh | sh
 ```
 
-The script automatically selects between `linux/x86_64`, `linux/aarch64` or `macos/aarch64`, and running it again will update to the latest version. You can also bypass the installer and download the binary for your system from the [latest release](https://github.com/flipbit03/lineark/releases/latest).
+Or via cargo: `cargo install lineark`
 
-#### Via cargo
+### Authenticate
+
+Create a [Linear API token](https://linear.app/settings/account/security) and save it:
 
 ```sh
-cargo install lineark
+echo "lin_api_..." > ~/.linear_api_token
 ```
 
-### LLM / AI Agent Setup
+### Use it
 
-Add this to your LLM's context (e.g. `CLAUDE.md`, `.cursorrules`, system prompt):
+```sh
+lineark whoami                              # check your identity
+lineark issues list --team ENG --mine       # my issues on the ENG team
+lineark issues search "auth bug" -l 5       # full-text search
+lineark issues create "Fix login" --team ENG -p 2 --assignee "Jane"
+lineark issues update ENG-42 -s "In Progress"
+```
+
+Output auto-detects format — human-readable tables in a terminal, JSON when piped. Override with `--format json`.
+
+## Set up your AI agent
+
+Add three lines to your LLM's context (`CLAUDE.md`, `.cursorrules`, system prompt, etc.):
 
 ```
 We track our tickets and projects in Linear (https://linear.app), a project management tool.
@@ -54,51 +58,28 @@ We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool 
 `lineark` executable. Run `lineark usage` to see usage information.
 ```
 
-`lineark usage` gives your agent a complete command reference in under 1,000 tokens.
+That's it. Your agent discovers all commands at runtime via `lineark usage` — no tool schemas, no function definitions, no context bloat.
 
-### Usage
+## What it can do
 
-Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names.
+| Area | Commands |
+|------|----------|
+| **Issues** | `list`, `read`, `search`, `create`, `update`, `archive`, `delete` |
+| **Comments** | `create` on any issue |
+| **Projects** | `list` |
+| **Milestones** | `list`, `read`, `create`, `update`, `delete` |
+| **Cycles** | `list`, `read` |
+| **Documents** | `list`, `read`, `create`, `update`, `delete` |
+| **Teams / Users / Labels** | `list` |
+| **File embeds** | `upload`, `download` |
 
-| Command | Description |
-|---------|-------------|
-| `lineark whoami` | Show authenticated user |
-| `lineark teams list` | List all teams |
-| `lineark users list [--active]` | List users |
-| `lineark projects list` | List all projects |
-| `lineark labels list [--team KEY]` | List issue labels |
-| `lineark cycles list [-l N] [--team KEY]`<br>`[--active]`<br>`[--around-active N]` | List cycles<br>Only the active cycle<br>Active ± N neighbors |
-| `lineark cycles read <ID> [--team KEY]` | Read cycle (UUID, name, or number) |
-| `lineark issues list [-l N] [--team KEY]`<br>`[--mine]`<br>`[--show-done]` | Active issues, newest first<br>Only issues assigned to me<br>Include done/canceled issues |
-| `lineark issues read <IDENTIFIER>` | Full issue detail incl. sub-issues & comments |
-| `lineark issues search <QUERY> [-l N]`<br>`[--team KEY] [--assignee NAME-OR-ID]`<br>`[--status NAME,...] [--show-done]` | Full-text search<br>Filter by team, assignee, status<br>Comma-separated status names |
-| `lineark issues create <TITLE> --team KEY`<br>`[-p 0-4] [--assignee NAME-OR-ID]`<br>`[--labels NAME,...] [-d TEXT]`<br>`[-s NAME] [--parent ID]`<br>`[--project NAME-OR-ID] [--cycle NAME-OR-ID]` | Create an issue<br>0=none 1=urgent 2=high 3=medium 4=low<br>Label names (team-scoped)<br>Status resolved against team states<br>Project and cycle assignment |
-| `lineark issues update <IDENTIFIER>`<br>`[-s NAME] [-p 0-4] [--assignee NAME-OR-ID]`<br>`[--labels NAME,...] [--label-by adding\|replacing\|removing]`<br>`[--clear-labels] [-t TEXT] [-d TEXT]`<br>`[--parent ID] [--clear-parent]`<br>`[--project NAME-OR-ID] [--cycle NAME-OR-ID]` | Update an issue<br>Status, priority, assignee<br>Label management<br>Title, description<br>Set or remove parent<br>Project, cycle |
-| `lineark issues archive <IDENTIFIER>` | Archive an issue |
-| `lineark issues unarchive <IDENTIFIER>` | Unarchive a previously archived issue |
-| `lineark issues delete <IDENTIFIER>`<br>`[--permanently]` | Delete (trash) an issue<br>Permanently delete instead of trashing |
-| `lineark comments create <ISSUE-ID> --body TEXT` | Comment on an issue |
-| `lineark documents list [--limit N]`<br>`[--project NAME-OR-ID] [--issue ID]` | List documents (lean output)<br>Filter by project or issue |
-| `lineark documents read <ID>` | Read document (includes content) |
-| `lineark documents create --title TEXT`<br>`[--content TEXT] [--project NAME-OR-ID] [--issue ID]` | Create a document |
-| `lineark documents update <ID>`<br>`[--title TEXT] [--content TEXT]` | Update a document |
-| `lineark documents delete <ID>` | Delete (trash) a document |
-| `lineark project-milestones list --project NAME` | List milestones for a project |
-| `lineark project-milestones read <ID> [--project NAME]` | Read a milestone (UUID or name) |
-| `lineark project-milestones create <NAME>`<br>`--project NAME [--target-date DATE]` | Create a milestone |
-| `lineark project-milestones update <ID>`<br>`[--name TEXT] [--target-date DATE]` | Update a milestone |
-| `lineark project-milestones delete <ID>` | Delete a milestone |
-| `lineark embeds upload <FILE> [--public]` | Upload file, returns asset URL |
-| `lineark embeds download <URL>`<br>`[--output PATH] [--overwrite]` | Download a file by URL |
-| `lineark usage` | Compact command reference |
+Every command supports `--help` for full details. Most flags accept human-readable names — `--team ENG`, `--assignee "Jane Doe"`, `--labels "Bug,P0"` — no UUIDs required.
 
-Every command supports `--help` for full details.
+Run `lineark usage` for the complete command reference.
 
-Output auto-detects format (tables in terminal, JSON when piped) — override with `--format {human,json}`.
+## SDK: lineark-sdk
 
-## SDK: `lineark-sdk`
-
-Use `lineark-sdk` as a library in your own Rust projects:
+Use lineark-sdk as a library in your own Rust projects:
 
 ```sh
 cargo add lineark-sdk
@@ -110,22 +91,16 @@ use lineark_sdk::generated::types::{User, Team, IssueSearchResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // auto() tries all token methods (env var, ~/.linear_api_token file)
     let client = Client::auto()?;
 
     let me = client.whoami::<User>().await?;
     println!("{:?}", me);
 
-    // Queries with optional args use a builder pattern:
-    let teams = client.teams::<Team>().first(10).include_archived(false).send().await?;
+    let teams = client.teams::<Team>().first(10).send().await?;
     for team in &teams.nodes {
-        println!("{}: {}",
-            team.key.as_deref().unwrap_or("?"),
-            team.name.as_deref().unwrap_or("?"),
-        );
+        println!("{}: {}", team.key.as_deref().unwrap_or("?"), team.name.as_deref().unwrap_or("?"));
     }
 
-    // Search uses a required `term` arg + optional builder params:
     let results = client.search_issues::<IssueSearchResult>("bug").first(5).send().await?;
     println!("Found {} issues", results.nodes.len());
 
@@ -133,147 +108,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+All query methods are generic over `T: DeserializeOwned + GraphQLFields` — define custom lean structs with `#[derive(GraphQLFields)]` to fetch only the fields you need.
+
 ## Architecture
 
-lineark is four crates that form a clean pipeline:
+lineark is four crates: a codegen tool that reads Linear's GraphQL schema, an SDK with generated types and a hand-written core, a proc-macro crate for zero-overfetch custom types, and a CLI that consumes the SDK with no raw GraphQL.
 
-- **lineark-codegen** reads Linear API's GraphQL schema and generates typed Rust code into the SDK
-- **lineark-sdk** combines a small hand-written core with the generated types, queries, and mutations into a cohesive and reusable client library
-- **lineark-derive** provides `#[derive(GraphQLFields)]` — a proc macro for custom lean types with zero overfetching (re-exported by `lineark-sdk`, no extra dependency needed)
-- **lineark** consumes the SDK as a normal library — zero GraphQL, typed method calls with custom lean types via `#[derive(GraphQLFields)]`
-
-### The Big Picture
-
-```mermaid
-graph TD
-    subgraph "Schema Sources"
-        Schema["schema.graphql<br/><i>Linear's GraphQL SDL</i>"]
-        Ops["operations.toml<br/><i>allowlist</i>"]
-    end
-
-    Codegen["lineark-codegen"]
-    Schema & Ops --> Codegen
-
-    Derive["lineark-derive<br/><i>#[derive(GraphQLFields)]</i>"]
-
-    subgraph SDK["lineark-sdk"]
-        Generated["generated/<br/><i>types, queries, mutations,<br/>client_impl</i>"]
-        FieldSel["field_selection.rs<br/><i>GraphQLFields trait</i>"]
-    end
-
-    Codegen -- "writes .rs files" --> Generated
-    Derive -- "proc macro" --> SDK
-
-    CLI["lineark CLI"]
-    CLI -- "client.issues().filter(f).send()" --> SDK
-
-    API["Linear GraphQL API"]
-    SDK -- "HTTP POST" --> API
-```
-
-### Code Generation Pipeline
-
-The codegen crate parses Linear's GraphQL schema (vendored as `schema.graphql`) using `apollo-parser`, then emits seven Rust source files into the SDK:
-
-```mermaid
-graph TD
-    SDL["schema.graphql<br/><i>Linear's GraphQL SDL</i>"]
-    TOML["operations.toml<br/><i>allowlist</i>"]
-
-    SDL & TOML --> Parse["parser::parse()<br/><i>apollo-parser CST → simplified structs</i>"]
-
-    Parse --> Always & Gated
-
-    subgraph "Always generated (full schema)"
-        Always["emit_scalars · emit_enums<br/>emit_types · emit_inputs"]
-    end
-
-    subgraph "Gated by operations.toml"
-        Gated["emit_queries · emit_mutations"]
-    end
-
-    Always --> Out1["scalars.rs · enums.rs<br/>types.rs · inputs.rs"]
-    Gated --> Out2["queries.rs · mutations.rs<br/>client_impl.rs"]
-
-    Out1 & Out2 --> FMT["prettyplease + cargo fmt"]
-    FMT --> Dir["lineark-sdk/src/generated/"]
-```
-
-Types, enums, scalars, and inputs are **always fully generated** from the schema. Queries and mutations are **gated by `operations.toml`** — only explicitly listed operations get code emitted. This keeps the SDK surface incremental and intentional.
-
-### SDK Structure
-
-The SDK has a small hand-written core and a large generated layer:
-
-```mermaid
-graph TD
-    Consumer["Your code calls:<br/><b>client.issues().filter(f).first(50).send()</b>"]
-
-    Consumer --> Impl
-
-    subgraph lineark-sdk
-        Impl["client_impl.rs<br/><i>impl Client — thin delegation<br/>generated by codegen</i>"]
-        Impl --> QM
-
-        subgraph "Generated by codegen"
-            QM["queries.rs / mutations.rs<br/><i>generic fns + builders<br/>T: DeserializeOwned + GraphQLFields</i>"]
-            Types["types.rs / inputs.rs / enums.rs<br/><i>Issue, Team, IssueCreateInput,<br/>IssueFilter, IssuePriority, ...<br/>+ impl GraphQLFields for each type</i>"]
-        end
-
-        QM -- "uses types for<br/>args and return values" --> Types
-        QM --> Client
-
-        subgraph "Hand-written (~200 LOC)"
-            Client["client.rs — Client struct<br/><i>execute() · execute_connection()</i>"]
-            Support["auth.rs · error.rs · pagination.rs<br/>field_selection.rs"]
-        end
-
-        Client --> Support
-    end
-
-    Client -- "HTTP POST" --> API["Linear GraphQL API"]
-```
-
-The key trick: `Client` is defined in hand-written `client.rs`, but codegen adds methods to it via a separate `impl Client` block in `client_impl.rs`. Rust's open `impl` blocks make this seamless — consumers see one unified `Client` type with both hand-written and generated methods.
-
-All query/mutation methods are generic over `T: DeserializeOwned + GraphQLFields`. The generated types implement `GraphQLFields` automatically (via codegen), and consumers can define custom lean structs with `#[derive(GraphQLFields)]` to fetch only the fields they need — the derive macro is re-exported by `lineark-sdk`, so `use lineark_sdk::GraphQLFields` gives you both the trait and the macro with no extra dependency. Custom types must include `#[graphql(full_type = X)]` pointing to the corresponding generated type — this is required for the query's type constraint and also validates fields at compile time.
-
-### How the CLI Plugs In
-
-The CLI is a pure consumer of the SDK. It has **zero GraphQL strings** and uses custom lean types with `#[derive(GraphQLFields)]` to fetch only the fields it needs:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant CLI as lineark CLI
-    participant SDK as lineark-sdk
-    participant API as Linear API
-
-    User->>CLI: lineark issues list --team ENG --mine
-    CLI->>CLI: Parse args (clap)
-    CLI->>SDK: resolve_team_id("ENG")
-    SDK->>API: teams(first: 250)
-    API-->>SDK: Connection<Team>
-    SDK-->>CLI: team UUID
-
-    CLI->>CLI: Build IssueFilter via serde_json
-    CLI->>SDK: client.issues::<IssueRow>().filter(f).first(50).send()
-    SDK->>SDK: Build GraphQL query + variables
-    SDK->>API: POST /graphql
-    API-->>SDK: JSON response
-    SDK-->>SDK: Deserialize into Connection<IssueRow>
-    SDK-->>CLI: Connection<IssueRow>
-
-    CLI->>CLI: Format as table or JSON
-    CLI-->>User: Output
-```
-
-Each CLI command module follows the same pattern:
-
-1. Parse command-line args
-2. Resolve human-friendly names to UUIDs (teams, users, labels, projects, cycles, issues)
-3. Call SDK builder methods
-4. Format output (tables for terminal, JSON when piped)
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams and detailed walkthrough.
 
 ## License
 
