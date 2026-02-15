@@ -77,6 +77,7 @@ COMMANDS:
   lineark embeds upload <FILE> [--public]          Upload file to Linear, returns asset URL
                                                    Embed as markdown [name](url) in issues,
                                                    comments, or documents
+                                                   --public only works for images (not SVG)
   lineark embeds download <URL>                    Download any file by URL (works with
     [--output PATH] [--overwrite]                  Linear CDN URLs and external URLs alike)
 
