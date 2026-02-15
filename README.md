@@ -1,6 +1,6 @@
 # lineark
 
-Give your AI agent full access to Linear — without burning half its context window.
+Unofficial Linear CLI and Rust SDK — for humans and LLMs.
 
 [![CI](https://github.com/flipbit03/lineark/actions/workflows/ci.yml/badge.svg)](https://github.com/flipbit03/lineark/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
