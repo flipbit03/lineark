@@ -1,6 +1,6 @@
 # lineark
 
-Unofficial Linear CLI and Rust SDK — for humans and LLMs.
+Unofficial [Linear](https://linear.app/) CLI and Rust SDK, for humans and coding agents.
 
 [![CI](https://github.com/flipbit03/lineark/actions/workflows/ci.yml/badge.svg)](https://github.com/flipbit03/lineark/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
@@ -10,13 +10,13 @@ Unofficial Linear CLI and Rust SDK — for humans and LLMs.
 
 ## Why lineark?
 
-MCP tools are the standard way to connect AI agents to external services. But they come at a cost: **the Linear MCP server alone consumes ~13,000 tokens** of context just to describe its tools and schemas to the model — before your agent does any actual work.
+I was using the Linear MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful.
 
-For context-constrained tools like Claude Code, that's a huge tax. Claude Code's own system prompt and tools already use ~20K tokens, leaving a tight budget for your code, your conversation, and the agent's reasoning.
+So I built a CLI for Linear. The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
 
-lineark takes a different approach: it's a **CLI that your agent calls via Bash**. There's no tool schema to inject. When your agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's a **~13x reduction** in context overhead compared to the MCP approach — context your agent can spend on actually understanding your codebase and solving problems.
+A nice side effect is that I now have a proper Linear CLI for personal scripts and quick lookups.
 
-It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) for building your own Linear integrations.
+It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) if you want to build your own Linear integrations.
 
 ## Quick start
 
@@ -52,7 +52,7 @@ lineark issues create "Fix login" --team ENG -p 2 --assignee "Jane"
 lineark issues update ENG-42 -s "In Progress"
 ```
 
-Output auto-detects format — human-readable tables in a terminal, JSON when piped. Override with `--format json`.
+Output auto-detects format: human-readable tables in a terminal, JSON when piped. Override with `--format json`.
 
 ## Set up your AI agent
 
@@ -64,7 +64,7 @@ We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool 
 `lineark` executable. Run `lineark usage` to see usage information.
 ```
 
-That's it. Your agent discovers all commands at runtime via `lineark usage` — no tool schemas, no function definitions, no context bloat.
+That's it. Your agent discovers all commands at runtime by running `lineark usage`: no tool schemas, no function definitions, no context bloat.
 
 ## What it can do
 
