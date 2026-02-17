@@ -7,6 +7,7 @@ pub mod issues;
 pub mod labels;
 pub mod milestones;
 pub mod projects;
+pub mod self_cmd;
 pub mod teams;
 pub mod usage;
 pub mod users;

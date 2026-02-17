@@ -856,6 +856,7 @@ dependencies = [
  "lineark-sdk",
  "percent-encoding",
  "predicates",
+ "reqwest",
  "serde",
  "serde_json",
  "tabled",

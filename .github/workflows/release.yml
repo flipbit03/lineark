@@ -126,7 +126,7 @@ jobs:
           sed -i'' -e "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark/Cargo.toml
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }} -p lineark
+        run: cargo build --release --target ${{ matrix.target }} -p lineark --features binary-release
         env:
           RUSTFLAGS: -Dwarnings
 
