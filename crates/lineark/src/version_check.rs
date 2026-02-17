@@ -124,6 +124,17 @@ pub fn is_dev_build() -> bool {
     current_version() == "0.0.0"
 }
 
+/// Returns true if `latest` is newer than `current` using semver comparison.
+pub fn is_newer(current: &str, latest: &str) -> bool {
+    match (
+        semver::Version::parse(current),
+        semver::Version::parse(latest),
+    ) {
+        (Ok(c), Ok(l)) => l > c,
+        _ => latest != current,
+    }
+}
+
 /// Returns the download URL for a GitHub release asset for the current platform.
 pub fn release_asset_url(tag: &str) -> Result<String> {
     let os_tag = match std::env::consts::OS {

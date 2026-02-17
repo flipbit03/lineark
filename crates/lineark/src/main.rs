@@ -67,7 +67,7 @@ fn update_hint_blocking() -> String {
 pub fn format_update_hint(latest: Option<&str>) -> String {
     let current = version_check::current_version();
     match latest {
-        Some(v) if v != current => {
+        Some(v) if version_check::is_newer(current, v) => {
             format!("\nUpdate available: {current} → {v}\nRun `lineark self update` to upgrade.\n")
         }
         _ => String::new(),

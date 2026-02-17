@@ -41,7 +41,7 @@ async fn run_update(args: UpdateArgs) -> Result<()> {
         .context("could not determine the latest version")?;
 
     if args.check {
-        if current == latest {
+        if !version_check::is_newer(current, &latest) {
             println!("lineark {} is already the latest version.", current.green());
         } else {
             println!(
@@ -54,7 +54,7 @@ async fn run_update(args: UpdateArgs) -> Result<()> {
         return Ok(());
     }
 
-    if current == latest {
+    if !version_check::is_newer(current, &latest) {
         println!("lineark {} is already the latest version.", current.green());
         return Ok(());
     }
