@@ -28,9 +28,15 @@ curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh |
 
 Or via cargo: `cargo install lineark`
 
+To update to the latest version:
+
+```sh
+lineark self update
+```
+
 ### Authenticate
 
-Create a [Linear API token](https://linear.app/settings/account/security) and save it:
+Create a [Linear Personal API key](https://linear.app/settings/account/security) and save it:
 
 ```sh
 echo "lin_api_..." > ~/.linear_api_token
