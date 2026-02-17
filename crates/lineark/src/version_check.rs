@@ -103,6 +103,17 @@ pub async fn get_latest_version(force: bool) -> Option<String> {
     }
 }
 
+/// Read the cached latest version synchronously (no network, no async).
+/// Returns `Some` only if the cache exists and is fresh (< 24h).
+pub fn get_cached_version() -> Option<String> {
+    let cache = read_cache()?;
+    if now_secs().saturating_sub(cache.checked_at) < CACHE_TTL_SECS {
+        Some(cache.latest_version)
+    } else {
+        None
+    }
+}
+
 /// Returns the current compiled-in version of lineark.
 pub fn current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -111,6 +122,17 @@ pub fn current_version() -> &'static str {
 /// Returns true if this is a dev build (version 0.0.0).
 pub fn is_dev_build() -> bool {
     current_version() == "0.0.0"
+}
+
+/// Returns true if `latest` is newer than `current` using semver comparison.
+pub fn is_newer(current: &str, latest: &str) -> bool {
+    match (
+        semver::Version::parse(current),
+        semver::Version::parse(latest),
+    ) {
+        (Ok(c), Ok(l)) => l > c,
+        _ => latest != current,
+    }
 }
 
 /// Returns the download URL for a GitHub release asset for the current platform.
