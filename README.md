@@ -12,7 +12,7 @@ Unofficial Linear CLI and Rust SDK, for humans and coding agents.
 
 I was using the Linear MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful.
 
-So I built a CLI instead. The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
+So I built a CLI for Linear. The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
 
 A nice side effect: I now also have a proper Linear CLI for myself, for personal scripts and quick lookups. Solved both problems at once.
 
