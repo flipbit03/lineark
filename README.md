@@ -12,7 +12,7 @@ Unofficial Linear CLI and Rust SDK, for humans and coding agents.
 
 MCP servers cost you context. The Linear MCP server alone uses ~13,000 tokens just to describe its tools to the model, before your agent does any actual work. For an LLM agent that already has your codebase, conversation history, and its own reasoning filling up context, that's a real cost.
 
-lineark is just a CLI your agent calls via Bash. No tool schemas injected into context. When the agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's a ~13x reduction, leaving more room for the things that actually matter.
+lineark is just a CLI your agent calls via Bash. No tool schemas injected into context. When the agent needs the command reference, it runs `lineark usage` and gets everything in **under 1,000 tokens**. That's it.
 
 It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) if you want to build your own Linear integrations.
 
