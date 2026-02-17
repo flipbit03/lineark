@@ -1,6 +1,6 @@
 # lineark
 
-Unofficial Linear CLI and Rust SDK, for humans and coding agents.
+Unofficial [Linear](https://linear.app/) CLI and Rust SDK, for humans and coding agents.
 
 [![CI](https://github.com/flipbit03/lineark/actions/workflows/ci.yml/badge.svg)](https://github.com/flipbit03/lineark/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/lineark?label=lineark)](https://crates.io/crates/lineark)
@@ -10,13 +10,13 @@ Unofficial Linear CLI and Rust SDK, for humans and coding agents.
 
 ## Why lineark?
 
-I was using the Linear MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful.
+I was using the [Linear](https://linear.app/) MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful.
 
-So I built a CLI for Linear. The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
+So I built a CLI for [Linear](https://linear.app/). The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
 
-A nice side effect: I now also have a proper Linear CLI for myself, for personal scripts and quick lookups. Solved both problems at once.
+A nice side effect: I now also have a proper [Linear](https://linear.app/) CLI for myself, for personal scripts and quick lookups. Solved both problems at once.
 
-It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) if you want to build your own Linear integrations.
+It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) if you want to build your own [Linear](https://linear.app/) integrations.
 
 ## Quick start
 
@@ -120,7 +120,7 @@ All query methods are generic over `T: DeserializeOwned + GraphQLFields` — def
 
 lineark is four crates:
 
-- **lineark-codegen** — reads Linear's GraphQL schema and generates typed Rust code
+- **lineark-codegen** — reads [Linear's](https://linear.app/) GraphQL schema and generates typed Rust code
 - **lineark-sdk** — generated types + hand-written core (client, auth, pagination)
 - **lineark-derive** — `#[derive(GraphQLFields)]` for custom lean types with zero overfetching
 - **lineark** — the CLI, a pure SDK consumer with no raw GraphQL
