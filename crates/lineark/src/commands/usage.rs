@@ -1,5 +1,7 @@
+use crate::version_check;
+
 /// Print a compact LLM-friendly command reference (<1000 tokens).
-pub fn run() {
+pub async fn run() {
     let env_hint = if std::env::var("LINEAR_API_TOKEN").is_ok() {
         " (set)"
     } else {
@@ -80,6 +82,8 @@ COMMANDS:
                                                    --public only works for images (not SVG)
   lineark embeds download <URL>                    Download any file by URL (works with
     [--output PATH] [--overwrite]                  Linear CDN URLs and external URLs alike)
+  lineark self update                              Update lineark to the latest release
+  lineark self update --check                      Check if an update is available
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token
@@ -91,4 +95,13 @@ AUTH (in precedence order):
   3. ~/.linear_api_token file{file_hint}
 "#
     );
+
+    // Show update hint (uses cache, goes online at most once per 24h).
+    if !version_check::is_dev_build() {
+        let latest = version_check::get_latest_version(false).await;
+        let hint = crate::format_update_hint(latest.as_deref());
+        if !hint.is_empty() {
+            print!("{hint}");
+        }
+    }
 }
