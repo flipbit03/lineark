@@ -10,7 +10,7 @@ Unofficial Linear CLI and Rust SDK, for humans and coding agents.
 
 ## Why lineark?
 
-I was using the Linear MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful. That was hurting my context budget in a real way.
+I was using the Linear MCP server for agentic coding and found it ate ~13,000 tokens just to describe its tools, before doing anything useful.
 
 So I built a CLI instead. The agent calls it via Bash, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
 
