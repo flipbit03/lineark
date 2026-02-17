@@ -52,21 +52,14 @@ enum Command {
     SelfCmd(commands::self_cmd::SelfCmd),
 }
 
-/// Build an update hint string using a blocking one-shot tokio runtime for use in clap's
-/// `after_help` (which requires a plain string at parse time). Uses the cached version check
-/// (no network call unless cache is stale/missing).
+/// Build an update hint for clap's `after_help` using only the local cache (no network, no async).
+/// If the cache is stale or missing, no hint is shown — the online check happens in `usage`
+/// and `self update` instead.
 fn update_hint_blocking() -> String {
     if version_check::is_dev_build() {
         return String::new();
     }
-    // Use a lightweight current-thread runtime so we don't conflict with the main runtime.
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build();
-    let latest = match rt {
-        Ok(rt) => rt.block_on(version_check::get_latest_version(false)),
-        Err(_) => None,
-    };
+    let latest = version_check::get_cached_version();
     format_update_hint(latest.as_deref())
 }
 
