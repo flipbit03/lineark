@@ -14,7 +14,7 @@ I was using the Linear MCP server for agentic coding and found it ate ~13,000 to
 
 So I built a CLI for Linear. The agent calls it via its shell tool, and when it needs to know what commands exist, it runs `lineark usage` and gets the full command reference in **under 1,000 tokens**.
 
-A nice side effect: I now also have a proper Linear CLI for myself, for personal scripts and quick lookups. Solved both problems at once.
+A nice side effect is that I now have a proper Linear CLI for personal scripts and quick lookups.
 
 It's also a standalone **Rust SDK** ([lineark-sdk](https://crates.io/crates/lineark-sdk)) if you want to build your own Linear integrations.
 
