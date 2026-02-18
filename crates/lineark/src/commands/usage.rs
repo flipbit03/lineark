@@ -29,15 +29,15 @@ COMMANDS:
   lineark whoami                                   Show authenticated user
   lineark teams list                               List all teams
   lineark users list [--active]                    List users
-  lineark projects list [--led-by-me]               List all projects (with lead)
+  lineark projects list [--led-by-me]              List all projects (with lead)
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
   lineark projects create <NAME> --team KEY[,KEY]  Create a new project
-    [--description TEXT] [--lead NAME-OR-ID|me]     Description, project lead
-    [--members NAME,...|me]                         Project members (comma-separated)
-    [--start-date DATE] [--target-date DATE]        Dates (YYYY-MM-DD)
-    [-p 0-4] [--content TEXT]                       Priority, markdown content
-    [--icon ICON] [--color COLOR]                   Icon, color
-  lineark labels list [--team KEY]                  List issue labels (includes team key)
+    [--description TEXT] [--lead NAME-OR-ID|me]    Description, project lead
+    [--members NAME,...|me]                        Project members (comma-separated)
+    [--start-date DATE] [--target-date DATE]       Dates (YYYY-MM-DD)
+    [-p 0-4] [--content TEXT]                      Priority, markdown content
+    [--icon ICON] [--color COLOR]                  Icon, color
+  lineark labels list [--team KEY]                 List issue labels (includes team key)
   lineark cycles list [-l N] [--team KEY]          List cycles
     [--active]                                     Only the active cycle
     [--around-active N]                            Active ± N neighbors
@@ -50,23 +50,23 @@ COMMANDS:
     [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
     [--status NAME,...] [--show-done]              Comma-separated status names
   lineark issues create <TITLE> --team KEY         Create an issue
-    [-p 0-4] [--assignee NAME-OR-ID|me]           0=none 1=urgent 2=high 3=medium 4=low
+    [-p 0-4] [--assignee NAME-OR-ID|me]            0=none 1=urgent 2=high 3=medium 4=low
     [--labels NAME,...] [-d TEXT] [-s NAME]        Label names (team-scoped), status name
-    [--parent ID] [--project NAME-OR-ID]          Parent issue, project, cycle
+    [--parent ID] [--project NAME-OR-ID]           Parent issue, project, cycle
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
-    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me] Status, priority, assignee
+    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
     [--labels NAME,...] [--label-by adding|replacing|removing]
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
-    [--parent ID] [--clear-parent]                Set or remove parent
-    [--project NAME-OR-ID] [--cycle NAME-OR-ID]   Project, cycle
+    [--parent ID] [--clear-parent]                 Set or remove parent
+    [--project NAME-OR-ID] [--cycle NAME-OR-ID]    Project, cycle
   lineark issues archive <IDENTIFIER>              Archive an issue
   lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
     [--permanently]                                Permanently delete instead of trashing
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark documents list [--limit N]               List documents (lean output)
-    [--project NAME-OR-ID] [--issue ID]           Filter by project or issue
+    [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
   lineark documents read <ID>                      Read document (includes content)
   lineark documents create --title TEXT            Create a document
     [--content TEXT] [--project NAME-OR-ID]        Project name or UUID
@@ -78,7 +78,7 @@ COMMANDS:
   lineark project-milestones read <ID>             Read a milestone (UUID or name with --project)
     [--project NAME-OR-ID]
   lineark project-milestones create <NAME>         Create a milestone
-    --project NAME-OR-ID [--target-date DATE]     DATE = YYYY-MM-DD
+    --project NAME-OR-ID [--target-date DATE]      DATE = YYYY-MM-DD
     [--description TEXT]
   lineark project-milestones update <ID>           Update a milestone
     [--project NAME-OR-ID] [--name TEXT]
