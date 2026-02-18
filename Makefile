@@ -12,6 +12,7 @@ codegen:
 # Lint, doc, and build checks (no tests).
 check:
 	cargo fmt --check
+	cargo run -q -p lineark-lint
 	cargo clippy --workspace -- -D warnings
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 	cargo build --workspace

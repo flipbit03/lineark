@@ -893,6 +893,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lineark-lint"
+version = "0.0.0"
+dependencies = [
+ "tabled",
+]
+
+[[package]]
 name = "lineark-sdk"
 version = "0.0.0"
 dependencies = [

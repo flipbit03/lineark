@@ -34,13 +34,19 @@ Or use an environment variable (`LINEAR_API_TOKEN`) or the `--api-token` flag.
 
 ## Usage
 
-Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names.
+Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names. `me` is a special alias that resolves to the authenticated user on `--assignee`, `--lead`, and `--members`.
 
 ```
 lineark whoami                                   Show authenticated user
 lineark teams list                               List all teams
 lineark users list [--active]                    List users
-lineark projects list                            List all projects
+lineark projects list [--led-by-me]              List all projects (with lead)
+lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
+lineark projects create <NAME> --team KEY        Create a project
+  [--description TEXT] [--lead NAME-OR-ID|me]    Description, lead, dates
+  [--members NAME,...|me]                        Project members (comma-separated)
+  [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
+  [-p 0-4] [--content TEXT] ...                  See --help for all options
 lineark labels list [--team KEY]                 List issue labels
 lineark cycles list [-l N] [--team KEY]          List cycles
   [--active] [--around-active N]                 Active cycle / ± N neighbors
@@ -49,13 +55,13 @@ lineark issues list [-l N] [--team KEY]          Active issues, newest first
   [--mine] [--show-done]                         Filter by assignee / state
 lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues & comments
 lineark issues search <QUERY> [-l N]             Full-text search
-  [--team KEY] [--assignee NAME-OR-ID]           Filter by team, assignee, status
+  [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
   [--status NAME,...] [--show-done]
 lineark issues create <TITLE> --team KEY         Create an issue
-  [-p 0-4] [--assignee NAME-OR-ID]               Priority, assignee, labels, status
-  [--labels NAME,...] [-s NAME] ...               Project, cycle — see --help
+  [-p 0-4] [--assignee NAME-OR-ID|me]            Priority, assignee, labels, status
+  [--labels NAME,...] [-s NAME] ...              Project, cycle — see --help
 lineark issues update <IDENTIFIER>               Update an issue
-  [-s NAME] [-p 0-4] [--assignee NAME-OR-ID]     Status, priority, assignee
+  [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
   [--clear-parent] [--project NAME-OR-ID] ...    See --help for all options
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
@@ -64,22 +70,19 @@ lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
 lineark documents list [--limit N]               List documents (lean output)
   [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
 lineark documents read <ID>                      Read document (includes content)
-lineark documents create --title TEXT             Create a document
+lineark documents create --title TEXT            Create a document
   [--project NAME-OR-ID] [--issue ID]
 lineark documents update <ID>                    Update a document
 lineark documents delete <ID>                    Delete a document
-lineark projects create <NAME> --team KEY        Create a project
-  [--description TEXT] [--lead NAME-OR-ID]       Description, lead, dates
-  [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
-  [-p 0-4] [--content TEXT] ...                  See --help for all options
 lineark project-milestones list --project NAME   List milestones for a project
 lineark project-milestones read <ID>             Read a milestone
 lineark project-milestones create <NAME>         Create a milestone
   --project NAME-OR-ID [--target-date DATE]
 lineark project-milestones update <ID>           Update a milestone
 lineark project-milestones delete <ID>           Delete a milestone
-lineark embeds upload <FILE> [--public]           Upload file, get asset URL
+lineark embeds upload <FILE> [--public]          Upload file, get asset URL
 lineark embeds download <URL> [--output PATH]    Download a file by URL
+lineark self update                              Update to latest release
 lineark usage                                    Compact command reference
 ```
 
@@ -90,9 +93,9 @@ Every command supports `--help` for full details.
 Output auto-detects: human-readable tables in a terminal, JSON when piped. Override with `--format {human,json}`.
 
 ```sh
-lineark teams list                  # table in terminal
-lineark teams list | jq .           # JSON when piped
-lineark teams list --format json    # force JSON
+lineark teams list                               # table in terminal
+lineark teams list | jq .                        # JSON when piped
+lineark teams list --format json                 # force JSON
 ```
 
 ## LLM / AI agent setup

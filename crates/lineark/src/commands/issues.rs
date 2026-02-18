@@ -12,7 +12,7 @@ use tabled::Tabled;
 
 use super::helpers::{
     resolve_cycle_id, resolve_issue_id, resolve_label_ids, resolve_project_id, resolve_team_id,
-    resolve_user_id,
+    resolve_user_id_or_me,
 };
 use crate::output::{self, Format};
 
@@ -58,7 +58,7 @@ pub enum IssuesAction {
         /// Filter by team key, name, or UUID.
         #[arg(long)]
         team: Option<String>,
-        /// Filter by assignee name, display name, or UUID.
+        /// Filter by assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
         /// Filter by status names (comma-separated).
@@ -71,13 +71,14 @@ pub enum IssuesAction {
     ///   lineark issues create "Fix the bug" --team ENG
     ///   lineark issues create "Add feature" --team ENG --priority 2 --description "Details here"
     ///   lineark issues create "Urgent fix" --team ENG --priority 1 --labels Bug,Frontend
+    ///   lineark issues create "My task" --team ENG --assignee me
     Create {
         /// Issue title.
         title: String,
         /// Team key, name, or UUID. Required.
         #[arg(long)]
         team: String,
-        /// Assignee: user name, display name, or UUID.
+        /// Assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
         /// Comma-separated label names or UUIDs.
@@ -154,7 +155,7 @@ pub enum IssuesAction {
         /// Remove all labels from the issue.
         #[arg(long, default_value = "false")]
         clear_labels: bool,
-        /// Assignee: user name, display name, or UUID.
+        /// Assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
         /// Parent issue identifier (e.g., ENG-123) or UUID.
@@ -504,7 +505,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             // Build IssueFilter for assignee and/or status.
             let mut filter_map = serde_json::Map::new();
             if let Some(ref assignee_val) = assignee {
-                let user_id = resolve_user_id(client, assignee_val).await?;
+                let user_id = resolve_user_id_or_me(client, assignee_val).await?;
                 filter_map.insert(
                     "assignee".into(),
                     serde_json::json!({ "id": { "eq": user_id } }),
@@ -543,7 +544,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             let team_id = resolve_team_id(client, &team).await?;
 
             let assignee_id = match assignee {
-                Some(ref a) => Some(resolve_user_id(client, a).await?),
+                Some(ref a) => Some(resolve_user_id_or_me(client, a).await?),
                 None => None,
             };
 
@@ -684,7 +685,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let assignee_id = match assignee {
-                Some(ref a) => Some(resolve_user_id(client, a).await?),
+                Some(ref a) => Some(resolve_user_id_or_me(client, a).await?),
                 None => None,
             };
 

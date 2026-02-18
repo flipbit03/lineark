@@ -1,0 +1,12 @@
+[package]
+name = "lineark-lint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Column alignment checker for lineark command reference sections"
+publish = false
+
+[dependencies]
+tabled = "0.17"
