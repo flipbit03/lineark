@@ -68,6 +68,10 @@ lineark documents create --title TEXT             Create a document
   [--project NAME-OR-ID] [--issue ID]
 lineark documents update <ID>                    Update a document
 lineark documents delete <ID>                    Delete a document
+lineark projects create <NAME> --team KEY        Create a project
+  [--description TEXT] [--lead NAME-OR-ID]       Description, lead, dates
+  [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
+  [-p 0-4] [--content TEXT] ...                  See --help for all options
 lineark project-milestones list --project NAME   List milestones for a project
 lineark project-milestones read <ID>             Read a milestone
 lineark project-milestones create <NAME>         Create a milestone

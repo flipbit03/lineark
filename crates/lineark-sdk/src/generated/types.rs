@@ -4,6 +4,34 @@
 use super::enums::*;
 use crate::field_selection::GraphQLFields;
 use serde::{Deserialize, Serialize};
+/// `Internal` An access key for CI/CD integrations.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AccessKey {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+    /// The time at which the entity was created.
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    /// been updated after creation.
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which the entity was archived. Null if the entity has not been archived.
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Organization the API key belongs to.
+    pub organization: Option<Box<Organization>>,
+    /// The user who created the access key.
+    pub creator: Option<Box<User>>,
+    /// When the access key was last used.
+    pub last_used_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// When the access key was revoked.
+    pub revoked_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl GraphQLFields for AccessKey {
+    type FullType = Self;
+    fn selection() -> String {
+        "id createdAt updatedAt archivedAt lastUsedAt revokedAt".into()
+    }
+}
 /// A bot actor is an actor that is not a user, but an application or integration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -2075,6 +2103,8 @@ pub struct Dashboard {
     pub project_filter: Option<serde_json::Value>,
     /// The widgets on the dashboard.
     pub widgets: Option<serde_json::Value>,
+    /// The team associated with the dashboard.
+    pub team: Option<Box<Team>>,
 }
 impl GraphQLFields for Dashboard {
     type FullType = Self;
@@ -2228,11 +2258,69 @@ pub struct DocumentContent {
     pub welcome_message: Option<Box<WelcomeMessage>>,
     /// The time at which the document content was restored from a previous version.
     pub restored_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Comments associated with the document content.
+    pub comments: Option<Box<CommentConnection>>,
+    /// `ALPHA` The histories of the document content.
+    pub history: Option<Box<DocumentContentHistoryConnection>>,
 }
 impl GraphQLFields for DocumentContent {
     type FullType = Self;
     fn selection() -> String {
         "id createdAt updatedAt archivedAt content contentState restoredAt".into()
+    }
+}
+/// A document content history for a document.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistory {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+    /// The time at which the entity was created.
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    /// been updated after creation.
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which the entity was archived. Null if the entity has not been archived.
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The document content that this history item is associated with.
+    pub document_content: Option<Box<DocumentContent>>,
+    /// `Internal` The document content as a Prosemirror document.
+    pub content_data: Option<serde_json::Value>,
+    /// IDs of actors whose edits went into this history item.
+    pub actor_ids: Option<Vec<String>>,
+    /// The timestamp associated with the DocumentContent when it was originally saved.
+    pub content_data_snapshot_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl GraphQLFields for DocumentContentHistory {
+    type FullType = Self;
+    fn selection() -> String {
+        "id createdAt updatedAt archivedAt contentData actorIds contentDataSnapshotAt".into()
+    }
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistoryConnection {
+    pub edges: Option<Box<Vec<DocumentContentHistoryEdge>>>,
+    pub nodes: Option<Box<Vec<DocumentContentHistory>>>,
+    pub page_info: Option<Box<PageInfo>>,
+}
+impl GraphQLFields for DocumentContentHistoryConnection {
+    type FullType = Self;
+    fn selection() -> String {
+        "".into()
+    }
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DocumentContentHistoryEdge {
+    pub node: Option<Box<DocumentContentHistory>>,
+    /// Used in `before` and `after` args
+    pub cursor: Option<String>,
+}
+impl GraphQLFields for DocumentContentHistoryEdge {
+    type FullType = Self;
+    fn selection() -> String {
+        "cursor".into()
     }
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -4459,6 +4547,8 @@ pub struct Issue {
     pub url: Option<String>,
     /// Suggested branch name for the issue.
     pub branch_name: Option<String>,
+    /// Shared access metadata for this issue.
+    pub shared_access: Option<Box<IssueSharedAccess>>,
     /// Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk).
     pub customer_ticket_count: Option<i64>,
     /// Users who are subscribed to the issue.
@@ -4622,6 +4712,7 @@ pub struct IssueDraft {
     pub needs: Option<serde_json::Value>,
     /// Serialized array of JSONs representing the recurring issue's schedule.
     pub schedule: Option<serde_json::Value>,
+    pub labels: Option<Box<IssueLabelConnection>>,
 }
 impl GraphQLFields for IssueDraft {
     type FullType = Self;
@@ -5459,6 +5550,8 @@ pub struct IssueSearchResult {
     pub url: Option<String>,
     /// Suggested branch name for the issue.
     pub branch_name: Option<String>,
+    /// Shared access metadata for this issue.
+    pub shared_access: Option<Box<IssueSharedAccess>>,
     /// Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk).
     pub customer_ticket_count: Option<i64>,
     /// Users who are subscribed to the issue.
@@ -5526,6 +5619,24 @@ impl GraphQLFields for IssueSearchResultEdge {
     type FullType = Self;
     fn selection() -> String {
         "cursor".into()
+    }
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct IssueSharedAccess {
+    /// Whether this issue has been shared with users outside the team.
+    pub is_shared: Option<bool>,
+    /// Whether the viewer can access this issue only through issue sharing.
+    pub viewer_has_only_shared_access: Option<bool>,
+    /// The number of users this issue is shared with.
+    pub shared_with_count: Option<i64>,
+    /// Users this issue is shared with.
+    pub shared_with_users: Option<Box<Vec<User>>>,
+}
+impl GraphQLFields for IssueSharedAccess {
+    type FullType = Self;
+    fn selection() -> String {
+        "isShared viewerHasOnlySharedAccess sharedWithCount".into()
     }
 }
 /// A continuous period of time during which an issue remained in a specific workflow state.
@@ -5602,11 +5713,15 @@ pub struct IssueSuggestion {
     pub suggested_user_id: Option<String>,
     pub suggested_label: Option<Box<IssueLabel>>,
     pub suggested_label_id: Option<String>,
+    /// The reasons for the suggestion.
+    pub reasons: Option<Vec<String>>,
+    /// Whether the suggestion should be visible.
+    pub is_visible: Option<bool>,
 }
 impl GraphQLFields for IssueSuggestion {
     type FullType = Self;
     fn selection() -> String {
-        "id createdAt updatedAt archivedAt issueId type state stateChangedAt dismissalReason suggestedIssueId suggestedUserId suggestedLabelId"
+        "id createdAt updatedAt archivedAt issueId type state stateChangedAt dismissalReason suggestedIssueId suggestedUserId suggestedLabelId reasons isVisible"
             .into()
     }
 }
@@ -6711,11 +6826,19 @@ pub struct Post {
     pub eval_log_id: Option<String>,
     /// Schedule used to create a post summary.
     pub feed_summary_schedule_at_create: Option<FeedSummarySchedule>,
+    /// Reactions associated with the post.
+    pub reactions: Option<Box<Vec<Reaction>>>,
+    /// Comments associated with the post.
+    pub comments: Option<Box<CommentConnection>>,
+    /// A URL to the generated audio for the Post.
+    pub audio_summary_url: Option<String>,
+    /// Number of comments associated with the post.
+    pub comment_count: Option<i64>,
 }
 impl GraphQLFields for Post {
     type FullType = Self;
     fn selection() -> String {
-        "id createdAt updatedAt archivedAt body bodyData writtenSummaryData audioSummary title slugId editedAt reactionData ttlUrl type evalLogId feedSummaryScheduleAtCreate"
+        "id createdAt updatedAt archivedAt body bodyData writtenSummaryData audioSummary title slugId editedAt reactionData ttlUrl type evalLogId feedSummaryScheduleAtCreate audioSummaryUrl commentCount"
             .into()
     }
 }
@@ -6998,11 +7121,16 @@ pub struct ProjectAttachment {
     pub source: Option<serde_json::Value>,
     /// An accessor helper to source.type, defines the source type of the attachment.
     pub source_type: Option<String>,
+    /// The project this attachment belongs to.
+    pub project: Option<Box<Project>>,
+    /// The body data of the attachment, if any.
+    pub body_data: Option<String>,
 }
 impl GraphQLFields for ProjectAttachment {
     type FullType = Self;
     fn selection() -> String {
-        "id createdAt updatedAt archivedAt title subtitle url metadata source sourceType".into()
+        "id createdAt updatedAt archivedAt title subtitle url metadata source sourceType bodyData"
+            .into()
     }
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -8035,11 +8163,23 @@ pub struct PullRequest {
     pub commits: Option<Box<Vec<PullRequestCommit>>>,
     /// `Internal` The user who created the pull request.
     pub creator: Option<Box<User>>,
+    /// Agent sessions associated with this pull request.
+    pub agent_sessions: Option<Box<AgentSessionToPullRequestConnection>>,
+    /// Pull request URL to the Linear app
+    pub app_url: Option<String>,
+    /// The pull request's description in markdown format.
+    pub description: Option<String>,
+    /// The pull request's description as a Prosemirror document.
+    pub description_data: Option<serde_json::Value>,
+    /// Integration type that created this pull request, if applicable.
+    pub integration_source_type: Option<IntegrationService>,
+    /// Diff statistics for the pull request including file count, additions, deletions, and changes.
+    pub diff_stats: Option<Box<PullRequestDiffStats>>,
 }
 impl GraphQLFields for PullRequest {
     type FullType = Self;
     fn selection() -> String {
-        "id createdAt updatedAt archivedAt slugId title number sourceBranch targetBranch url status"
+        "id createdAt updatedAt archivedAt slugId title number sourceBranch targetBranch url status appUrl description descriptionData integrationSourceType"
             .into()
     }
 }
@@ -8094,6 +8234,25 @@ impl GraphQLFields for PullRequestCommit {
     fn selection() -> String {
         "sha message committedAt additions deletions changedFiles authorUserIds authorExternalUserIds"
             .into()
+    }
+}
+/// Diff statistics for a pull request.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PullRequestDiffStats {
+    /// The number of files changed in the pull request.
+    pub file_count: Option<f64>,
+    /// The number of lines added in the pull request.
+    pub additions: Option<f64>,
+    /// The number of lines changed in the pull request.
+    pub changes: Option<f64>,
+    /// The number of lines deleted in the pull request.
+    pub deletions: Option<f64>,
+}
+impl GraphQLFields for PullRequestDiffStats {
+    type FullType = Self;
+    fn selection() -> String {
+        "fileCount additions changes deletions".into()
     }
 }
 /// `Internal` Merge settings for a pull request
@@ -8463,6 +8622,8 @@ pub struct ReleasePipeline {
     pub r#type: Option<ReleasePipelineType>,
     /// Glob patterns to include commits affecting matching file paths.
     pub include_path_patterns: Option<Vec<String>>,
+    /// `ALPHA` The active access key for this pipeline.
+    pub access_key: Option<Box<AccessKey>>,
     /// `ALPHA` Stages associated with this pipeline.
     pub stages: Option<Box<ReleaseStageConnection>>,
     /// `ALPHA` Releases associated with this pipeline.
@@ -8554,6 +8715,8 @@ pub struct ReleaseStage {
     pub r#type: Option<ReleaseStageType>,
     /// The position of the stage.
     pub position: Option<f64>,
+    /// Whether this stage is frozen. Only applicable to started type stages.
+    pub frozen: Option<bool>,
     /// The pipeline this stage belongs to.
     pub pipeline: Option<Box<ReleasePipeline>>,
     /// `ALPHA` Releases associated with this stage.
@@ -8562,7 +8725,7 @@ pub struct ReleaseStage {
 impl GraphQLFields for ReleaseStage {
     type FullType = Self;
     fn selection() -> String {
-        "id createdAt updatedAt archivedAt name color type position".into()
+        "id createdAt updatedAt archivedAt name color type position frozen".into()
     }
 }
 /// A generic payload return from entity archive mutations.
@@ -9802,6 +9965,8 @@ pub struct User {
     pub is_assignable: Option<bool>,
     /// Whether the user account is active or disabled (suspended).
     pub active: Option<bool>,
+    /// Enabled feature flags for the user.
+    pub feature_flags: Option<Vec<String>>,
     /// The user's issue drafts
     pub issue_drafts: Option<Box<IssueDraftConnection>>,
     /// The user's drafts
