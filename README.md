@@ -129,4 +129,4 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams and detailed walkt
 
 ## License
 
-MIT
+Licensed under the MIT License. See [LICENSE](LICENSE) for details.
