@@ -2000,6 +2000,447 @@ mod online {
         });
     }
 
+    // ── Projects list includes lead field ─────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_list_json_includes_lead_field() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "list",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "projects list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+        // Every project row should have a "lead" field (string, possibly empty).
+        for project in arr {
+            assert!(
+                project.get("lead").is_some(),
+                "each project should have a 'lead' field"
+            );
+            assert!(
+                project["lead"].is_string(),
+                "lead should be a flat string, got: {}",
+                project["lead"]
+            );
+        }
+    }
+
+    // ── Projects list --led-by-me ──────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_list_led_by_me_returns_array() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "list",
+                "--led-by-me",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects list --led-by-me should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            json.is_array(),
+            "projects list --led-by-me should return an array"
+        );
+    }
+
+    // ── Projects read ──────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_read_by_id_and_name() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a project with --lead me.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "create",
+                "[test] CLI projects read",
+                "--team",
+                &team_key,
+                "--lead",
+                "me",
+                "--description",
+                "Test project for read command.",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created["id"].as_str().unwrap().to_string();
+
+        // Read by UUID.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "read",
+                &project_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects read by UUID should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(detail["id"].as_str(), Some(project_id.as_str()));
+        assert_eq!(detail["name"].as_str(), Some("[test] CLI projects read"));
+        assert!(
+            detail.get("lead").is_some() && !detail["lead"].is_null(),
+            "read output should have a lead (set to me)"
+        );
+        assert!(
+            detail.get("members").is_some(),
+            "read output should have members field"
+        );
+        assert!(
+            detail.get("teams").is_some(),
+            "read output should have teams field"
+        );
+        assert!(
+            detail.get("description").is_some(),
+            "read output should have description field"
+        );
+
+        // Read by name (with retry for propagation).
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "projects",
+                    "read",
+                    "[test] CLI projects read",
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                return Err(format!(
+                    "read by name failed.\nstdout: {stdout}\nstderr: {stderr}"
+                ));
+            }
+            let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            if detail["id"].as_str() == Some(project_id.as_str()) {
+                Ok(())
+            } else {
+                Err("read by name returned wrong project".to_string())
+            }
+        })
+        .expect("projects read by name should resolve correctly (after retries)");
+
+        // Clean up.
+        let client = Client::from_token(api_token()).unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client.project_delete::<Project>(project_id).await.unwrap();
+        });
+    }
+
+    // ── Projects create with --members ──────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_create_with_members_and_read_back() {
+        let token = api_token();
+
+        // Get a team key and find two users.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a project with --lead me --members me.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "create",
+                "[test] CLI members test",
+                "--team",
+                &team_key,
+                "--lead",
+                "me",
+                "--members",
+                "me",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects create with --members should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created["id"].as_str().unwrap().to_string();
+
+        // Get the authenticated user's info for comparison.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "whoami"])
+            .output()
+            .unwrap();
+        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let my_id = whoami["id"].as_str().unwrap();
+
+        // Read the project back and verify members.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "read",
+                &project_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+        // Lead should be me.
+        let lead = &detail["lead"];
+        assert!(!lead.is_null(), "lead should not be null");
+        assert_eq!(
+            lead["id"].as_str(),
+            Some(my_id),
+            "lead should be the authenticated user"
+        );
+
+        // Members should include me.
+        let members = detail["members"]["nodes"]
+            .as_array()
+            .expect("members.nodes should be an array");
+        assert!(
+            members.iter().any(|m| m["id"].as_str() == Some(my_id)),
+            "members should include the authenticated user"
+        );
+
+        // Clean up.
+        let client = Client::from_token(api_token()).unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client.project_delete::<Project>(project_id).await.unwrap();
+        });
+    }
+
+    // ── Issues create with --assignee me ───────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_assignee_me() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Get my user ID.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "whoami"])
+            .output()
+            .unwrap();
+        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let my_name = whoami["name"].as_str().unwrap_or("").to_string();
+
+        // Create an issue with --assignee me.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI assignee me",
+                "--team",
+                &team_key,
+                "--assignee",
+                "me",
+                "--priority",
+                "4",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create --assignee me should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created["id"].as_str().unwrap().to_string();
+
+        // Read the issue back and verify assignee.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
+        assert_eq!(
+            assignee_name, my_name,
+            "assignee should be the authenticated user"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
+
+    // ── Issues update with --assignee me ───────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_update_with_assignee_me() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Get my user ID.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "whoami"])
+            .output()
+            .unwrap();
+        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let my_name = whoami["name"].as_str().unwrap_or("").to_string();
+
+        // Create an unassigned issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI update assignee me",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"].as_str().unwrap().to_string();
+
+        // Update with --assignee me.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &issue_id,
+                "--assignee",
+                "me",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update --assignee me should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Read the issue back and verify assignee.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
+        assert_eq!(
+            assignee_name, my_name,
+            "after update, assignee should be the authenticated user"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
+
     // ── Comments create ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

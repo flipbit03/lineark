@@ -386,6 +386,7 @@ fn projects_help_shows_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
         .stdout(predicate::str::contains("create"));
 }
 
@@ -398,12 +399,31 @@ fn projects_create_help_shows_flags() {
         .stdout(predicate::str::contains("--team"))
         .stdout(predicate::str::contains("--description"))
         .stdout(predicate::str::contains("--lead"))
+        .stdout(predicate::str::contains("--members"))
         .stdout(predicate::str::contains("--start-date"))
         .stdout(predicate::str::contains("--target-date"))
         .stdout(predicate::str::contains("--priority"))
         .stdout(predicate::str::contains("--content"))
         .stdout(predicate::str::contains("--icon"))
         .stdout(predicate::str::contains("--color"));
+}
+
+#[test]
+fn projects_list_help_shows_led_by_me_flag() {
+    lineark()
+        .args(["projects", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--led-by-me"));
+}
+
+#[test]
+fn projects_read_help_shows_description() {
+    lineark()
+        .args(["projects", "read", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Project name or UUID"));
 }
 
 #[test]
@@ -615,6 +635,42 @@ fn usage_includes_name_resolution() {
         .assert()
         .success()
         .stdout(predicate::str::contains("NAME RESOLUTION"));
+}
+
+#[test]
+fn usage_includes_me_alias() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("`me`"));
+}
+
+#[test]
+fn usage_includes_projects_read() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("projects read"));
+}
+
+#[test]
+fn usage_includes_led_by_me() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--led-by-me"));
+}
+
+#[test]
+fn usage_includes_members_flag() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--members"));
 }
 
 // ── Cycle number parsing rejects NaN/inf (issue #6) ─────────────────────────

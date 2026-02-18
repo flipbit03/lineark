@@ -127,6 +127,55 @@ pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Resu
         .ok_or_else(|| anyhow::anyhow!("Issue '{}' not found", identifier))
 }
 
+/// Resolve a user name, display name, UUID, or the special alias `me` to a user UUID.
+/// `me` (case-insensitive) resolves to the authenticated user via `whoami`.
+/// For all other values, delegates to [`resolve_user_id`].
+pub async fn resolve_user_id_or_me(client: &Client, name_or_id: &str) -> anyhow::Result<String> {
+    if name_or_id.eq_ignore_ascii_case("me") {
+        let viewer = client
+            .whoami::<User>()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to resolve 'me': {}", e))?;
+        return viewer
+            .id
+            .ok_or_else(|| anyhow::anyhow!("Could not determine authenticated user ID"));
+    }
+    resolve_user_id(client, name_or_id).await
+}
+
+/// Resolve multiple user names, display names, UUIDs, or `me` aliases to user UUIDs.
+/// Fetches `whoami` at most once even if `me` appears multiple times.
+pub async fn resolve_user_ids_or_me(
+    client: &Client,
+    names_or_ids: &[String],
+) -> anyhow::Result<Vec<String>> {
+    // Check if any item is "me" — resolve once.
+    let has_me = names_or_ids.iter().any(|s| s.eq_ignore_ascii_case("me"));
+    let me_id = if has_me {
+        let viewer = client
+            .whoami::<User>()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to resolve 'me': {}", e))?;
+        Some(
+            viewer
+                .id
+                .ok_or_else(|| anyhow::anyhow!("Could not determine authenticated user ID"))?,
+        )
+    } else {
+        None
+    };
+
+    let mut resolved = Vec::with_capacity(names_or_ids.len());
+    for item in names_or_ids {
+        if item.eq_ignore_ascii_case("me") {
+            resolved.push(me_id.clone().unwrap());
+        } else {
+            resolved.push(resolve_user_id(client, item).await?);
+        }
+    }
+    Ok(resolved)
+}
+
 /// Resolve a user name, display name, or UUID to a user UUID.
 /// If the input already looks like a UUID, return it as-is.
 /// Matches case-insensitively on `name` or `display_name`.

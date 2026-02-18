@@ -22,14 +22,18 @@ pub async fn run() {
 NAME RESOLUTION: Most flags accept names or UUIDs. Team flags accept key, name,
 or UUID. --assignee accepts user name/display name. --labels accepts label names.
 --project and --cycle accept names. UUIDs always work as fallback.
+`me` is a special alias that resolves to the authenticated user at runtime.
+It works on --assignee, --lead, and --members (case-insensitive).
 
 COMMANDS:
   lineark whoami                                   Show authenticated user
   lineark teams list                               List all teams
   lineark users list [--active]                    List users
-  lineark projects list                            List all projects
+  lineark projects list [--led-by-me]               List all projects (with lead)
+  lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
   lineark projects create <NAME> --team KEY[,KEY]  Create a new project
-    [--description TEXT] [--lead NAME-OR-ID]        Description, project lead
+    [--description TEXT] [--lead NAME-OR-ID|me]     Description, project lead
+    [--members NAME,...|me]                         Project members (comma-separated)
     [--start-date DATE] [--target-date DATE]        Dates (YYYY-MM-DD)
     [-p 0-4] [--content TEXT]                       Priority, markdown content
     [--icon ICON] [--color COLOR]                   Icon, color
@@ -43,15 +47,15 @@ COMMANDS:
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
   lineark issues search <QUERY> [-l N]             Full-text search
-    [--team KEY] [--assignee NAME-OR-ID]           Filter by team, assignee, status
+    [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
     [--status NAME,...] [--show-done]              Comma-separated status names
   lineark issues create <TITLE> --team KEY         Create an issue
-    [-p 0-4] [--assignee NAME-OR-ID]              0=none 1=urgent 2=high 3=medium 4=low
+    [-p 0-4] [--assignee NAME-OR-ID|me]           0=none 1=urgent 2=high 3=medium 4=low
     [--labels NAME,...] [-d TEXT] [-s NAME]        Label names (team-scoped), status name
     [--parent ID] [--project NAME-OR-ID]          Parent issue, project, cycle
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
-    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID]    Status, priority, assignee
+    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me] Status, priority, assignee
     [--labels NAME,...] [--label-by adding|replacing|removing]
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                Set or remove parent
