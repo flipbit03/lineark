@@ -45,6 +45,63 @@ pub async fn resolve_team_id(client: &Client, team_key: &str) -> anyhow::Result<
     ))
 }
 
+/// Resolve multiple team keys, names, or UUIDs to team UUIDs.
+/// Each item follows the same rules as `resolve_team_id`.
+pub async fn resolve_team_ids(
+    client: &Client,
+    team_keys: &[String],
+) -> anyhow::Result<Vec<String>> {
+    // Fast path: all items are already UUIDs.
+    let all_uuids = team_keys.iter().all(|k| uuid::Uuid::parse_str(k).is_ok());
+    if all_uuids {
+        return Ok(team_keys.to_vec());
+    }
+
+    // Fetch teams once.
+    let conn = client
+        .teams::<Team>()
+        .first(250)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let mut resolved = Vec::with_capacity(team_keys.len());
+    for key in team_keys {
+        if uuid::Uuid::parse_str(key).is_ok() {
+            resolved.push(key.clone());
+            continue;
+        }
+        let found = conn.nodes.iter().find(|t| {
+            t.key
+                .as_deref()
+                .is_some_and(|k| k.eq_ignore_ascii_case(key))
+                || t.name
+                    .as_deref()
+                    .is_some_and(|n| n.eq_ignore_ascii_case(key))
+        });
+        match found {
+            Some(team) => resolved.push(team.id.clone().unwrap_or_default()),
+            None => {
+                let available: Vec<String> = conn
+                    .nodes
+                    .iter()
+                    .map(|t| {
+                        let k = t.key.as_deref().unwrap_or("?");
+                        let n = t.name.as_deref().unwrap_or("?");
+                        format!("{} ({})", k, n)
+                    })
+                    .collect();
+                return Err(anyhow::anyhow!(
+                    "Team '{}' not found. Available: {}",
+                    key,
+                    available.join(", ")
+                ));
+            }
+        }
+    }
+    Ok(resolved)
+}
+
 /// Resolve an issue identifier (e.g., ENG-123) to a UUID.
 /// If the input already looks like a UUID, return it as-is.
 pub async fn resolve_issue_id(client: &Client, identifier: &str) -> anyhow::Result<String> {

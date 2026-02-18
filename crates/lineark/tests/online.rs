@@ -1913,6 +1913,93 @@ mod online {
         });
     }
 
+    // ── Projects create ─────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_create_and_delete() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a project via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "create",
+                "[test] CLI projects create",
+                "--team",
+                &team_key,
+                "--description",
+                "Automated CLI test project — will be deleted.",
+                "--priority",
+                "3",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created["id"]
+            .as_str()
+            .expect("created project should have id")
+            .to_string();
+        assert!(
+            created.get("name").is_some(),
+            "created project should have name"
+        );
+        assert!(
+            created.get("slugId").is_some(),
+            "created project should have slugId"
+        );
+
+        // List projects and verify the created one is present.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "projects",
+                    "list",
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("projects list failed: {stdout}"));
+            }
+            let projects: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let arr = projects.as_array().ok_or("not an array")?;
+            if arr.iter().any(|p| p["id"].as_str() == Some(&project_id)) {
+                Ok(())
+            } else {
+                Err("created project not in list".to_string())
+            }
+        })
+        .expect("projects list should include the created project (after retries)");
+
+        // Clean up: delete the test project via SDK.
+        let client = Client::from_token(api_token()).unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client.project_delete::<Project>(project_id).await.unwrap();
+        });
+    }
+
     // ── Comments create ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
