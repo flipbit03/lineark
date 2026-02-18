@@ -28,6 +28,11 @@ COMMANDS:
   lineark teams list                               List all teams
   lineark users list [--active]                    List users
   lineark projects list                            List all projects
+  lineark projects create <NAME> --team KEY[,KEY]  Create a new project
+    [--description TEXT] [--lead NAME-OR-ID]        Description, project lead
+    [--start-date DATE] [--target-date DATE]        Dates (YYYY-MM-DD)
+    [-p 0-4] [--content TEXT]                       Priority, markdown content
+    [--icon ICON] [--color COLOR]                   Icon, color
   lineark labels list [--team KEY]                  List issue labels (includes team key)
   lineark cycles list [-l N] [--team KEY]          List cycles
     [--active]                                     Only the active cycle

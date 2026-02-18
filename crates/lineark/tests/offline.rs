@@ -377,6 +377,59 @@ fn documents_update_no_flags_prints_error() {
         .stderr(predicate::str::contains("No update fields provided"));
 }
 
+// ── Projects ────────────────────────────────────────────────────────────────
+
+#[test]
+fn projects_help_shows_subcommands() {
+    lineark()
+        .args(["projects", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("create"));
+}
+
+#[test]
+fn projects_create_help_shows_flags() {
+    lineark()
+        .args(["projects", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--lead"))
+        .stdout(predicate::str::contains("--start-date"))
+        .stdout(predicate::str::contains("--target-date"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--content"))
+        .stdout(predicate::str::contains("--icon"))
+        .stdout(predicate::str::contains("--color"));
+}
+
+#[test]
+fn projects_create_requires_team_flag() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "projects",
+            "create",
+            "My Project",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--team"));
+}
+
+#[test]
+fn usage_includes_projects_create() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("projects create"));
+}
+
 // ── Project milestones ──────────────────────────────────────────────────────
 
 #[test]
