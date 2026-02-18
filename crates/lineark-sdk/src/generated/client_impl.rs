@@ -182,6 +182,18 @@ impl Client {
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
+    /// Creates a new comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        input: CommentCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_create::<T>(self, input).await
+    }
     /// Creates a new project.
     ///
     /// Full type: [`Project`](super::types::Project)
@@ -365,17 +377,5 @@ impl Client {
         id: String,
     ) -> Result<T, LinearError> {
         crate::generated::mutations::document_delete::<T>(self, id).await
-    }
-    /// Creates a new comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_create<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        input: CommentCreateInput,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_create::<T>(self, input).await
     }
 }

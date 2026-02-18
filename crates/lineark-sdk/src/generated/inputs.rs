@@ -1796,6 +1796,20 @@ pub struct DeleteOrganizationInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deletion_code: Option<String>,
 }
+/// Document content history filtering options.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentContentHistoryFilter {
+    /// Comparator for the identifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<Box<IDComparator>>,
+    /// Comparator for the created at date.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<Box<DateComparator>>,
+    /// Comparator for the updated at date.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<Box<DateComparator>>,
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentCreateInput {
@@ -7375,6 +7389,9 @@ pub struct ReleaseStageCreateInput {
     /// The identifier of the pipeline this stage belongs to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pipeline_id: Option<String>,
+    /// Whether this stage is frozen. Only applicable to started stages.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frozen: Option<bool>,
 }
 /// `ALPHA` Release stage filtering options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -7434,29 +7451,23 @@ pub struct ReleaseStageUpdateInput {
     /// The position of the stage.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<f64>,
+    /// Whether this stage is frozen. Only applicable to started stages.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frozen: Option<bool>,
 }
 /// The release data to sync.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseSyncInput {
-    /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
     /// The name of the release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// The description of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
     /// The version of the release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     /// The commit SHA associated with this release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit_sha: Option<String>,
-    /// The current stage of the release. Defaults to the first 'completed' stage.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stage_id: Option<String>,
     /// Issue references (e.g. ENG-123) to associate with this release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issue_references: Option<Vec<Box<IssueReferenceInput>>>,
@@ -7469,12 +7480,6 @@ pub struct ReleaseSyncInput {
     /// Debug information for release creation diagnostics.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug_sink: Option<Box<ReleaseDebugSinkInput>>,
-    /// The estimated start date of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start_date: Option<chrono::NaiveDate>,
-    /// The estimated completion date of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target_date: Option<chrono::NaiveDate>,
     /// The identifier of the pipeline this release belongs to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pipeline_id: Option<String>,
@@ -7483,24 +7488,15 @@ pub struct ReleaseSyncInput {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseSyncInputBase {
-    /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
     /// The name of the release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// The description of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
     /// The version of the release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     /// The commit SHA associated with this release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit_sha: Option<String>,
-    /// The current stage of the release. Defaults to the first 'completed' stage.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stage_id: Option<String>,
     /// Issue references (e.g. ENG-123) to associate with this release.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issue_references: Option<Vec<Box<IssueReferenceInput>>>,
@@ -7513,12 +7509,6 @@ pub struct ReleaseSyncInputBase {
     /// Debug information for release creation diagnostics.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug_sink: Option<Box<ReleaseDebugSinkInput>>,
-    /// The estimated start date of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start_date: Option<chrono::NaiveDate>,
-    /// The estimated completion date of the release.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub target_date: Option<chrono::NaiveDate>,
 }
 /// Input for updating a release by pipeline.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -1339,6 +1339,12 @@ input DeleteOrganizationInput {
   "The deletion code to confirm operation."   deletionCode: String!
 }
 
+"Document content history filtering options." input DocumentContentHistoryFilter {
+  "Comparator for the identifier."   id: IDComparator
+  "Comparator for the created at date."   createdAt: DateComparator
+  "Comparator for the updated at date."   updatedAt: DateComparator
+}
+
 input DocumentCreateInput {
   "The identifier in UUID v4 format. If none is provided, the backend will generate one."   id: String
   "The title of the document."   title: String!
@@ -3491,6 +3497,7 @@ input ReleaseStageCreateInput {
   "The type of the stage."   type: ReleaseStageType!
   "The position of the stage."   position: Float!
   "The identifier of the pipeline this stage belongs to."   pipelineId: String!
+  "Whether this stage is frozen. Only applicable to started stages."   frozen: Boolean
 }
 
 "[ALPHA] Release stage filtering options." input ReleaseStageFilter {
@@ -3515,37 +3522,28 @@ input ReleaseStageUpdateInput {
   "The name of the stage."   name: String
   "The UI color of the stage as a HEX string."   color: String
   "The position of the stage."   position: Float
+  "Whether this stage is frozen. Only applicable to started stages."   frozen: Boolean
 }
 
 "The release data to sync." input ReleaseSyncInput {
-  "The identifier in UUID v4 format. If none is provided, the backend will generate one."   id: String
   "The name of the release."   name: String
-  "The description of the release."   description: String
   "The version of the release."   version: String
   "The commit SHA associated with this release."   commitSha: String!
-  "The current stage of the release. Defaults to the first 'completed' stage."   stageId: String
   "Issue references (e.g. ENG-123) to associate with this release."   issueReferences: [IssueReferenceInput!]
   "Pull request references to look up. Issues linked to found PRs will be associated with this release."   pullRequestReferences: [PullRequestReferenceInput!]
   "Information about the source repository."   repository: RepositoryDataInput
   "Debug information for release creation diagnostics."   debugSink: ReleaseDebugSinkInput
-  "The estimated start date of the release."   startDate: TimelessDate
-  "The estimated completion date of the release."   targetDate: TimelessDate
   "The identifier of the pipeline this release belongs to."   pipelineId: String!
 }
 
 "Base release sync data without pipeline specification." input ReleaseSyncInputBase {
-  "The identifier in UUID v4 format. If none is provided, the backend will generate one."   id: String
   "The name of the release."   name: String
-  "The description of the release."   description: String
   "The version of the release."   version: String
   "The commit SHA associated with this release."   commitSha: String!
-  "The current stage of the release. Defaults to the first 'completed' stage."   stageId: String
   "Issue references (e.g. ENG-123) to associate with this release."   issueReferences: [IssueReferenceInput!]
   "Pull request references to look up. Issues linked to found PRs will be associated with this release."   pullRequestReferences: [PullRequestReferenceInput!]
   "Information about the source repository."   repository: RepositoryDataInput
   "Debug information for release creation diagnostics."   debugSink: ReleaseDebugSinkInput
-  "The estimated start date of the release."   startDate: TimelessDate
-  "The estimated completion date of the release."   targetDate: TimelessDate
 }
 
 "Input for updating a release by pipeline." input ReleaseUpdateByPipelineInput {
@@ -4319,6 +4317,19 @@ interface Node {
   "The type of view to which the notification subscription context is associated with."   contextViewType: ContextViewType
   "The type of user view to which the notification subscription context is associated with."   userContextViewType: UserContextViewType
   "Whether the subscription is active or not."   active: Boolean!
+}
+
+"[Internal] An access key for CI/CD integrations." type AccessKey implements Node {
+  "The unique identifier of the entity."   id: ID!
+  "The time at which the entity was created."   createdAt: DateTime!
+  """The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    been updated after creation."""
+  updatedAt: DateTime!
+  "The time at which the entity was archived. Null if the entity has not been archived."   archivedAt: DateTime
+  "Organization the API key belongs to."   organization: Organization!
+  "The user who created the access key."   creator: User
+  "When the access key was last used."   lastUsedAt: DateTime
+  "When the access key was revoked."   revokedAt: DateTime
 }
 
 "A bot actor is an actor that is not a user, but an application or integration." type ActorBot {
@@ -5228,6 +5239,7 @@ type CyclePayload {
   "The filter applied to all dashboard widgets showing issues data."   issueFilter: JSONObject
   "The filter applied to all dashboard widgets showing projects data."   projectFilter: JSONObject
   "The widgets on the dashboard."   widgets: JSONObject!
+  "The team associated with the dashboard."   team: Team
 }
 
 "A generic payload return from entity deletion mutations." type DeletePayload implements ArchivePayload {
@@ -5296,6 +5308,32 @@ type DocumentConnection {
   "The AI prompt rules that the content is associated with."   aiPromptRules: AiPromptRules
   "The welcome message that the content is associated with."   welcomeMessage: WelcomeMessage
   "The time at which the document content was restored from a previous version."   restoredAt: DateTime
+  "Comments associated with the document content."   comments(filter: CommentFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CommentConnection!
+  "[ALPHA] The histories of the document content."   history(filter: DocumentContentHistoryFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): DocumentContentHistoryConnection!
+}
+
+"A document content history for a document." type DocumentContentHistory implements Node {
+  "The unique identifier of the entity."   id: ID!
+  "The time at which the entity was created."   createdAt: DateTime!
+  """The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    been updated after creation."""
+  updatedAt: DateTime!
+  "The time at which the entity was archived. Null if the entity has not been archived."   archivedAt: DateTime
+  "The document content that this history item is associated with."   documentContent: DocumentContent!
+  "[Internal] The document content as a Prosemirror document."   contentData: JSONObject
+  "IDs of actors whose edits went into this history item."   actorIds: [String!]!
+  "The timestamp associated with the DocumentContent when it was originally saved."   contentDataSnapshotAt: DateTime!
+}
+
+type DocumentContentHistoryConnection {
+  edges: [DocumentContentHistoryEdge!]!
+  nodes: [DocumentContentHistory!]!
+  pageInfo: PageInfo!
+}
+
+type DocumentContentHistoryEdge {
+  node: DocumentContentHistory!
+  "Used in `before` and `after` args"   cursor: String!
 }
 
 type DocumentContentHistoryPayload {
@@ -6275,6 +6313,7 @@ type IntegrationsSettingsPayload {
   "Issue's human readable identifier (e.g. ENG-123)."   identifier: String!
   "Issue URL."   url: String!
   "Suggested branch name for the issue."   branchName: String!
+  "Shared access metadata for this issue."   sharedAccess: IssueSharedAccess!
   "Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk)."   customerTicketCount: Int!
   "Users who are subscribed to the issue."   subscribers(filter: UserFilter, includeDisabled: Boolean, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): UserConnection!
   "The parent of the issue."   parent: Issue
@@ -6350,6 +6389,7 @@ type IssueConnection {
   "Serialized array of JSONs representing attachments."   attachments: JSONObject
   "Serialized array of JSONs representing customer needs."   needs: JSONObject
   "Serialized array of JSONs representing the recurring issue's schedule."   schedule: JSONObject
+  labels(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): IssueLabelConnection!
 }
 
 type IssueDraftConnection {
@@ -6725,6 +6765,7 @@ type IssueSearchResult implements Node {
   "Issue's human readable identifier (e.g. ENG-123)."   identifier: String!
   "Issue URL."   url: String!
   "Suggested branch name for the issue."   branchName: String!
+  "Shared access metadata for this issue."   sharedAccess: IssueSharedAccess!
   "Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk)."   customerTicketCount: Int!
   "Users who are subscribed to the issue."   subscribers(filter: UserFilter, includeDisabled: Boolean, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): UserConnection!
   "The parent of the issue."   parent: Issue
@@ -6754,6 +6795,13 @@ type IssueSearchResult implements Node {
 type IssueSearchResultEdge {
   node: IssueSearchResult!
   "Used in `before` and `after` args"   cursor: String!
+}
+
+type IssueSharedAccess {
+  "Whether this issue has been shared with users outside the team."   isShared: Boolean!
+  "Whether the viewer can access this issue only through issue sharing."   viewerHasOnlySharedAccess: Boolean!
+  "The number of users this issue is shared with."   sharedWithCount: Int!
+  "Users this issue is shared with."   sharedWithUsers: [User!]!
 }
 
 "A continuous period of time during which an issue remained in a specific workflow state." type IssueStateSpan {
@@ -6797,6 +6845,8 @@ type IssueSuggestion implements Node {
   suggestedUserId: String
   suggestedLabel: IssueLabel
   suggestedLabelId: String
+  "The reasons for the suggestion."   reasons: [String!]!
+  "Whether the suggestion should be visible."   isVisible: Boolean!
 }
 
 type IssueSuggestionConnection {
@@ -6886,6 +6936,70 @@ type Mutation {
   "XHR request payload to upload a file for import, directly to Linear's cloud storage."   importFileUpload(metaData: JSON, size: Int!, contentType: String!, filename: String!): UploadPayload!
   "Upload an image from an URL to Linear."   imageUploadFromUrl(url: String!): ImageUploadFromUrlPayload!
   "[INTERNAL] Permanently delete an uploaded file by asset URL. This should be used as a last resort and will break comments and documents that reference the asset."   fileUploadDangerouslyDelete(assetUrl: String!): FileUploadDeletePayload!
+  "[INTERNAL] Updates the integration."   integrationUpdate(input: IntegrationUpdateInput!, id: String!): IntegrationPayload!
+  "[INTERNAL] Updates the integration settings."   integrationSettingsUpdate(input: IntegrationSettingsInput!, id: String!): IntegrationPayload! @deprecated(reason: "Use integrationUpdate instead.")
+  "Generates a webhook for the GitHub commit integration."   integrationGithubCommitCreate: GitHubCommitIntegrationPayload!
+  "Connects the organization with the GitHub App."   integrationGithubConnect(githubHost: String, codeAccess: Boolean = false, code: String!, installationId: String!): IntegrationPayload!
+  "Connects the organization with the GitHub Import App."   integrationGithubImportConnect(code: String!, installationId: String!): IntegrationPayload!
+  "Refreshes the data for a GitHub import integration."   integrationGithubImportRefresh(id: String!): IntegrationPayload!
+  "Connects the organization with a GitHub Enterprise Server."   integrationGitHubEnterpriseServerConnect(organizationName: String!, githubUrl: String!): GitHubEnterpriseServerPayload!
+  "Connects the organization with a GitLab Access Token."   integrationGitlabConnect(gitlabUrl: String!, accessToken: String!): GitLabIntegrationCreatePayload!
+  "Tests connectivity to a self-hosted GitLab instance and clears auth errors if successful."   integrationGitlabTestConnection(integrationId: String!): GitLabTestConnectionPayload!
+  "Creates an integration api key for Airbyte to connect with Linear."   airbyteIntegrationConnect(input: AirbyteConfigurationInput!): IntegrationPayload!
+  "[Internal] Connects the Google Calendar to the user to this Linear account via OAuth2."   integrationGoogleCalendarPersonalConnect(code: String!): IntegrationPayload!
+  "[INTERNAL] Integrates the organization with LaunchDarkly."   integrationLaunchDarklyConnect(code: String!, projectKey: String!, environment: String!): IntegrationPayload!
+  "[INTERNAL] Integrates your personal account with LaunchDarkly."   integrationLaunchDarklyPersonalConnect(code: String!): IntegrationPayload!
+  "[INTERNAL] Connects the organization with a Jira Personal Access Token."   jiraIntegrationConnect(input: JiraConfigurationInput!): IntegrationPayload!
+  "[INTERNAL] Updates a Jira Integration."   integrationJiraUpdate(input: JiraUpdateInput!): IntegrationPayload!
+  "Connect your Jira account to Linear."   integrationJiraPersonal(code: String, accessToken: String): IntegrationPayload!
+  "Connect your GitHub account to Linear."   integrationGitHubPersonal(codeAccess: Boolean, code: String!): IntegrationPayload!
+  "Integrates the organization with Intercom."   integrationIntercom(domainUrl: String, redirectUri: String!, code: String!): IntegrationPayload!
+  "Disconnects the organization from Intercom."   integrationIntercomDelete: IntegrationPayload!
+  "[INTERNAL] Refreshes the customer data attributes from the specified integration service."   integrationCustomerDataAttributesRefresh(input: IntegrationCustomerDataAttributesRefreshInput!): IntegrationPayload!
+  "[DEPRECATED] Updates settings on the Intercom integration."   integrationIntercomSettingsUpdate(input: IntercomSettingsInput!): IntegrationPayload! @deprecated(reason: "This mutation is deprecated, please use `integrationSettingsUpdate` instead")
+  "Integrates the organization with Discord."   integrationDiscord(redirectUri: String!, code: String!): IntegrationPayload!
+  "[INTERNAL] Integrates the organization with Opsgenie."   integrationOpsgenieConnect(apiKey: String!): IntegrationPayload!
+  "[INTERNAL] Refresh Opsgenie schedule mappings."   integrationOpsgenieRefreshScheduleMappings: IntegrationPayload!
+  "[INTERNAL] Integrates the organization with PagerDuty."   integrationPagerDutyConnect(code: String!, redirectUri: String!): IntegrationPayload!
+  "[INTERNAL] Refresh PagerDuty schedule mappings."   integrationPagerDutyRefreshScheduleMappings: IntegrationPayload!
+  "[Internal] Updates existing Slack integration scopes."   updateIntegrationSlackScopes(integrationId: String!, redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with Slack."   integrationSlack(shouldUseV2Auth: Boolean, redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with the Slack Asks app."   integrationSlackAsks(redirectUri: String!, code: String!): IntegrationPayload!
+  "Updates the Slack team's name in Linear for an existing Slack or Asks integration."   integrationSlackOrAsksUpdateSlackTeamName(integrationId: String!): IntegrationSlackWorkspaceNamePayload!
+  "Integrates your personal notifications with Slack."   integrationSlackPersonal(redirectUri: String!, code: String!): IntegrationPayload!
+  "Connect a Slack channel to Asks."   integrationAsksConnectChannel(redirectUri: String!, code: String!): AsksChannelConnectPayload!
+  "Slack integration for team notifications."   integrationSlackPost(shouldUseV2Auth: Boolean, redirectUri: String!, teamId: String!, code: String!): SlackChannelConnectPayload!
+  "Slack integration for project notifications."   integrationSlackProjectPost(service: String!, redirectUri: String!, projectId: String!, code: String!): SlackChannelConnectPayload!
+  "[Internal] Slack integration for initiative notifications."   integrationSlackInitiativePost(redirectUri: String!, initiativeId: String!, code: String!): SlackChannelConnectPayload!
+  "Slack integration for custom view notifications."   integrationSlackCustomViewNotifications(redirectUri: String!, customViewId: String!, code: String!): SlackChannelConnectPayload!
+  "Integrates a Slack Asks channel with a Customer."   integrationSlackCustomerChannelLink(redirectUri: String!, customerId: String!, code: String!): SuccessPayload!
+  "Slack integration for organization level project update notifications."   integrationSlackOrgProjectUpdatesPost(redirectUri: String!, code: String!): SlackChannelConnectPayload!
+  "[Internal] Slack integration for organization level initiative update notifications."   integrationSlackOrgInitiativeUpdatesPost(redirectUri: String!, code: String!): SlackChannelConnectPayload!
+  "Imports custom emojis from your Slack workspace."   integrationSlackImportEmojis(redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with Figma."   integrationFigma(redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with Gong."   integrationGong(redirectUri: String!, code: String!): IntegrationPayload!
+  "[ALPHA] Integrates the organization with Microsoft Teams."   integrationMicrosoftTeams(redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with Google Sheets."   integrationGoogleSheets(code: String!): IntegrationPayload!
+  "Manually update Google Sheets data."   refreshGoogleSheetsData(type: String, id: String!): IntegrationPayload!
+  "Integrates the organization with Sentry."   integrationSentryConnect(organizationSlug: String!, code: String!, installationId: String!): IntegrationPayload!
+  "Integrates the organization with Front."   integrationFront(redirectUri: String!, code: String!): IntegrationPayload!
+  "Integrates the organization with Zendesk."   integrationZendesk(subdomain: String!, code: String!, scope: String!, redirectUri: String!): IntegrationPayload!
+  "Enables Loom integration for the organization."   integrationLoom: IntegrationPayload! @deprecated(reason: "Not available.")
+  "Integrates the organization with Salesforce."   integrationSalesforce(code: String!, subdomain: String!, redirectUri: String!): IntegrationPayload!
+  "[INTERNAL] Refreshes the Salesforce integration metadata."   integrationSalesforceMetadataRefresh(id: String!): IntegrationPayload!
+  "[INTERNAL] Connects the user's personal account with an MCP server."   integrationMcpServerPersonalConnect(serverUrl: String!): IntegrationPayload!
+  "[INTERNAL] Connects the workspace with an MCP server."   integrationMcpServerConnect(teamId: String, serverUrl: String!): IntegrationPayload!
+  "Deletes an integration."   integrationDelete(skipInstallationDeletion: Boolean, id: String!): DeletePayload!
+  "Archives an integration."   integrationArchive(id: String!): DeletePayload!
+  "[Internal] Enables Linear Agent Slack workflow access for a Slack or Slack Asks integration."   integrationSlackWorkflowAccessUpdate(enabled: Boolean!, integrationId: String!): IntegrationPayload!
+  "Creates a new initiativeToProject join."   initiativeToProjectCreate(input: InitiativeToProjectCreateInput!): InitiativeToProjectPayload!
+  "Updates a initiativeToProject."   initiativeToProjectUpdate(input: InitiativeToProjectUpdateInput!, id: String!): InitiativeToProjectPayload!
+  "Deletes a initiativeToProject."   initiativeToProjectDelete(id: String!): DeletePayload!
+  "Creates a new comment."   commentCreate(input: CommentCreateInput!): CommentPayload!
+  "Updates a comment."   commentUpdate(skipEditedAt: Boolean, input: CommentUpdateInput!, id: String!): CommentPayload!
+  "Deletes a comment."   commentDelete(id: String!): DeletePayload!
+  "Resolves a comment."   commentResolve(resolvingCommentId: String, id: String!): CommentPayload!
+  "Unresolves a comment."   commentUnresolve(id: String!): CommentPayload!
   "Creates a new state, adding it to the workflow of a team."   workflowStateCreate(input: WorkflowStateCreateInput!): WorkflowStatePayload!
   "Updates a state."   workflowStateUpdate(input: WorkflowStateUpdateInput!, id: String!): WorkflowStatePayload!
   "Archives a state. Only states with issues that have all been archived can be archived."   workflowStateArchive(id: String!): WorkflowStateArchivePayload!
@@ -7058,71 +7172,12 @@ type Mutation {
   "Updates settings related to integrations for a project or a team."   integrationsSettingsUpdate(input: IntegrationsSettingsUpdateInput!, id: String!): IntegrationsSettingsPayload!
   "Creates a new integrationTemplate join."   integrationTemplateCreate(input: IntegrationTemplateCreateInput!): IntegrationTemplatePayload!
   "Deletes a integrationTemplate."   integrationTemplateDelete(id: String!): DeletePayload!
-  "[INTERNAL] Updates the integration."   integrationUpdate(input: IntegrationUpdateInput!, id: String!): IntegrationPayload!
-  "[INTERNAL] Updates the integration settings."   integrationSettingsUpdate(input: IntegrationSettingsInput!, id: String!): IntegrationPayload! @deprecated(reason: "Use integrationUpdate instead.")
-  "Generates a webhook for the GitHub commit integration."   integrationGithubCommitCreate: GitHubCommitIntegrationPayload!
-  "Connects the organization with the GitHub App."   integrationGithubConnect(githubHost: String, codeAccess: Boolean = false, code: String!, installationId: String!): IntegrationPayload!
-  "Connects the organization with the GitHub Import App."   integrationGithubImportConnect(code: String!, installationId: String!): IntegrationPayload!
-  "Refreshes the data for a GitHub import integration."   integrationGithubImportRefresh(id: String!): IntegrationPayload!
-  "Connects the organization with a GitHub Enterprise Server."   integrationGitHubEnterpriseServerConnect(organizationName: String!, githubUrl: String!): GitHubEnterpriseServerPayload!
-  "Connects the organization with a GitLab Access Token."   integrationGitlabConnect(gitlabUrl: String!, accessToken: String!): GitLabIntegrationCreatePayload!
-  "Tests connectivity to a self-hosted GitLab instance and clears auth errors if successful."   integrationGitlabTestConnection(integrationId: String!): GitLabTestConnectionPayload!
-  "Creates an integration api key for Airbyte to connect with Linear."   airbyteIntegrationConnect(input: AirbyteConfigurationInput!): IntegrationPayload!
-  "[Internal] Connects the Google Calendar to the user to this Linear account via OAuth2."   integrationGoogleCalendarPersonalConnect(code: String!): IntegrationPayload!
-  "[INTERNAL] Integrates the organization with LaunchDarkly."   integrationLaunchDarklyConnect(code: String!, projectKey: String!, environment: String!): IntegrationPayload!
-  "[INTERNAL] Integrates your personal account with LaunchDarkly."   integrationLaunchDarklyPersonalConnect(code: String!): IntegrationPayload!
-  "[INTERNAL] Connects the organization with a Jira Personal Access Token."   jiraIntegrationConnect(input: JiraConfigurationInput!): IntegrationPayload!
-  "[INTERNAL] Updates a Jira Integration."   integrationJiraUpdate(input: JiraUpdateInput!): IntegrationPayload!
-  "Connect your Jira account to Linear."   integrationJiraPersonal(code: String, accessToken: String): IntegrationPayload!
-  "Connect your GitHub account to Linear."   integrationGitHubPersonal(codeAccess: Boolean, code: String!): IntegrationPayload!
-  "Integrates the organization with Intercom."   integrationIntercom(domainUrl: String, redirectUri: String!, code: String!): IntegrationPayload!
-  "Disconnects the organization from Intercom."   integrationIntercomDelete: IntegrationPayload!
-  "[INTERNAL] Refreshes the customer data attributes from the specified integration service."   integrationCustomerDataAttributesRefresh(input: IntegrationCustomerDataAttributesRefreshInput!): IntegrationPayload!
-  "[DEPRECATED] Updates settings on the Intercom integration."   integrationIntercomSettingsUpdate(input: IntercomSettingsInput!): IntegrationPayload! @deprecated(reason: "This mutation is deprecated, please use `integrationSettingsUpdate` instead")
-  "Integrates the organization with Discord."   integrationDiscord(redirectUri: String!, code: String!): IntegrationPayload!
-  "[INTERNAL] Integrates the organization with Opsgenie."   integrationOpsgenieConnect(apiKey: String!): IntegrationPayload!
-  "[INTERNAL] Refresh Opsgenie schedule mappings."   integrationOpsgenieRefreshScheduleMappings: IntegrationPayload!
-  "[INTERNAL] Integrates the organization with PagerDuty."   integrationPagerDutyConnect(code: String!, redirectUri: String!): IntegrationPayload!
-  "[INTERNAL] Refresh PagerDuty schedule mappings."   integrationPagerDutyRefreshScheduleMappings: IntegrationPayload!
-  "[Internal] Updates existing Slack integration scopes."   updateIntegrationSlackScopes(integrationId: String!, redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with Slack."   integrationSlack(shouldUseV2Auth: Boolean, redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with the Slack Asks app."   integrationSlackAsks(redirectUri: String!, code: String!): IntegrationPayload!
-  "Updates the Slack team's name in Linear for an existing Slack or Asks integration."   integrationSlackOrAsksUpdateSlackTeamName(integrationId: String!): IntegrationSlackWorkspaceNamePayload!
-  "Integrates your personal notifications with Slack."   integrationSlackPersonal(redirectUri: String!, code: String!): IntegrationPayload!
-  "Connect a Slack channel to Asks."   integrationAsksConnectChannel(redirectUri: String!, code: String!): AsksChannelConnectPayload!
-  "Slack integration for team notifications."   integrationSlackPost(shouldUseV2Auth: Boolean, redirectUri: String!, teamId: String!, code: String!): SlackChannelConnectPayload!
-  "Slack integration for project notifications."   integrationSlackProjectPost(service: String!, redirectUri: String!, projectId: String!, code: String!): SlackChannelConnectPayload!
-  "[Internal] Slack integration for initiative notifications."   integrationSlackInitiativePost(redirectUri: String!, initiativeId: String!, code: String!): SlackChannelConnectPayload!
-  "Slack integration for custom view notifications."   integrationSlackCustomViewNotifications(redirectUri: String!, customViewId: String!, code: String!): SlackChannelConnectPayload!
-  "Integrates a Slack Asks channel with a Customer."   integrationSlackCustomerChannelLink(redirectUri: String!, customerId: String!, code: String!): SuccessPayload!
-  "Slack integration for organization level project update notifications."   integrationSlackOrgProjectUpdatesPost(redirectUri: String!, code: String!): SlackChannelConnectPayload!
-  "[Internal] Slack integration for organization level initiative update notifications."   integrationSlackOrgInitiativeUpdatesPost(redirectUri: String!, code: String!): SlackChannelConnectPayload!
-  "Imports custom emojis from your Slack workspace."   integrationSlackImportEmojis(redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with Figma."   integrationFigma(redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with Gong."   integrationGong(redirectUri: String!, code: String!): IntegrationPayload!
-  "[ALPHA] Integrates the organization with Microsoft Teams."   integrationMicrosoftTeams(redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with Google Sheets."   integrationGoogleSheets(code: String!): IntegrationPayload!
-  "Manually update Google Sheets data."   refreshGoogleSheetsData(type: String, id: String!): IntegrationPayload!
-  "Integrates the organization with Sentry."   integrationSentryConnect(organizationSlug: String!, code: String!, installationId: String!): IntegrationPayload!
-  "Integrates the organization with Front."   integrationFront(redirectUri: String!, code: String!): IntegrationPayload!
-  "Integrates the organization with Zendesk."   integrationZendesk(subdomain: String!, code: String!, scope: String!, redirectUri: String!): IntegrationPayload!
-  "Enables Loom integration for the organization."   integrationLoom: IntegrationPayload! @deprecated(reason: "Not available.")
-  "Integrates the organization with Salesforce."   integrationSalesforce(code: String!, subdomain: String!, redirectUri: String!): IntegrationPayload!
-  "[INTERNAL] Refreshes the Salesforce integration metadata."   integrationSalesforceMetadataRefresh(id: String!): IntegrationPayload!
-  "[INTERNAL] Connects the user's personal account with an MCP server."   integrationMcpServerPersonalConnect(serverUrl: String!): IntegrationPayload!
-  "[INTERNAL] Connects the workspace with an MCP server."   integrationMcpServerConnect(teamId: String, serverUrl: String!): IntegrationPayload!
-  "Deletes an integration."   integrationDelete(skipInstallationDeletion: Boolean, id: String!): DeletePayload!
-  "Archives an integration."   integrationArchive(id: String!): DeletePayload!
-  "[Internal] Enables Linear Agent Slack workflow access for a Slack or Slack Asks integration."   integrationSlackWorkflowAccessUpdate(enabled: Boolean!, integrationId: String!): IntegrationPayload!
   "Requests a currently unavailable integration."   integrationRequest(input: IntegrationRequestInput!): IntegrationRequestPayload!
   "Creates a initiative update."   initiativeUpdateCreate(input: InitiativeUpdateCreateInput!): InitiativeUpdatePayload!
   "Updates an update."   initiativeUpdateUpdate(input: InitiativeUpdateUpdateInput!, id: String!): InitiativeUpdatePayload!
   "Archives an initiative update."   initiativeUpdateArchive(id: String!): InitiativeUpdateArchivePayload!
   "Create a notification to remind a user about an initiative update."   createInitiativeUpdateReminder(userId: String, initiativeId: String!): InitiativeUpdateReminderPayload!
   "Unarchives an initiative update."   initiativeUpdateUnarchive(id: String!): InitiativeUpdateArchivePayload!
-  "Creates a new initiativeToProject join."   initiativeToProjectCreate(input: InitiativeToProjectCreateInput!): InitiativeToProjectPayload!
-  "Updates a initiativeToProject."   initiativeToProjectUpdate(input: InitiativeToProjectUpdateInput!, id: String!): InitiativeToProjectPayload!
-  "Deletes a initiativeToProject."   initiativeToProjectDelete(id: String!): DeletePayload!
   "Creates a new initiative."   initiativeCreate(input: InitiativeCreateInput!): InitiativePayload!
   "Updates a initiative."   initiativeUpdate(input: InitiativeUpdateInput!, id: String!): InitiativePayload!
   "Archives a initiative."   initiativeArchive(id: String!): InitiativeArchivePayload!
@@ -7182,11 +7237,6 @@ type Mutation {
   "Deletes a custom view."   customViewDelete(id: String!): DeletePayload!
   "Saves user message."   contactCreate(input: ContactCreateInput!): ContactPayload!
   "[INTERNAL] Saves sales pricing inquiry to Front."   contactSalesCreate(input: ContactSalesCreateInput!): ContactPayload!
-  "Creates a new comment."   commentCreate(input: CommentCreateInput!): CommentPayload!
-  "Updates a comment."   commentUpdate(skipEditedAt: Boolean, input: CommentUpdateInput!, id: String!): CommentPayload!
-  "Deletes a comment."   commentDelete(id: String!): DeletePayload!
-  "Resolves a comment."   commentResolve(resolvingCommentId: String, id: String!): CommentPayload!
-  "Unresolves a comment."   commentUnresolve(id: String!): CommentPayload!
   "Finds or creates a new user account by email and sends an email with token."   emailUserAccountAuthChallenge(input: EmailUserAccountAuthChallengeInput!): EmailUserAccountAuthChallengeResponse!
   "Authenticates a user account via email and authentication token."   emailTokenUserAccountAuth(input: TokenUserAccountAuthInput!): AuthResolverResponse!
   "Authenticates a user account via email and authentication token for SAML."   samlTokenUserAccountAuth(input: TokenUserAccountAuthInput!): AuthResolverResponse!
@@ -7217,6 +7267,7 @@ type Mutation {
   "Deletes an issue attachment."   attachmentDelete(id: String!): DeletePayload!
   "Creates a new Asks web form settings."   asksWebSettingsCreate(emailIntakeAddress: AsksWebSettingsEmailIntakeAddressInput, input: AsksWebSettingsCreateInput!): AsksWebSettingsPayload!
   "Updates Asks web form settings."   asksWebSettingsUpdate(emailIntakeAddress: AsksWebSettingsEmailIntakeAddressInput, input: AsksWebSettingsUpdateInput!, id: String!): AsksWebSettingsPayload!
+  "Deletes Asks web form settings."   asksWebSettingsDelete(id: String!): DeletePayload!
   "Creates a new Asks web page."   asksWebPageCreate(input: AsksWebPageCreateInput!): AsksWebPagePayload!
   "Updates an Asks web page."   asksWebPageUpdate(input: AsksWebPageUpdateInput!, id: String!): AsksWebPagePayload!
   "Deletes an Asks web page."   asksWebPageDelete(id: String!): DeletePayload!
@@ -7625,6 +7676,10 @@ type PasskeyLoginStartResponse {
   "The type of the post."   type: PostType
   "The log id of the ai response."   evalLogId: String
   "Schedule used to create a post summary."   feedSummaryScheduleAtCreate: FeedSummarySchedule
+  "Reactions associated with the post."   reactions: [Reaction!]!
+  "Comments associated with the post."   comments(filter: CommentFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CommentConnection!
+  "A URL to the generated audio for the Post."   audioSummaryUrl: String
+  "Number of comments associated with the post."   commentCount: Int!
 }
 
 "A post related notification." type PostNotification implements Notification & Entity & Node {
@@ -7763,6 +7818,8 @@ type PasskeyLoginStartResponse {
   "Custom metadata related to the attachment."   metadata: JSONObject!
   "Information about the external source which created the attachment."   source: JSONObject
   "An accessor helper to source.type, defines the source type of the attachment."   sourceType: String
+  "The project this attachment belongs to."   project: Project!
+  "The body data of the attachment, if any."   bodyData: String
 }
 
 type ProjectAttachmentConnection {
@@ -8224,6 +8281,12 @@ type ProjectUpdateReminderPayload {
   "[Internal] The checks associated with the pull request."   checks: [PullRequestCheck!]!
   "[ALPHA] The commits associated with the pull request."   commits: [PullRequestCommit!]!
   "[Internal] The user who created the pull request."   creator: User
+  "Agent sessions associated with this pull request."   agentSessions(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): AgentSessionToPullRequestConnection!
+  "Pull request URL to the Linear app"   appUrl: String!
+  "The pull request's description in markdown format."   description: String
+  "The pull request's description as a Prosemirror document."   descriptionData: JSON
+  "Integration type that created this pull request, if applicable."   integrationSourceType: IntegrationService
+  "Diff statistics for the pull request including file count, additions, deletions, and changes."   diffStats: PullRequestDiffStats
 }
 
 "[ALPHA] A pull request check." type PullRequestCheck {
@@ -8245,6 +8308,13 @@ type ProjectUpdateReminderPayload {
   "The number of changed files if available."   changedFiles: Float
   "Linear user IDs for commit authors (includes co-authors)."   authorUserIds: [String!]!
   "External user IDs for commit authors (includes co-authors)."   authorExternalUserIds: [String!]!
+}
+
+"Diff statistics for a pull request." type PullRequestDiffStats {
+  "The number of files changed in the pull request."   fileCount: Float!
+  "The number of lines added in the pull request."   additions: Float!
+  "The number of lines changed in the pull request."   changes: Float!
+  "The number of lines deleted in the pull request."   deletions: Float!
 }
 
 "[Internal] Merge settings for a pull request" type PullRequestMergeSettings {
@@ -8314,6 +8384,16 @@ type PushSubscriptionTestPayload {
 }
 
 type Query {
+  "All integrations."   integrations(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): IntegrationConnection!
+  "One specific integration."   integration(id: String!): Integration!
+  "Verify that we received the correct response from the GitHub Enterprise Server."   verifyGitHubEnterpriseServerInstallation(integrationId: String!): GitHubEnterpriseServerInstallVerificationPayload!
+  "Checks if the integration has all required scopes."   integrationHasScopes(scopes: [String!]!, integrationId: String!): IntegrationHasScopesPayload!
+  "returns a list of initiative to project entities."   initiativeToProjects(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): InitiativeToProjectConnection!
+  "One specific initiativeToProject."   initiativeToProject(id: String!): InitiativeToProject!
+  "A collection of document content history entries."   documentContentHistory(id: String!): DocumentContentHistoryPayload!
+  "All comments."   comments(filter: CommentFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CommentConnection!
+  "A specific comment."   comment(id: String, hash: String): Comment!
+  "Get basic information for an application."   applicationInfo(clientId: String!): Application!
   "All issue workflow states."   workflowStates(filter: WorkflowStateFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): WorkflowStateConnection!
   "One specific state."   workflowState(id: String!): WorkflowState!
   "All webhooks."   webhooks(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): WebhookConnection!
@@ -8401,14 +8481,8 @@ type Query {
   "One specific set of settings."   integrationsSettings(id: String!): IntegrationsSettings!
   "Template and integration connections."   integrationTemplates(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): IntegrationTemplateConnection!
   "One specific integrationTemplate."   integrationTemplate(id: String!): IntegrationTemplate!
-  "All integrations."   integrations(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): IntegrationConnection!
-  "One specific integration."   integration(id: String!): Integration!
-  "Verify that we received the correct response from the GitHub Enterprise Server."   verifyGitHubEnterpriseServerInstallation(integrationId: String!): GitHubEnterpriseServerInstallVerificationPayload!
-  "Checks if the integration has all required scopes."   integrationHasScopes(scopes: [String!]!, integrationId: String!): IntegrationHasScopesPayload!
   "All  InitiativeUpdates."   initiativeUpdates(filter: InitiativeUpdateFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): InitiativeUpdateConnection!
   "A specific  initiative update."   initiativeUpdate(id: String!): InitiativeUpdate!
-  "returns a list of initiative to project entities."   initiativeToProjects(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): InitiativeToProjectConnection!
-  "One specific initiativeToProject."   initiativeToProject(id: String!): InitiativeToProject!
   "All initiatives in the workspace."   initiatives(filter: InitiativeFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy, sort: [InitiativeSortInput!]): InitiativeConnection!
   "One specific initiative."   initiative(id: String!): Initiative!
   "All initiative relationships."   initiativeRelations(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): InitiativeRelationConnection!
@@ -8424,7 +8498,6 @@ type Query {
   "One specific email intake address."   emailIntakeAddress(id: String!): EmailIntakeAddress!
   "All documents in the workspace."   documents(filter: DocumentFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): DocumentConnection!
   "One specific document."   document(id: String!): Document!
-  "A collection of document content history entries."   documentContentHistory(id: String!): DocumentContentHistoryPayload!
   "All cycles."   cycles(filter: CycleFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CycleConnection!
   "One specific cycle."   cycle(id: String!): Cycle!
   "All customer tiers."   customerTiers(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CustomerTierConnection!
@@ -8440,8 +8513,6 @@ type Query {
   "One specific custom view."   customView(id: String!): CustomView!
   "[INTERNAL] Suggests metadata for a view based on it's filters."   customViewDetailsSuggestion(modelName: String, filter: JSONObject!): CustomViewSuggestionPayload!
   "Whether a custom view has other subscribers than the current user in the organization."   customViewHasSubscribers(id: String!): CustomViewHasSubscribersPayload!
-  "All comments."   comments(filter: CommentFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): CommentConnection!
-  "A specific comment."   comment(id: String, hash: String): Comment!
   "Fetch users belonging to this user account."   availableUsers: AuthResolverResponse!
   "User's active sessions."   authenticationSessions: [AuthenticationSessionResponse!]!
   "Fetch SSO login URL for the email provided."   ssoUrlFromEmail(isDesktop: Boolean, type: IdentityProviderType! = general, email: String!): SsoUrlFromEmailResponse!
@@ -8463,7 +8534,6 @@ Query an issue by its associated attachment, and its id.
   "[Internal] Get a list of all unique attachment sources in the workspace."   attachmentSources(teamId: String): AttachmentSourcesPayload!
   "Asks web form settings by ID."   asksWebSetting(id: String!): AsksWebSettings!
   "An Asks web page by ID."   asksWebPage(id: String!): AsksWebPage!
-  "Get basic information for an application."   applicationInfo(clientId: String!): Application!
   "All agent sessions."   agentSessions(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): AgentSessionConnection!
   "A specific agent session."   agentSession(id: String!): AgentSession!
   "All agent activities."   agentActivities(filter: AgentActivityFilter, before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): AgentActivityConnection!
@@ -8566,6 +8636,7 @@ type ReleasePayload {
   "The pipeline's unique slug identifier."   slugId: String!
   "The type of the pipeline."   type: ReleasePipelineType!
   "Glob patterns to include commits affecting matching file paths."   includePathPatterns: [String!]!
+  "[ALPHA] The active access key for this pipeline."   accessKey: AccessKey
   "[ALPHA] Stages associated with this pipeline."   stages(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): ReleaseStageConnection!
   "[ALPHA] Releases associated with this pipeline."   releases(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): ReleaseConnection!
 }
@@ -8604,6 +8675,7 @@ type ReleasePipelinePayload {
   "The UI color of the stage as a HEX string."   color: String!
   "The type of the stage."   type: ReleaseStageType!
   "The position of the stage."   position: Float!
+  "Whether this stage is frozen. Only applicable to started type stages."   frozen: Boolean!
   "The pipeline this stage belongs to."   pipeline: ReleasePipeline!
   "[ALPHA] Releases associated with this stage."   releases(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): ReleaseConnection!
 }
@@ -9142,6 +9214,7 @@ type UploadPayload {
   "Whether the user is mentionable."   isMentionable: Boolean!
   "Whether the user is assignable."   isAssignable: Boolean!
   "Whether the user account is active or disabled (suspended)."   active: Boolean!
+  "Enabled feature flags for the user."   featureFlags: [String!]!
   "The user's issue drafts"   issueDrafts(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): IssueDraftConnection!
   "The user's drafts"   drafts(before: String, after: String, first: Int, last: Int, includeArchived: Boolean, orderBy: PaginationOrderBy): DraftConnection!
   "User's profile URL."   url: String!

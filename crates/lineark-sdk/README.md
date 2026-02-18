@@ -171,6 +171,9 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `document_create(input)` | Create a document |
 | `document_update(input, id)` | Update a document |
 | `document_delete(id)` | Delete a document |
+| `project_create(slack_channel_name, input)` | Create a project |
+| `project_update(input, id)` | Update a project |
+| `project_delete(id)` | Delete a project |
 | `project_milestone_create(input)` | Create a project milestone |
 | `project_milestone_update(input, id)` | Update a project milestone |
 | `project_milestone_delete(id)` | Delete a project milestone |

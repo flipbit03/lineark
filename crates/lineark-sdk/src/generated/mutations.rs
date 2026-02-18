@@ -49,6 +49,24 @@ pub async fn image_upload_from_url(
         .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
         .await
 }
+/// Creates a new comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+>(
+    client: &Client,
+    input: CommentCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
+        .await
+}
 /// Creates a new project.
 ///
 /// Full type: [`Project`](super::types::Project)
@@ -341,23 +359,5 @@ pub async fn document_delete<
         + " } } }";
     client
         .execute_mutation::<T>(&query, variables, "documentDelete", "entity")
-        .await
-}
-/// Creates a new comment.
-///
-/// Full type: [`Comment`](super::types::Comment)
-pub async fn comment_create<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
->(
-    client: &Client,
-    input: CommentCreateInput,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!({ "input" : input });
-    let query = String::from(
-        "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
         .await
 }
