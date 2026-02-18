@@ -7,6 +7,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process;
+use tabled::settings::Style;
+use tabled::{Table, Tabled};
 
 struct Diagnostic {
     file: String,
@@ -59,20 +61,29 @@ fn compute_mode(values: &[usize]) -> usize {
 }
 
 /// Check alignment of description columns. Returns diagnostics for outliers.
+#[cfg(test)]
 fn check_alignment(lines: &[(usize, &str)], file: &str) -> Vec<Diagnostic> {
+    check_alignment_detailed(lines, file).2
+}
+
+/// Like check_alignment but also returns (lines_checked, majority_column, diagnostics).
+fn check_alignment_detailed(
+    lines: &[(usize, &str)],
+    file: &str,
+) -> (usize, Option<usize>, Vec<Diagnostic>) {
     let entries: Vec<(usize, &str, usize)> = lines
         .iter()
         .filter_map(|&(ln, content)| find_description_column(content).map(|col| (ln, content, col)))
         .collect();
 
     if entries.is_empty() {
-        return vec![];
+        return (0, None, vec![]);
     }
 
     let columns: Vec<usize> = entries.iter().map(|e| e.2).collect();
     let mode = compute_mode(&columns);
 
-    entries
+    let diagnostics = entries
         .iter()
         .filter(|e| e.2 != mode)
         .map(|&(ln, content, col)| Diagnostic {
@@ -82,11 +93,21 @@ fn check_alignment(lines: &[(usize, &str)], file: &str) -> Vec<Diagnostic> {
             found_column: col,
             expected_column: mode,
         })
-        .collect()
+        .collect();
+
+    (entries.len(), Some(mode), diagnostics)
+}
+
+struct CheckResult {
+    file: &'static str,
+    section: &'static str,
+    lines_checked: usize,
+    majority_column: Option<usize>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 /// Extract and check lines between COMMANDS: and GLOBAL OPTIONS: in usage.rs.
-fn check_usage_rs(root: &Path) -> Vec<Diagnostic> {
+fn check_usage_rs(root: &Path) -> CheckResult {
     let rel = "crates/lineark/src/commands/usage.rs";
     let content = read_file(root, rel);
 
@@ -107,11 +128,19 @@ fn check_usage_rs(root: &Path) -> Vec<Diagnostic> {
         }
     }
 
-    check_alignment(&section_lines, rel)
+    let (lines_checked, majority_column, diagnostics) =
+        check_alignment_detailed(&section_lines, rel);
+    CheckResult {
+        file: rel,
+        section: "COMMANDS: → GLOBAL OPTIONS:",
+        lines_checked,
+        majority_column,
+        diagnostics,
+    }
 }
 
 /// Extract and check lines in bare code block after ## Usage in README.md.
-fn check_readme_md(root: &Path) -> Vec<Diagnostic> {
+fn check_readme_md(root: &Path) -> CheckResult {
     let rel = "crates/lineark/README.md";
     let content = read_file(root, rel);
 
@@ -137,7 +166,15 @@ fn check_readme_md(root: &Path) -> Vec<Diagnostic> {
         }
     }
 
-    check_alignment(&section_lines, rel)
+    let (lines_checked, majority_column, diagnostics) =
+        check_alignment_detailed(&section_lines, rel);
+    CheckResult {
+        file: rel,
+        section: "code block after ## Usage",
+        lines_checked,
+        majority_column,
+        diagnostics,
+    }
 }
 
 fn read_file(root: &Path, rel: &str) -> String {
@@ -187,18 +224,53 @@ fn main() {
         process::exit(2);
     });
 
-    let mut diagnostics = Vec::new();
-    diagnostics.extend(check_usage_rs(&root));
-    diagnostics.extend(check_readme_md(&root));
+    let results = [check_usage_rs(&root), check_readme_md(&root)];
 
-    if diagnostics.is_empty() {
-        println!("Column alignment: OK");
+    #[derive(Tabled)]
+    struct Row {
+        #[tabled(rename = "File")]
+        file: &'static str,
+        #[tabled(rename = "Section")]
+        section: &'static str,
+        #[tabled(rename = "Lines")]
+        lines: String,
+        #[tabled(rename = "Column")]
+        column: String,
+        #[tabled(rename = "Status")]
+        status: &'static str,
+    }
+
+    let mut rows = Vec::new();
+    let mut total_diagnostics = 0;
+    for r in &results {
+        rows.push(Row {
+            file: r.file,
+            section: r.section,
+            lines: r.lines_checked.to_string(),
+            column: r.majority_column.map_or("-".into(), |c| c.to_string()),
+            status: if r.diagnostics.is_empty() {
+                "ok"
+            } else {
+                "FAIL"
+            },
+        });
+        total_diagnostics += r.diagnostics.len();
+    }
+
+    println!("Column alignment:");
+    println!("{}", Table::new(&rows).with(Style::rounded()));
+
+    if total_diagnostics == 0 {
+        // already printed per-file "ok" status
     } else {
-        for d in &diagnostics {
-            print_diagnostic(d);
-            eprintln!();
+        eprintln!();
+        for r in &results {
+            for d in &r.diagnostics {
+                print_diagnostic(d);
+                eprintln!();
+            }
         }
-        eprintln!("error: {} alignment issue(s) found", diagnostics.len());
+        eprintln!("error: {} alignment issue(s) found", total_diagnostics);
         process::exit(1);
     }
 }

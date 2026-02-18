@@ -119,6 +119,10 @@ All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. 
 
 Never manually set version numbers in Cargo.toml files. To release, create a GitHub Release with a semver tag like `v0.1.0` (via the GitHub UI or `gh release create v0.1.0 --generate-notes`).
 
+## Issue tracking
+
+Issue tracking for lineark development happens in GitHub Issues, not in Linear. Use `gh issue` commands to view, create, and manage issues.
+
 ## What NOT to do
 
 - Don't hand-edit files in `crates/lineark-sdk/src/generated/` — run codegen instead

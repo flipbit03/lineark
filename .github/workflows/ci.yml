@@ -34,7 +34,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Column alignment
-        run: cargo run -p lineark-lint
+        run: cargo run -q -p lineark-lint
 
       - name: Clippy
         run: cargo clippy --workspace -- -D warnings

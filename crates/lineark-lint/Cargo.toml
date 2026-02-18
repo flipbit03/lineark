@@ -7,3 +7,6 @@ repository.workspace = true
 authors.workspace = true
 description = "Column alignment checker for lineark command reference sections"
 publish = false
+
+[dependencies]
+tabled = "0.17"
