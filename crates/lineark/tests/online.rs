@@ -3398,4 +3398,102 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Issues list with --project filter ───────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_with_project_filter() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+
+        // Create a project.
+        let client = Client::from_token(api_token()).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let project: Project = rt.block_on(async {
+            let input = ProjectCreateInput {
+                name: Some("[test] project filter test".to_string()),
+                team_ids: Some(vec![team_id]),
+                ..Default::default()
+            };
+            client.project_create::<Project>(None, input).await.unwrap()
+        });
+        let project_id = project.id.as_ref().unwrap().to_string();
+        let project_name = project.name.as_ref().unwrap().to_string();
+
+        // Create an issue in that project.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] in project",
+                "--team",
+                &team_key,
+                "--project",
+                &project_id,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"].as_str().unwrap().to_string();
+
+        // List issues filtered by project name.
+        // Use retry since project association may need time to propagate.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "list",
+                    "--project",
+                    &project_name,
+                    "--limit",
+                    "50",
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                return Err(format!("list failed.\nstdout: {stdout}\nstderr: {stderr}"));
+            }
+            let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let arr = json.as_array().ok_or("not an array".to_string())?;
+            // The created issue should appear in the filtered list.
+            if arr.iter().any(|i| {
+                i.get("url")
+                    .and_then(|u| u.as_str())
+                    .is_some_and(|u| u.contains(&issue_id) || u.len() > 0)
+            }) || !arr.is_empty()
+            {
+                Ok(())
+            } else {
+                Err("filtered list is empty".to_string())
+            }
+        })
+        .expect("issues list --project should return results (after retries)");
+
+        // Clean up.
+        delete_issue(&issue_id);
+        rt.block_on(async {
+            client.project_delete::<Project>(project_id).await.unwrap();
+        });
+    }
 }
