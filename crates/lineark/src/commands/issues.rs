@@ -892,3 +892,25 @@ async fn resolve_state_id(
         available.join(", ")
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_estimate_none_returns_empty() {
+        assert_eq!(format_estimate(None), "");
+    }
+
+    #[test]
+    fn format_estimate_whole_number_omits_decimal() {
+        assert_eq!(format_estimate(Some(3.0)), "3");
+        assert_eq!(format_estimate(Some(0.0)), "0");
+    }
+
+    #[test]
+    fn format_estimate_fractional_preserves_decimal() {
+        assert_eq!(format_estimate(Some(1.5)), "1.5");
+        assert_eq!(format_estimate(Some(0.5)), "0.5");
+    }
+}
