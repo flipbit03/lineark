@@ -3398,4 +3398,76 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Issues create with --estimate ───────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_estimate() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue with --estimate.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI estimate flag",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+                "--estimate",
+                "3",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create --estimate should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id")
+            .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Update the issue with a different estimate.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &issue_id,
+                "--estimate",
+                "5",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update --estimate should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
 }
