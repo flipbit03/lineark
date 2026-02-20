@@ -887,3 +887,23 @@ fn usage_includes_comments_delete() {
         .success()
         .stdout(predicate::str::contains("comments delete"));
 }
+
+// ── Issues list --project filter ────────────────────────────────────────────
+
+#[test]
+fn issues_list_help_shows_project_flag() {
+    lineark()
+        .args(["issues", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"));
+}
+
+#[test]
+fn usage_includes_issues_list_project_filter() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"));
+}
