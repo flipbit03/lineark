@@ -194,6 +194,10 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::comment_create::<T>(self, input).await
     }
+    /// Deletes a comment.
+    pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::comment_delete(self, id).await
+    }
     /// Creates a new project.
     ///
     /// Full type: [`Project`](super::types::Project)

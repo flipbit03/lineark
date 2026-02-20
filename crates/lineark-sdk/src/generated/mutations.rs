@@ -67,6 +67,17 @@ pub async fn comment_create<
         .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
         .await
 }
+/// Deletes a comment.
+pub async fn comment_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from("mutation CommentDelete($id: String!) { commentDelete(id: $id) { ")
+        + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "commentDelete")
+        .await
+}
 /// Creates a new project.
 ///
 /// Full type: [`Project`](super::types::Project)
