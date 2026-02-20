@@ -743,3 +743,32 @@ fn usage_includes_self_update_commands() {
         .stdout(predicate::str::contains("self update"))
         .stdout(predicate::str::contains("--check"));
 }
+
+// ── Comments delete ─────────────────────────────────────────────────────────
+
+#[test]
+fn comments_help_shows_delete_subcommand() {
+    lineark()
+        .args(["comments", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn comments_delete_help_shows_id_arg() {
+    lineark()
+        .args(["comments", "delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn usage_includes_comments_delete() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("comments delete"));
+}
