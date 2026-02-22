@@ -33,6 +33,15 @@ fn lineark() -> Command {
     Command::cargo_bin("lineark").unwrap()
 }
 
+/// Delete a team by its UUID to keep the workspace clean.
+fn delete_team(team_id: &str) {
+    let client = Client::from_token(api_token()).unwrap();
+    let id = team_id.to_string();
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { client.team_delete(id).await.unwrap() });
+}
+
 /// Permanently delete an issue by its UUID to keep the workspace clean.
 fn delete_issue(issue_id: &str) {
     let client = Client::from_token(api_token()).unwrap();
@@ -2509,7 +2518,6 @@ mod online {
         delete_issue(issue_id);
     }
 
-    // ── Comments create and delete ──────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_and_delete() {
@@ -2640,5 +2648,285 @@ mod online {
 
         // Clean up: permanently delete the issue.
         delete_issue(&issue_id);
+    }
+
+    // ── Teams CRUD ──────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn teams_create_and_delete() {
+        let token = api_token();
+
+        // Create a team via CLI.
+        let unique_name = format!("[test] CLI teams create {}", uuid::Uuid::new_v4());
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "create",
+                &unique_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let team_id = created["id"]
+            .as_str()
+            .expect("created team should have id")
+            .to_string();
+        assert!(
+            created.get("name").is_some(),
+            "created team should have name"
+        );
+        assert!(created.get("key").is_some(), "created team should have key");
+
+        // Verify the team appears in the list.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args(["--api-token", &token, "--format", "json", "teams", "list"])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("teams list failed: {stdout}"));
+            }
+            let teams: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let arr = teams.as_array().ok_or("not an array")?;
+            if arr.iter().any(|t| t["id"].as_str() == Some(&team_id)) {
+                Ok(())
+            } else {
+                Err("created team not in list".to_string())
+            }
+        })
+        .expect("teams list should include the created team (after retries)");
+
+        // Clean up: delete the test team via SDK.
+        delete_team(&team_id);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn teams_create_update_read_and_delete() {
+        let token = api_token();
+
+        // Create a team.
+        let unique_name = format!("[test] CLI teams CRUD {}", uuid::Uuid::new_v4());
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "create",
+                &unique_name,
+                "--description",
+                "Original description.",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let team_id = created["id"].as_str().unwrap().to_string();
+
+        // Update the team's description.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "update",
+                &team_id,
+                "--description",
+                "Updated description.",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Read the team back and verify.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "read",
+                &team_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(detail["id"].as_str(), Some(team_id.as_str()));
+        assert_eq!(detail["description"].as_str(), Some("Updated description."));
+        assert!(
+            detail.get("members").is_some(),
+            "read output should have members field"
+        );
+
+        // Delete the team via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "delete",
+                &team_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn teams_members_add_and_remove() {
+        let token = api_token();
+
+        // Create a team.
+        let unique_name = format!("[test] CLI teams members {}", uuid::Uuid::new_v4());
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "create",
+                &unique_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let team_id = created["id"].as_str().unwrap().to_string();
+
+        // Add authenticated user as a member.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "members",
+                "add",
+                &team_id,
+                "--user",
+                "me",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams members add should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let membership: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            membership.get("id").is_some(),
+            "membership should have an id"
+        );
+
+        // Get my user ID for verification.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "whoami"])
+            .output()
+            .unwrap();
+        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let my_id = whoami["id"].as_str().unwrap();
+
+        // Read the team and verify member is present.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "teams",
+                    "read",
+                    &team_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("teams read failed: {stdout}"));
+            }
+            let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let members = detail["members"]["nodes"]
+                .as_array()
+                .ok_or("members.nodes missing")?;
+            if members.iter().any(|m| m["id"].as_str() == Some(my_id)) {
+                Ok(())
+            } else {
+                Err("authenticated user not found in team members".to_string())
+            }
+        })
+        .expect("team should contain the added member (after retries)");
+
+        // Remove the member.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "teams",
+                "members",
+                "remove",
+                &team_id,
+                "--user",
+                "me",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams members remove should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up: delete the team.
+        delete_team(&team_id);
     }
 }
