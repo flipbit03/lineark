@@ -579,3 +579,76 @@ async fn issue_delete_without_permanently_sends_null() {
     assert_eq!(vars["id"], "issue-uuid-456");
     assert_eq!(vars["permanentlyDelete"], Value::Null);
 }
+
+// ── Team mutation variable tests ────────────────────────────────────────
+
+#[tokio::test]
+async fn team_create_sends_input_variable() {
+    use lineark_sdk::generated::inputs::TeamCreateInput;
+
+    let (server, client) = setup_mutation("teamCreate").await;
+    let input = TeamCreateInput {
+        name: Some("Test Team".to_string()),
+        key: Some("TST".to_string()),
+        ..Default::default()
+    };
+    let _ = client.team_create::<Team>(None, input).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["name"], "Test Team");
+    assert_eq!(vars["input"]["key"], "TST");
+    assert_eq!(vars["copySettingsFromTeamId"], Value::Null);
+}
+
+#[tokio::test]
+async fn team_update_sends_input_and_id() {
+    use lineark_sdk::generated::inputs::TeamUpdateInput;
+
+    let (server, client) = setup_mutation("teamUpdate").await;
+    let input = TeamUpdateInput {
+        description: Some("Updated description".to_string()),
+        ..Default::default()
+    };
+    let _ = client
+        .team_update::<Team>(None, input, "team-uuid-123".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["description"], "Updated description");
+    assert_eq!(vars["id"], "team-uuid-123");
+    assert_eq!(vars["mapping"], Value::Null);
+}
+
+#[tokio::test]
+async fn team_delete_sends_id() {
+    let (server, client) = setup_mutation("teamDelete").await;
+    let _ = client.team_delete("team-uuid-456".to_string()).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "team-uuid-456");
+}
+
+#[tokio::test]
+async fn team_membership_create_sends_input() {
+    use lineark_sdk::generated::inputs::TeamMembershipCreateInput;
+    use lineark_sdk::generated::types::TeamMembership;
+
+    let (server, client) = setup_mutation("teamMembershipCreate").await;
+    let input = TeamMembershipCreateInput {
+        user_id: Some("user-uuid-abc".to_string()),
+        team_id: Some("team-uuid-def".to_string()),
+        ..Default::default()
+    };
+    let _ = client.team_membership_create::<TeamMembership>(input).await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["input"]["userId"], "user-uuid-abc");
+    assert_eq!(vars["input"]["teamId"], "team-uuid-def");
+}
+
+#[tokio::test]
+async fn team_membership_delete_sends_id() {
+    let (server, client) = setup_mutation("teamMembershipDelete").await;
+    let _ = client
+        .team_membership_delete(None, "membership-uuid-123".to_string())
+        .await;
+    let vars = extract_variables(&server.received_requests().await.unwrap());
+    assert_eq!(vars["id"], "membership-uuid-123");
+    assert_eq!(vars["alsoLeaveParentTeams"], Value::Null);
+}
