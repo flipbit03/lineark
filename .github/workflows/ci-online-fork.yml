@@ -6,6 +6,9 @@ on:
   pull_request_target:
     types: [labeled]
 
+permissions:
+  pull-requests: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -59,5 +62,5 @@ jobs:
                 name: 'safe-to-test'
               });
             } catch (e) {
-              // Label may have already been removed
+              console.log(`Failed to remove label: ${e.message}`);
             }
