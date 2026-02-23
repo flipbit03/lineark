@@ -2508,4 +2508,137 @@ mod online {
         // Clean up: permanently delete the issue.
         delete_issue(issue_id);
     }
+
+    // ── Comments create and delete ──────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn comments_create_and_delete() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue to comment on.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI comments_delete",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "issue creation should succeed");
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id (UUID)")
+            .to_string();
+
+        // Create a comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "create",
+                &issue_id,
+                "--body",
+                "Comment that will be deleted.",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let comment: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let comment_id = comment["id"]
+            .as_str()
+            .expect("comment should have an id")
+            .to_string();
+
+        // Delete the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "delete",
+                &comment_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comments delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        // Verify the delete response indicates success.
+        let delete_result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            delete_result["success"].as_bool(),
+            Some(true),
+            "delete response should have success: true"
+        );
+
+        // Verify the comment is gone from the issue.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                return Err(format!("issues read failed: {stdout}"));
+            }
+            let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            let comments = detail
+                .get("comments")
+                .and_then(|c| c.get("nodes"))
+                .and_then(|n| n.as_array());
+            let Some(comments) = comments else {
+                return Err("comments field missing".to_string());
+            };
+            let has_deleted = comments
+                .iter()
+                .any(|c| c["id"].as_str() == Some(&comment_id));
+            if has_deleted {
+                Err("deleted comment still present".to_string())
+            } else {
+                Ok(())
+            }
+        })
+        .expect("comment should be gone after deletion (after retries)");
+
+        // Clean up: permanently delete the issue.
+        delete_issue(&issue_id);
+    }
 }

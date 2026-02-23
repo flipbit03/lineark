@@ -28,6 +28,14 @@ pub enum CommentsAction {
         #[arg(long)]
         body: String,
     },
+    /// Delete a comment.
+    ///
+    /// Examples:
+    ///   lineark comments delete <COMMENT-UUID>
+    Delete {
+        /// Comment UUID.
+        id: String,
+    },
 }
 
 /// Lean result type for comment mutations.
@@ -57,6 +65,14 @@ pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::R
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&comment, format);
+        }
+        CommentsAction::Delete { id } => {
+            client
+                .comment_delete(id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            output::print_one(&serde_json::json!({ "success": true }), format);
         }
     }
     Ok(())

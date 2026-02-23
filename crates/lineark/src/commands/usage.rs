@@ -65,6 +65,7 @@ COMMANDS:
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
     [--permanently]                                Permanently delete instead of trashing
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+  lineark comments delete <COMMENT-UUID>           Delete a comment
   lineark documents list [--limit N]               List documents (lean output)
     [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
   lineark documents read <ID>                      Read document (includes content)
