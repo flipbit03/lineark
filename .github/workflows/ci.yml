@@ -73,6 +73,8 @@ jobs:
 
   test-online:
     name: Tests (Online)
+    # Skip on fork PRs — secrets are unavailable. Use safe-to-test label instead.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

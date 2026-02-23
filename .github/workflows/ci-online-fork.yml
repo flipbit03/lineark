@@ -1,0 +1,63 @@
+name: "Tests (Online — Fork PRs)"
+
+# Runs on the base branch context, so secrets are available.
+# Triggered when a maintainer adds the 'safe-to-test' label after reviewing the fork code.
+on:
+  pull_request_target:
+    types: [labeled]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-online:
+    name: Tests (Online)
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.label.name == 'safe-to-test'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the fork's PR code, not the base branch
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: test-online-fork-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: test-online-fork-cargo-
+
+      - name: Set up test API token
+        run: echo "$LINEAR_TEST_TOKEN" > ~/.linear_api_token_test
+        env:
+          LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
+
+      - name: Run online tests
+        run: cargo test --workspace --test online -- --test-threads=1
+
+      - name: Run blocking online tests
+        run: cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1
+
+      - name: Remove safe-to-test label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'safe-to-test'
+              });
+            } catch (e) {
+              // Label may have already been removed
+            }
