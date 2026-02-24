@@ -1011,7 +1011,7 @@ mod online {
 
         let client = test_client();
 
-        // Create a team.
+        // Create a team (the authenticated user becomes creator + auto-member).
         let unique = format!(
             "[test] sdk-member {}",
             &uuid::Uuid::new_v4().to_string()[..8]
@@ -1027,42 +1027,35 @@ mod online {
             id: team_id.clone(),
         };
 
-        // Get the authenticated user.
+        // Discover a different user to add as a member.
         let viewer = client.whoami::<User>().await.unwrap();
-        let user_id = viewer.id.clone().unwrap();
+        let my_id = viewer.id.clone().unwrap();
+        let all_users = client.users::<User>().last(250).send().await.unwrap();
+        let other_user = all_users
+            .nodes
+            .iter()
+            .find(|u| u.id.as_deref() != Some(&my_id))
+            .expect("workspace must have at least two users to run this test");
+        let other_user_id = other_user.id.clone().unwrap();
 
-        // Add the user as a member.
-        // The team creator may be auto-added in some workspaces, so "already a member"
-        // is acceptable — we verify membership and test removal below.
+        // Add the other user as a member — must succeed cleanly.
         let membership_input = TeamMembershipCreateInput {
             team_id: Some(team_id.clone()),
-            user_id: Some(user_id),
+            user_id: Some(other_user_id),
             ..Default::default()
         };
-        let add_result = client
+        let membership = client
             .team_membership_create::<TeamMembership>(membership_input)
-            .await;
-        match add_result {
-            Ok(membership) => {
-                let membership_id = membership.id.clone().unwrap();
-                assert!(!membership_id.is_empty());
+            .await
+            .unwrap();
+        let membership_id = membership.id.clone().unwrap();
+        assert!(!membership_id.is_empty());
 
-                // Delete the membership we just created.
-                client
-                    .team_membership_delete(None, membership_id)
-                    .await
-                    .unwrap();
-            }
-            Err(e) => {
-                // Accept "already a member" errors — the team creator is auto-added
-                // in some workspaces. Other errors should still fail the test.
-                let msg = e.to_string();
-                assert!(
-                    msg.contains("already a member") || msg.contains("already member"),
-                    "unexpected error from team_membership_create: {msg}"
-                );
-            }
-        }
+        // Delete the membership.
+        client
+            .team_membership_delete(None, membership_id)
+            .await
+            .unwrap();
 
         // Clean up: delete the team.
         client.team_delete(team_id).await.unwrap();

@@ -40,6 +40,13 @@ make check                               # lint + doc + build (no tests)
 make test                                # run tests only
 ```
 
+**Online tests must run serially.** They hit the live Linear API, which has plan-level limits (e.g. max teams). Running them in parallel causes spurious failures from resource exhaustion. Always use `-- --test-threads=1` when running online tests locally:
+
+```bash
+cargo test -p lineark-sdk --test online -- --test-threads=1
+cargo test -p lineark --test online -- --test-threads=1
+```
+
 ## Updating the schema
 
 `schema/schema.graphql` is a vendored copy of Linear's public GraphQL schema (SDL). It's checked in for reproducible builds and reviewable diffs. To update it:
