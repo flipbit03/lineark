@@ -168,6 +168,7 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `issue_unarchive(id)` | Unarchive a previously archived issue |
 | `issue_delete(permanently, id)` | Delete an issue |
 | `comment_create(input)` | Create a comment |
+| `comment_delete(id)` | Delete a comment |
 | `document_create(input)` | Create a document |
 | `document_update(input, id)` | Update a document |
 | `document_delete(id)` | Delete a document |
@@ -177,6 +178,11 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `project_milestone_create(input)` | Create a project milestone |
 | `project_milestone_update(input, id)` | Update a project milestone |
 | `project_milestone_delete(id)` | Delete a project milestone |
+| `team_create(copy_settings_from_team_id, input)` | Create a team |
+| `team_update(mapping, input, id)` | Update a team |
+| `team_delete(id)` | Delete a team |
+| `team_membership_create(input)` | Create a team membership |
+| `team_membership_delete(also_leave_parent_teams, id)` | Delete a team membership |
 | `issue_relation_create(override_created_at, input)` | Create an issue relation |
 | `file_upload(meta, public, size, type, name)` | Request a signed upload URL |
 | `image_upload_from_url(url)` | Upload image from URL |
@@ -205,7 +211,7 @@ For non-async contexts, enable the `blocking` feature:
 lineark-sdk = { version = "...", features = ["blocking"] }
 ```
 
-The blocking client mirrors the async API exactly:
+The blocking client mirrors the async API for all queries and most mutations:
 
 ```rust
 use lineark_sdk::blocking_client::Client;
