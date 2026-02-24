@@ -137,6 +137,95 @@ pub async fn project_delete<
         .execute_mutation::<T>(&query, variables, "projectDelete", "entity")
         .await
 }
+/// Creates a new team. The user who creates the team will automatically be added as a member to the newly created team.
+///
+/// Full type: [`Team`](super::types::Team)
+pub async fn team_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+>(
+    client: &Client,
+    copy_settings_from_team_id: Option<String>,
+    input: TeamCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "copySettingsFromTeamId" : copy_settings_from_team_id, "input" : input }
+    );
+    let query = String::from(
+        "mutation TeamCreate($copySettingsFromTeamId: String, $input: TeamCreateInput!) { teamCreate(copySettingsFromTeamId: $copySettingsFromTeamId, input: $input) { success team { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "teamCreate", "team")
+        .await
+}
+/// Updates a team.
+///
+/// Full type: [`Team`](super::types::Team)
+pub async fn team_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+>(
+    client: &Client,
+    mapping: Option<InheritanceEntityMapping>,
+    input: TeamUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "mapping" : mapping, "input" : input, "id" : id }
+    );
+    let query = String::from(
+        "mutation TeamUpdate($mapping: InheritanceEntityMapping, $input: TeamUpdateInput!, $id: String!) { teamUpdate(mapping: $mapping, input: $input, id: $id) { success team { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "teamUpdate", "team")
+        .await
+}
+/// Deletes a team.
+pub async fn team_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from("mutation TeamDelete($id: String!) { teamDelete(id: $id) { ")
+        + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "teamDelete")
+        .await
+}
+/// Creates a new team membership.
+///
+/// Full type: [`TeamMembership`](super::types::TeamMembership)
+pub async fn team_membership_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::TeamMembership>,
+>(
+    client: &Client,
+    input: TeamMembershipCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation TeamMembershipCreate($input: TeamMembershipCreateInput!) { teamMembershipCreate(input: $input) { success teamMembership { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "teamMembershipCreate", "teamMembership")
+        .await
+}
+/// Deletes a team membership.
+pub async fn team_membership_delete(
+    client: &Client,
+    also_leave_parent_teams: Option<bool>,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!(
+        { "alsoLeaveParentTeams" : also_leave_parent_teams, "id" : id }
+    );
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from(
+        "mutation TeamMembershipDelete($alsoLeaveParentTeams: Boolean, $id: String!) { teamMembershipDelete(alsoLeaveParentTeams: $alsoLeaveParentTeams, id: $id) { ",
+    ) + &response_parts.join(" ") + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "teamMembershipDelete")
+        .await
+}
 /// Creates a new project milestone.
 ///
 /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)

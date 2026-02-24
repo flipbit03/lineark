@@ -857,6 +857,94 @@ mod online {
 
     // ── Error handling ──────────────────────────────────────────────────────
 
+    // ── Team CRUD ────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn team_create_update_and_delete() {
+        use lineark_sdk::generated::inputs::{TeamCreateInput, TeamUpdateInput};
+
+        let client = test_client();
+
+        // Create a team with a unique name.
+        let unique = format!("[test] sdk-team {}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let input = TeamCreateInput {
+            name: Some(unique.clone()),
+            ..Default::default()
+        };
+        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team_id = team.id.clone().unwrap();
+        assert!(!team_id.is_empty());
+        assert_eq!(team.name, Some(unique));
+
+        // Update the team's description.
+        let update_input = TeamUpdateInput {
+            description: Some("Updated by SDK test.".to_string()),
+            ..Default::default()
+        };
+        let updated = client
+            .team_update::<Team>(None, update_input, team_id.clone())
+            .await
+            .unwrap();
+        assert!(updated.id.is_some());
+
+        // Verify the update by reading the team.
+        let fetched = client.team::<Team>(team_id.clone()).await.unwrap();
+        assert_eq!(
+            fetched.description,
+            Some("Updated by SDK test.".to_string())
+        );
+
+        // Delete the team.
+        client.team_delete(team_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn team_membership_create_and_delete() {
+        use lineark_sdk::generated::inputs::{TeamCreateInput, TeamMembershipCreateInput};
+
+        let client = test_client();
+
+        // Create a team.
+        let unique = format!(
+            "[test] sdk-member {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        let input = TeamCreateInput {
+            name: Some(unique),
+            ..Default::default()
+        };
+        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team_id = team.id.clone().unwrap();
+
+        // Get the authenticated user.
+        let viewer = client.whoami::<User>().await.unwrap();
+        let user_id = viewer.id.clone().unwrap();
+
+        // Add the user as a member.
+        let membership_input = TeamMembershipCreateInput {
+            team_id: Some(team_id.clone()),
+            user_id: Some(user_id),
+            ..Default::default()
+        };
+        let membership = client
+            .team_membership_create::<TeamMembership>(membership_input)
+            .await
+            .unwrap();
+        let membership_id = membership.id.clone().unwrap();
+        assert!(!membership_id.is_empty());
+
+        // Delete the membership.
+        client
+            .team_membership_delete(None, membership_id)
+            .await
+            .unwrap();
+
+        // Clean up: delete the team.
+        client.team_delete(team_id).await.unwrap();
+    }
+
+    // ── Error handling ──────────────────────────────────────────────────────
+
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn invalid_token_returns_auth_error() {
         let client = Client::from_token("lin_api_invalid_token_12345").unwrap();

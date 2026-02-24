@@ -31,7 +31,7 @@ pub enum CommentsAction {
     /// Delete a comment.
     ///
     /// Examples:
-    ///   lineark comments delete <COMMENT-UUID>
+    ///   lineark comments delete COMMENT-UUID
     Delete {
         /// Comment UUID.
         id: String,

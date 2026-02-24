@@ -64,7 +64,12 @@ fn teams_help_shows_subcommands() {
         .args(["teams", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("list"));
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"))
+        .stdout(predicate::str::contains("members"));
 }
 
 #[test]
@@ -693,6 +698,116 @@ fn cycles_read_rejects_inf() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("--team"));
+}
+
+// ── Teams CRUD ──────────────────────────────────────────────────────────
+
+#[test]
+fn teams_create_help_shows_flags() {
+    lineark()
+        .args(["teams", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--key"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--icon"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--timezone"))
+        .stdout(predicate::str::contains("--private"))
+        .stdout(predicate::str::contains("--cycles-enabled"))
+        .stdout(predicate::str::contains("--triage-enabled"));
+}
+
+#[test]
+fn teams_update_help_shows_flags() {
+    lineark()
+        .args(["teams", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--name"))
+        .stdout(predicate::str::contains("--key"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--icon"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--timezone"))
+        .stdout(predicate::str::contains("--private"))
+        .stdout(predicate::str::contains("--cycles-enabled"))
+        .stdout(predicate::str::contains("--triage-enabled"));
+}
+
+#[test]
+fn teams_update_no_fields_errors() {
+    lineark()
+        .args(["--api-token", "fake-token", "teams", "update", "ENG"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn teams_delete_help_shows_description() {
+    lineark()
+        .args(["teams", "delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn teams_read_help_shows_description() {
+    lineark()
+        .args(["teams", "read", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn teams_members_add_help_shows_flags() {
+    lineark()
+        .args(["teams", "members", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--user"));
+}
+
+#[test]
+fn teams_members_remove_help_shows_flags() {
+    lineark()
+        .args(["teams", "members", "remove", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--user"));
+}
+
+#[test]
+fn teams_members_add_requires_user_flag() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "teams",
+            "members",
+            "add",
+            "ENG",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--user"));
+}
+
+#[test]
+fn usage_includes_teams_create() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("teams create"))
+        .stdout(predicate::str::contains("teams update"))
+        .stdout(predicate::str::contains("teams delete"))
+        .stdout(predicate::str::contains("teams read"))
+        .stdout(predicate::str::contains("teams members add"))
+        .stdout(predicate::str::contains("teams members remove"));
 }
 
 // ── Self command ─────────────────────────────────────────────────────────────

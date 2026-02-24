@@ -28,6 +28,17 @@ It works on --assignee, --lead, and --members (case-insensitive).
 COMMANDS:
   lineark whoami                                   Show authenticated user
   lineark teams list                               List all teams
+  lineark teams read <KEY-OR-ID>                   Full team detail (members, settings)
+  lineark teams create <NAME>                      Create a team
+    [--key KEY] [--description TEXT]               Key (auto-generated if omitted)
+    [--icon ICON] [--color COLOR]                  Icon, color
+    [--timezone TZ] [--private]                    Timezone, private flag
+    [--cycles-enabled] [--triage-enabled]          Enable cycles/triage
+  lineark teams update <KEY-OR-ID>                 Update a team
+    [--name NAME] [--description TEXT] ...         (same flags as create, all optional)
+  lineark teams delete <KEY-OR-ID>                 Delete a team
+  lineark teams members add <TEAM> --user NAME     Add member to team
+  lineark teams members remove <TEAM> --user NAME  Remove member from team
   lineark users list [--active]                    List users
   lineark projects list [--led-by-me]              List all projects (with lead)
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)

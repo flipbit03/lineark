@@ -236,6 +236,57 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_delete::<T>(self, id).await
     }
+    /// Creates a new team. The user who creates the team will automatically be added as a member to the newly created team.
+    ///
+    /// Full type: [`Team`](super::types::Team)
+    pub async fn team_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+    >(
+        &self,
+        copy_settings_from_team_id: Option<String>,
+        input: TeamCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::team_create::<T>(self, copy_settings_from_team_id, input).await
+    }
+    /// Updates a team.
+    ///
+    /// Full type: [`Team`](super::types::Team)
+    pub async fn team_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+    >(
+        &self,
+        mapping: Option<InheritanceEntityMapping>,
+        input: TeamUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::team_update::<T>(self, mapping, input, id).await
+    }
+    /// Deletes a team.
+    pub async fn team_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::team_delete(self, id).await
+    }
+    /// Creates a new team membership.
+    ///
+    /// Full type: [`TeamMembership`](super::types::TeamMembership)
+    pub async fn team_membership_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::TeamMembership>,
+    >(
+        &self,
+        input: TeamMembershipCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::team_membership_create::<T>(self, input).await
+    }
+    /// Deletes a team membership.
+    pub async fn team_membership_delete(
+        &self,
+        also_leave_parent_teams: Option<bool>,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::team_membership_delete(self, also_leave_parent_teams, id).await
+    }
     /// Creates a new project milestone.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)

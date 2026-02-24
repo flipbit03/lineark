@@ -24,7 +24,7 @@ anyhow = "1"
 chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
 semver = "1"
-uuid = "1"
+uuid = { version = "1", features = ["v4"] }
 percent-encoding = "2"
 home = "0.5"
 
