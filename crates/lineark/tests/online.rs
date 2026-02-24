@@ -2959,7 +2959,7 @@ mod online {
     fn teams_members_add_and_remove() {
         let token = api_token();
 
-        // Create a team.
+        // Create a team (the authenticated user becomes creator + auto-member).
         let unique_name = format!(
             "[test] tm-members {}",
             &uuid::Uuid::new_v4().to_string()[..8]
@@ -2989,9 +2989,27 @@ mod online {
             id: team_id.clone(),
         };
 
-        // Add authenticated user as a member.
-        // The team creator may be auto-added in some workspaces, so "already a member"
-        // is acceptable — we still verify membership and test removal below.
+        // Discover a different user to add as a member.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "whoami"])
+            .output()
+            .unwrap();
+        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let my_id = whoami["id"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "users", "list"])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "users list should succeed");
+        let users: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).unwrap();
+        let other_user = users
+            .iter()
+            .find(|u| u["id"].as_str() != Some(&my_id))
+            .expect("workspace must have at least two users to run this test");
+        let other_user_id = other_user["id"].as_str().unwrap().to_string();
+
+        // Add the other user as a member — must succeed cleanly.
         let output = lineark()
             .args([
                 "--api-token",
@@ -3003,34 +3021,23 @@ mod online {
                 "add",
                 &team_id,
                 "--user",
-                "me",
+                &other_user_id,
             ])
             .output()
             .expect("failed to execute lineark");
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let already_member = stderr.contains("already a member");
         assert!(
-            output.status.success() || already_member,
-            "teams members add should succeed (or user already a member).\nstdout: {stdout}\nstderr: {stderr}"
+            output.status.success(),
+            "teams members add should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
-        if output.status.success() {
-            let membership: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-            assert!(
-                membership.get("id").is_some(),
-                "membership should have an id"
-            );
-        }
+        let membership: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            membership.get("id").is_some(),
+            "membership should have an id"
+        );
 
-        // Get my user ID for verification.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "whoami"])
-            .output()
-            .unwrap();
-        let whoami: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let my_id = whoami["id"].as_str().unwrap();
-
-        // Read the team and verify member is present.
+        // Verify the other user appears in team members.
         retry_with_backoff(8, || {
             let output = lineark()
                 .args([
@@ -3052,15 +3059,18 @@ mod online {
             let members = detail["members"]["nodes"]
                 .as_array()
                 .ok_or("members.nodes missing")?;
-            if members.iter().any(|m| m["id"].as_str() == Some(my_id)) {
+            if members
+                .iter()
+                .any(|m| m["id"].as_str() == Some(&other_user_id))
+            {
                 Ok(())
             } else {
-                Err("authenticated user not found in team members".to_string())
+                Err("other user not found in team members".to_string())
             }
         })
         .expect("team should contain the added member (after retries)");
 
-        // Remove the member.
+        // Remove the other user.
         let output = lineark()
             .args([
                 "--api-token",
@@ -3072,7 +3082,7 @@ mod online {
                 "remove",
                 &team_id,
                 "--user",
-                "me",
+                &other_user_id,
             ])
             .output()
             .expect("failed to execute lineark");
