@@ -75,6 +75,12 @@ jobs:
     name: Tests (Online)
     # Skip on fork PRs — secrets are unavailable. Use safe-to-test label instead.
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Online tests share a single Linear workspace — never run two at the same time.
+    # cancel-in-progress: false queues new runs and waits for the current one to finish,
+    # so we don't kill a run mid-flight and leak resources.
+    concurrency:
+      group: linear-online-tests
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -77,6 +77,61 @@ where
     Err(last_err)
 }
 
+/// RAII guard — permanently deletes a team on drop.
+/// Ensures cleanup even when the test panics mid-way.
+struct TeamGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for TeamGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.team_delete(id).await });
+    }
+}
+
+/// RAII guard — permanently deletes an issue on drop.
+struct IssueGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for IssueGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.issue_delete::<Issue>(Some(true), id).await });
+    }
+}
+
+/// RAII guard — permanently deletes a project on drop.
+struct ProjectGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for ProjectGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.project_delete::<Project>(id).await });
+    }
+}
+
 test_with::runner!(online);
 
 #[test_with::module]
@@ -407,6 +462,10 @@ mod online {
         let issue_id = created["id"]
             .as_str()
             .expect("created issue should have id (UUID)");
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.to_string(),
+        };
 
         // Update the issue (use UUID to avoid search index lag).
         let output = lineark()
@@ -481,6 +540,10 @@ mod online {
             .as_str()
             .expect("created issue should have id (UUID)")
             .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Archive the issue.
         let output = lineark()
@@ -614,6 +677,10 @@ mod online {
         assert!(output.status.success(), "issue creation should succeed");
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
         let identifier = created["identifier"]
             .as_str()
             .expect("created issue should have identifier (e.g. CAD-1234)")
@@ -708,6 +775,10 @@ mod online {
         let issue_id = created["id"]
             .as_str()
             .expect("created issue should have id (UUID)");
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.to_string(),
+        };
 
         // Delete the issue permanently via CLI.
         let output = lineark()
@@ -773,6 +844,10 @@ mod online {
             .as_str()
             .expect("created issue should have id (UUID)")
             .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Delete without --permanently (trash).
         let output = lineark()
@@ -857,6 +932,10 @@ mod online {
         assert!(output.status.success(), "issue creation should succeed");
         let issue: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = issue["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Create a document associated with the issue.
         let output = lineark()
@@ -1329,6 +1408,10 @@ mod online {
         assert!(output.status.success());
         let issue_a: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_a_id = issue_a["id"].as_str().unwrap().to_string();
+        let _issue_a_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_a_id.clone(),
+        };
 
         let output = lineark()
             .args([
@@ -1349,6 +1432,10 @@ mod online {
         assert!(output.status.success());
         let issue_b: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_b_id = issue_b["id"].as_str().unwrap().to_string();
+        let _issue_b_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_b_id.clone(),
+        };
 
         // Create a relation between them via the SDK.
         {
@@ -1455,6 +1542,10 @@ mod online {
         );
         let parent: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let parent_id = parent["id"].as_str().unwrap().to_string();
+        let _parent_guard = IssueGuard {
+            token: token.clone(),
+            id: parent_id.clone(),
+        };
 
         // Create a child issue with --parent.
         let output = lineark()
@@ -1481,6 +1572,10 @@ mod online {
         );
         let child: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let child_id = child["id"].as_str().unwrap().to_string();
+        let _child_guard = IssueGuard {
+            token: token.clone(),
+            id: child_id.clone(),
+        };
 
         // Add a comment on the parent.
         let output = lineark()
@@ -1673,6 +1768,10 @@ mod online {
         assert!(output.status.success());
         let parent: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let parent_id = parent["id"].as_str().unwrap().to_string();
+        let _parent_guard = IssueGuard {
+            token: token.clone(),
+            id: parent_id.clone(),
+        };
 
         // Create child with --parent.
         let output = lineark()
@@ -1696,6 +1795,10 @@ mod online {
         assert!(output.status.success());
         let child: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let child_id = child["id"].as_str().unwrap().to_string();
+        let _child_guard = IssueGuard {
+            token: token.clone(),
+            id: child_id.clone(),
+        };
 
         // Update child with --clear-parent.
         let output = lineark()
@@ -1770,6 +1873,10 @@ mod online {
             client.project_create::<Project>(None, input).await.unwrap()
         });
         let project_id = project.id.as_ref().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
 
         // Create a milestone via CLI (use project_id to avoid ambiguity with stale data).
         let output = lineark()
@@ -1966,6 +2073,10 @@ mod online {
             .as_str()
             .expect("created project should have id")
             .to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
         assert!(
             created.get("name").is_some(),
             "created project should have name"
@@ -2114,6 +2225,10 @@ mod online {
         );
         let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let project_id = created["id"].as_str().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
 
         // Read by UUID.
         let output = lineark()
@@ -2232,6 +2347,10 @@ mod online {
         );
         let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let project_id = created["id"].as_str().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
 
         // Get the authenticated user's info for comparison.
         let output = lineark()
@@ -2336,6 +2455,10 @@ mod online {
         );
         let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let issue_id = created["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Read the issue back and verify assignee.
         let output = lineark()
@@ -2403,6 +2526,10 @@ mod online {
         assert!(output.status.success());
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Update with --assignee me.
         let output = lineark()
@@ -2486,6 +2613,10 @@ mod online {
         let issue_id = created["id"]
             .as_str()
             .expect("created issue should have id (UUID)");
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.to_string(),
+        };
 
         // Create a comment (use UUID to avoid search index lag).
         let output = lineark()
@@ -2553,6 +2684,10 @@ mod online {
             .as_str()
             .expect("created issue should have id (UUID)")
             .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
 
         // Create a comment.
         let output = lineark()
@@ -2683,6 +2818,10 @@ mod online {
             .as_str()
             .expect("created team should have id")
             .to_string();
+        let _team_guard = TeamGuard {
+            token: token.clone(),
+            id: team_id.clone(),
+        };
         assert!(
             created.get("name").is_some(),
             "created team should have name"
@@ -2741,6 +2880,10 @@ mod online {
         );
         let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let team_id = created["id"].as_str().unwrap().to_string();
+        let _team_guard = TeamGuard {
+            token: token.clone(),
+            id: team_id.clone(),
+        };
 
         // Update the team's description.
         let output = lineark()
@@ -2841,8 +2984,14 @@ mod online {
         );
         let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let team_id = created["id"].as_str().unwrap().to_string();
+        let _team_guard = TeamGuard {
+            token: token.clone(),
+            id: team_id.clone(),
+        };
 
         // Add authenticated user as a member.
+        // The team creator may be auto-added in some workspaces, so "already a member"
+        // is acceptable — we still verify membership and test removal below.
         let output = lineark()
             .args([
                 "--api-token",
@@ -2860,15 +3009,18 @@ mod online {
             .expect("failed to execute lineark");
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let already_member = stderr.contains("already a member");
         assert!(
-            output.status.success(),
-            "teams members add should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+            output.status.success() || already_member,
+            "teams members add should succeed (or user already a member).\nstdout: {stdout}\nstderr: {stderr}"
         );
-        let membership: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert!(
-            membership.get("id").is_some(),
-            "membership should have an id"
-        );
+        if output.status.success() {
+            let membership: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            assert!(
+                membership.get("id").is_some(),
+                "membership should have an id"
+            );
+        }
 
         // Get my user ID for verification.
         let output = lineark()
