@@ -39,6 +39,14 @@ Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UU
 ```
 lineark whoami                                   Show authenticated user
 lineark teams list                               List all teams
+lineark teams read <ID>                          Full team detail (members, settings)
+lineark teams create <NAME>                      Create a team
+  [--key KEY] [--description TEXT] ...           See --help for all options
+lineark teams update <ID>                        Update a team
+  [--name NAME] [--key KEY] ...                  See --help for all options
+lineark teams delete <ID>                        Delete a team
+lineark teams members add <TEAM> --user USER     Add a user to a team
+lineark teams members remove <TEAM> --user USER  Remove a user from a team
 lineark users list [--active]                    List users
 lineark projects list [--led-by-me]              List all projects (with lead)
 lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
@@ -67,6 +75,7 @@ lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
 lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+lineark comments delete <ID>                     Delete a comment
 lineark documents list [--limit N]               List documents (lean output)
   [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
 lineark documents read <ID>                      Read document (includes content)

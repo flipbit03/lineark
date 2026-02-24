@@ -70,13 +70,14 @@ That's it. Your agent discovers all commands at runtime by running `lineark usag
 
 | Area | Commands |
 |------|----------|
-| **Issues** | `list`, `read`, `search`, `create`, `update`, `archive`, `delete` |
-| **Comments** | `create` on any issue |
+| **Issues** | `list`, `read`, `search`, `create`, `update`, `archive`, `unarchive`, `delete` |
+| **Comments** | `create`, `delete` |
 | **Projects** | `list`, `read`, `create` |
 | **Milestones** | `list`, `read`, `create`, `update`, `delete` |
 | **Cycles** | `list`, `read` |
 | **Documents** | `list`, `read`, `create`, `update`, `delete` |
-| **Teams / Users / Labels** | `list` |
+| **Teams** | `list`, `read`, `create`, `update`, `delete`, `members add`, `members remove` |
+| **Users / Labels** | `list` |
 | **File embeds** | `upload`, `download` |
 
 Every command supports `--help` for full details. Most flags accept human-readable names — `--team ENG`, `--assignee "Jane Doe"`, `--labels "Bug,P0"` — no UUIDs required.
