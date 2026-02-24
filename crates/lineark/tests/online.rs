@@ -2518,7 +2518,6 @@ mod online {
         delete_issue(issue_id);
     }
 
-
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_and_delete() {
         let token = api_token();
@@ -2657,7 +2656,10 @@ mod online {
         let token = api_token();
 
         // Create a team via CLI.
-        let unique_name = format!("[test] CLI teams create {}", uuid::Uuid::new_v4());
+        let unique_name = format!(
+            "[test] tm-create {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
         let output = lineark()
             .args([
                 "--api-token",
@@ -2716,7 +2718,7 @@ mod online {
         let token = api_token();
 
         // Create a team.
-        let unique_name = format!("[test] CLI teams CRUD {}", uuid::Uuid::new_v4());
+        let unique_name = format!("[test] tm-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
         let output = lineark()
             .args([
                 "--api-token",
@@ -2815,7 +2817,10 @@ mod online {
         let token = api_token();
 
         // Create a team.
-        let unique_name = format!("[test] CLI teams members {}", uuid::Uuid::new_v4());
+        let unique_name = format!(
+            "[test] tm-members {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
         let output = lineark()
             .args([
                 "--api-token",

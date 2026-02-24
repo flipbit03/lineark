@@ -866,7 +866,7 @@ mod online {
         let client = test_client();
 
         // Create a team with a unique name.
-        let unique = format!("[test] SDK team {}", uuid::Uuid::new_v4());
+        let unique = format!("[test] sdk-team {}", &uuid::Uuid::new_v4().to_string()[..8]);
         let input = TeamCreateInput {
             name: Some(unique.clone()),
             ..Default::default()
@@ -905,7 +905,10 @@ mod online {
         let client = test_client();
 
         // Create a team.
-        let unique = format!("[test] SDK membership {}", uuid::Uuid::new_v4());
+        let unique = format!(
+            "[test] sdk-member {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
         let input = TeamCreateInput {
             name: Some(unique),
             ..Default::default()
