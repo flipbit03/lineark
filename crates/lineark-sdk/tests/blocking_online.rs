@@ -16,15 +16,48 @@ fn no_online_test_token() -> Option<String> {
     }
 }
 
-fn test_client() -> Client {
+fn test_token() -> String {
     let path = home::home_dir()
         .expect("could not determine home directory")
         .join(".linear_api_token_test");
-    let token = std::fs::read_to_string(&path)
+    std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
         .trim()
-        .to_string();
-    Client::from_token(token).expect("failed to create blocking test client")
+        .to_string()
+}
+
+fn test_client() -> Client {
+    Client::from_token(test_token()).expect("failed to create blocking test client")
+}
+
+/// RAII guard — permanently deletes an issue on drop.
+struct IssueGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for IssueGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let _ = client.issue_delete::<Issue>(Some(true), self.id.clone());
+    }
+}
+
+/// RAII guard — permanently deletes a document on drop.
+struct DocumentGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for DocumentGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let _ = client.document_delete::<Document>(self.id.clone());
+    }
 }
 
 test_with::runner!(blocking_online);
@@ -96,6 +129,10 @@ mod blocking_online {
         };
         let entity = client.document_create::<Document>(input).unwrap();
         let doc_id = entity.id.clone().unwrap();
+        let _doc_guard = DocumentGuard {
+            token: test_token(),
+            id: doc_id.clone(),
+        };
 
         // Read.
         let doc = client.document(doc_id.clone()).unwrap();
@@ -145,6 +182,10 @@ mod blocking_online {
         };
         let entity = client.issue_create::<Issue>(input).unwrap();
         let issue_id = entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
 
         let _del = client.issue_delete::<Issue>(Some(true), issue_id).unwrap();
     }
@@ -167,6 +208,10 @@ mod blocking_online {
         };
         let entity = client.issue_create::<Issue>(input).unwrap();
         let issue_id = entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
 
         // Archive.
         let arch = client

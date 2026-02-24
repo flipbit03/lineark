@@ -15,6 +15,11 @@ env:
 jobs:
   test-online:
     name: Tests (Online)
+    # Share the same concurrency group as the main CI online tests — only one
+    # online test run at a time across all workflows, to avoid resource conflicts.
+    concurrency:
+      group: linear-online-tests
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     if: >-
       github.event.label.name == 'safe-to-test'
