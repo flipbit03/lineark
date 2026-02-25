@@ -326,6 +326,8 @@ pub struct IssueDetail {
     #[graphql(nested)]
     pub relations: Option<RelationConnection>,
     #[graphql(nested)]
+    pub inverse_relations: Option<RelationConnection>,
+    #[graphql(nested)]
     pub children: Option<ChildrenConnection>,
     #[graphql(nested)]
     pub comments: Option<CommentsConnection>,
@@ -371,6 +373,8 @@ pub struct RelationConnection {
 pub struct RelationNode {
     pub id: Option<String>,
     pub r#type: Option<String>,
+    #[graphql(nested)]
+    pub issue: Option<RelatedIssueRef>,
     #[graphql(nested)]
     pub related_issue: Option<RelatedIssueRef>,
 }
