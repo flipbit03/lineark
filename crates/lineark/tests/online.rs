@@ -572,25 +572,31 @@ mod online {
             "archive response should contain id"
         );
 
-        // Read the issue and verify archivedAt is set.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        assert!(
-            detail.get("archivedAt").and_then(|v| v.as_str()).is_some(),
-            "archivedAt should be set after archiving"
-        );
+        // Read the issue and verify archivedAt is set (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            if detail.get("archivedAt").and_then(|v| v.as_str()).is_some() {
+                Ok(())
+            } else {
+                Err("archivedAt should be set after archiving".to_string())
+            }
+        })
+        .expect("archivedAt should be set after archiving");
 
         // Unarchive the issue.
         let output = lineark()
@@ -617,25 +623,31 @@ mod online {
             "unarchive response should contain id"
         );
 
-        // Read again and verify archivedAt is cleared.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        assert!(
-            detail.get("archivedAt").unwrap().is_null(),
-            "archivedAt should be null after unarchiving"
-        );
+        // Read again and verify archivedAt is cleared (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            if detail.get("archivedAt").unwrap().is_null() {
+                Ok(())
+            } else {
+                Err("archivedAt should be null after unarchiving".to_string())
+            }
+        })
+        .expect("archivedAt should be null after unarchiving");
 
         // Clean up: permanently delete.
         delete_issue(&issue_id);
@@ -2553,25 +2565,35 @@ mod online {
             "issues update --assignee me should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
 
-        // Read the issue back and verify assignee.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
-        assert_eq!(
-            assignee_name, my_name,
-            "after update, assignee should be the authenticated user"
-        );
+        // Read the issue back and verify assignee (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        let my_name_r = my_name.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
+            if assignee_name == my_name_r {
+                Ok(())
+            } else {
+                Err(format!(
+                    "after update, assignee should be '{}', got '{}'",
+                    my_name_r, assignee_name
+                ))
+            }
+        })
+        .expect("after update, assignee should be the authenticated user");
 
         // Clean up.
         delete_issue(&issue_id);
