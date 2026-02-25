@@ -396,6 +396,13 @@ impl Client {
         crate::generated::mutations::issue_relation_create::<T>(self, override_created_at, input)
             .await
     }
+    /// Deletes an issue relation.
+    pub async fn issue_relation_delete(
+        &self,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::issue_relation_delete(self, id).await
+    }
     /// Creates a new document.
     ///
     /// Full type: [`Document`](super::types::Document)

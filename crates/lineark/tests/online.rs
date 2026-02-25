@@ -572,25 +572,31 @@ mod online {
             "archive response should contain id"
         );
 
-        // Read the issue and verify archivedAt is set.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        assert!(
-            detail.get("archivedAt").and_then(|v| v.as_str()).is_some(),
-            "archivedAt should be set after archiving"
-        );
+        // Read the issue and verify archivedAt is set (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            if detail.get("archivedAt").and_then(|v| v.as_str()).is_some() {
+                Ok(())
+            } else {
+                Err("archivedAt should be set after archiving".to_string())
+            }
+        })
+        .expect("archivedAt should be set after archiving");
 
         // Unarchive the issue.
         let output = lineark()
@@ -617,25 +623,31 @@ mod online {
             "unarchive response should contain id"
         );
 
-        // Read again and verify archivedAt is cleared.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        assert!(
-            detail.get("archivedAt").unwrap().is_null(),
-            "archivedAt should be null after unarchiving"
-        );
+        // Read again and verify archivedAt is cleared (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            if detail.get("archivedAt").unwrap().is_null() {
+                Ok(())
+            } else {
+                Err("archivedAt should be null after unarchiving".to_string())
+            }
+        })
+        .expect("archivedAt should be null after unarchiving");
 
         // Clean up: permanently delete.
         delete_issue(&issue_id);
@@ -2553,25 +2565,35 @@ mod online {
             "issues update --assignee me should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
 
-        // Read the issue back and verify assignee.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "read",
-                &issue_id,
-            ])
-            .output()
-            .unwrap();
-        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
-        assert_eq!(
-            assignee_name, my_name,
-            "after update, assignee should be the authenticated user"
-        );
+        // Read the issue back and verify assignee (retry for eventual consistency).
+        let token_r = token.clone();
+        let issue_id_r = issue_id.clone();
+        let my_name_r = my_name.clone();
+        retry_with_backoff(5, move || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token_r,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    &issue_id_r,
+                ])
+                .output()
+                .unwrap();
+            let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            let assignee_name = detail["assignee"]["name"].as_str().unwrap_or("");
+            if assignee_name == my_name_r {
+                Ok(())
+            } else {
+                Err(format!(
+                    "after update, assignee should be '{}', got '{}'",
+                    my_name_r, assignee_name
+                ))
+            }
+        })
+        .expect("after update, assignee should be the authenticated user");
 
         // Clean up.
         delete_issue(&issue_id);
@@ -3095,5 +3117,285 @@ mod online {
 
         // Clean up: delete the team.
         delete_team(&team_id);
+    }
+
+    // ── Relations ────────────────────────────────────────────────────────────
+
+    /// Helper: create two test issues, returning their UUIDs and guards.
+    fn create_two_issues(
+        token: &str,
+        team_key: &str,
+    ) -> ((String, IssueGuard), (String, IssueGuard)) {
+        let out1 = lineark()
+            .args([
+                "--api-token",
+                token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] relation issue A",
+                "--team",
+                team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(out1.status.success(), "issue A creation should succeed");
+        let a: serde_json::Value = serde_json::from_slice(&out1.stdout).unwrap();
+        let a_id = a["id"].as_str().unwrap().to_string();
+        let a_guard = IssueGuard {
+            token: token.to_string(),
+            id: a_id.clone(),
+        };
+
+        let out2 = lineark()
+            .args([
+                "--api-token",
+                token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] relation issue B",
+                "--team",
+                team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(out2.status.success(), "issue B creation should succeed");
+        let b: serde_json::Value = serde_json::from_slice(&out2.stdout).unwrap();
+        let b_id = b["id"].as_str().unwrap().to_string();
+        let b_guard = IssueGuard {
+            token: token.to_string(),
+            id: b_id.clone(),
+        };
+
+        ((a_id, a_guard), (b_id, b_guard))
+    }
+
+    /// Helper: get the first team key.
+    fn first_team_key(token: &str) -> String {
+        let output = lineark()
+            .args(["--api-token", token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        teams[0]["key"].as_str().unwrap().to_string()
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_blocks() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--blocks",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create --blocks should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(rel.get("id").is_some(), "relation should have an id");
+        assert_eq!(rel["type"].as_str(), Some("blocks"));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_blocked_by() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        // "A --blocked-by B" means B blocks A.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--blocked-by",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create --blocked-by should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(rel.get("id").is_some(), "relation should have an id");
+        assert_eq!(rel["type"].as_str(), Some("blocks"));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_related() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--related",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create --related should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(rel.get("id").is_some(), "relation should have an id");
+        assert_eq!(rel["type"].as_str(), Some("related"));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_duplicate() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--duplicate",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create --duplicate should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(rel.get("id").is_some(), "relation should have an id");
+        assert_eq!(rel["type"].as_str(), Some("duplicate"));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_similar() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--similar",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create --similar should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(rel.get("id").is_some(), "relation should have an id");
+        assert_eq!(rel["type"].as_str(), Some("similar"));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn relations_create_and_delete() {
+        let token = api_token();
+        let team_key = first_team_key(&token);
+        let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
+
+        // Create a relation.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "create",
+                &a_id,
+                "--blocks",
+                &b_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let rel: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let rel_id = rel["id"]
+            .as_str()
+            .expect("relation should have id")
+            .to_string();
+
+        // Delete the relation.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "relations",
+                "delete",
+                &rel_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "relations delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(result["success"].as_bool(), Some(true));
     }
 }

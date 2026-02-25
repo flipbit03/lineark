@@ -76,6 +76,11 @@ lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
 lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
 lineark comments delete <ID>                     Delete a comment
+lineark relations create <ISSUE>                 Create an issue relation
+  --blocks <ISSUE>                               Source blocks target
+  --blocked-by <ISSUE>                           Source is blocked by target
+  --related/--duplicate/--similar <ISSUE>        Other relation types
+lineark relations delete <RELATION-UUID>         Delete an issue relation
 lineark documents list [--limit N]               List documents (lean output)
   [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
 lineark documents read <ID>                      Read document (includes content)
