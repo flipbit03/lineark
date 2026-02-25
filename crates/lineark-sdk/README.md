@@ -184,6 +184,7 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `team_membership_create(input)` | Create a team membership |
 | `team_membership_delete(also_leave_parent_teams, id)` | Delete a team membership |
 | `issue_relation_create(override_created_at, input)` | Create an issue relation |
+| `issue_relation_delete(id)` | Delete an issue relation |
 | `file_upload(meta, public, size, type, name)` | Request a signed upload URL |
 | `image_upload_from_url(url)` | Upload image from URL |
 

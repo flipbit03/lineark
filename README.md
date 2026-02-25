@@ -72,6 +72,7 @@ That's it. Your agent discovers all commands at runtime by running `lineark usag
 |------|----------|
 | **Issues** | `list`, `read`, `search`, `create`, `update`, `archive`, `unarchive`, `delete` |
 | **Comments** | `create`, `delete` |
+| **Relations** | `create` (blocks, blocked-by, related, duplicate, similar), `delete` |
 | **Projects** | `list`, `read`, `create` |
 | **Milestones** | `list`, `read`, `create`, `update`, `delete` |
 | **Cycles** | `list`, `read` |
