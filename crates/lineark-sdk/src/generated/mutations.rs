@@ -405,6 +405,21 @@ pub async fn issue_relation_create<
         .execute_mutation::<T>(&query, variables, "issueRelationCreate", "issueRelation")
         .await
 }
+/// Deletes an issue relation.
+pub async fn issue_relation_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from(
+        "mutation IssueRelationDelete($id: String!) { issueRelationDelete(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "issueRelationDelete")
+        .await
+}
 /// Creates a new document.
 ///
 /// Full type: [`Document`](super::types::Document)

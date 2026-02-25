@@ -39,6 +39,8 @@ enum Command {
     Issues(commands::issues::IssuesCmd),
     /// Manage comments.
     Comments(commands::comments::CommentsCmd),
+    /// Manage issue relations (blocking, related, duplicate, similar).
+    Relations(commands::relations::RelationsCmd),
     /// Manage documents.
     Documents(commands::documents::DocumentsCmd),
     /// Manage project milestones.
@@ -117,6 +119,7 @@ async fn main() {
         Command::Cycles(cmd) => commands::cycles::run(cmd, &client, format).await,
         Command::Issues(cmd) => commands::issues::run(cmd, &client, format).await,
         Command::Comments(cmd) => commands::comments::run(cmd, &client, format).await,
+        Command::Relations(cmd) => commands::relations::run(cmd, &client, format).await,
         Command::Documents(cmd) => commands::documents::run(cmd, &client, format).await,
         Command::Embeds(cmd) => commands::embeds::run(cmd, &client, format).await,
         Command::ProjectMilestones(cmd) => commands::milestones::run(cmd, &client, format).await,

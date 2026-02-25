@@ -41,6 +41,7 @@ documentDelete = true
 fileUpload = true
 imageUploadFromUrl = true
 issueRelationCreate = true
+issueRelationDelete = true
 projectMilestoneCreate = true
 projectMilestoneUpdate = true
 projectMilestoneDelete = true
