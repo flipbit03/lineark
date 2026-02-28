@@ -87,6 +87,9 @@ pub enum IssuesAction {
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
         #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
         priority: Option<i64>,
+        /// Estimate points (valid values depend on the team's estimation scale).
+        #[arg(short = 'e', long)]
+        estimate: Option<i64>,
         /// Issue description (markdown).
         #[arg(short = 'd', long)]
         description: Option<String>,
@@ -146,6 +149,9 @@ pub enum IssuesAction {
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
         #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
         priority: Option<i64>,
+        /// Estimate points (valid values depend on the team's estimation scale).
+        #[arg(short = 'e', long)]
+        estimate: Option<i64>,
         /// Comma-separated label names or UUIDs. Behavior depends on --label-by.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
@@ -539,6 +545,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             assignee,
             labels,
             priority,
+            estimate,
             description,
             parent,
             status,
@@ -583,6 +590,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 assignee_id,
                 label_ids,
                 priority,
+                estimate,
                 description,
                 parent_id,
                 state_id,
@@ -636,6 +644,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             identifier,
             status,
             priority,
+            estimate,
             labels,
             label_by,
             clear_labels,
@@ -649,6 +658,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
         } => {
             if status.is_none()
                 && priority.is_none()
+                && estimate.is_none()
                 && labels.is_none()
                 && !clear_labels
                 && assignee.is_none()
@@ -660,7 +670,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 && cycle.is_none()
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --status, --priority, --assignee, --labels, --title, --description, --parent, --project, or --cycle to specify changes."
+                    "No update fields provided. Use --status, --priority, --estimate, --assignee, --labels, --title, --description, --parent, --project, or --cycle to specify changes."
                 ));
             }
 
@@ -732,6 +742,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 description,
                 assignee_id,
                 priority,
+                estimate,
                 state_id,
                 parent_id,
                 label_ids,

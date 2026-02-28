@@ -61,12 +61,13 @@ COMMANDS:
     [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
     [--status NAME,...] [--show-done]              Comma-separated status names
   lineark issues create <TITLE> --team KEY         Create an issue
-    [-p 0-4] [--assignee NAME-OR-ID|me]            0=none 1=urgent 2=high 3=medium 4=low
+    [-p 0-4] [-e N] [--assignee NAME-OR-ID|me]     0=none 1=urgent 2=high 3=medium 4=low
     [--labels NAME,...] [-d TEXT] [-s NAME]        Label names (team-scoped), status name
     [--parent ID] [--project NAME-OR-ID]           Parent issue, project, cycle
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
-    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
+    [-s NAME] [-p 0-4] [-e N]                      Status, priority, estimate
+    [--assignee NAME-OR-ID|me]                     Assignee
     [--labels NAME,...] [--label-by adding|replacing|removing]
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                 Set or remove parent
