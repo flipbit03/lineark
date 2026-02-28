@@ -3412,44 +3412,72 @@ mod online {
             .unwrap();
         let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let team_key = teams[0]["key"].as_str().unwrap().to_string();
-        let team_id = teams[0]["id"].as_str().unwrap().to_string();
 
-        // Create a project.
-        let client = Client::from_token(api_token()).unwrap();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let project: Project = rt.block_on(async {
-            let input = ProjectCreateInput {
-                name: Some("[test] project filter test".to_string()),
-                team_ids: Some(vec![team_id]),
-                ..Default::default()
-            };
-            client.project_create::<Project>(None, input).await.unwrap()
-        });
-        let project_id = project.id.as_ref().unwrap().to_string();
-        let project_name = project.name.as_ref().unwrap().to_string();
-
-        // Create an issue in that project.
+        // Create a project via CLI.
         let output = lineark()
             .args([
                 "--api-token",
                 &token,
                 "--format",
                 "json",
-                "issues",
+                "projects",
                 "create",
-                "[test] in project",
+                "[test] project filter test",
                 "--team",
                 &team_key,
-                "--project",
-                &project_id,
-                "--priority",
-                "4",
             ])
             .output()
             .unwrap();
-        assert!(output.status.success(), "issue creation should succeed");
-        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let issue_id = created["id"].as_str().unwrap().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "project creation should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let project: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = project["id"].as_str().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
+
+        // Create an issue in that project.
+        // Linear may need a moment before the project is available for issue creation.
+        let issue_id = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "create",
+                    "[test] in project",
+                    "--team",
+                    &team_key,
+                    "--project",
+                    &project_id,
+                    "--priority",
+                    "4",
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                return Err(format!(
+                    "issue creation failed.\nstdout: {stdout}\nstderr: {stderr}"
+                ));
+            }
+            let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            Ok(created["id"].as_str().unwrap().to_string())
+        })
+        .expect("issue creation in project should succeed (after retries)");
+
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id,
+        };
 
         // List issues filtered by project name.
         // Use retry since project association may need time to propagate.
@@ -3463,7 +3491,7 @@ mod online {
                     "issues",
                     "list",
                     "--project",
-                    &project_name,
+                    "[test] project filter test",
                     "--limit",
                     "50",
                 ])
@@ -3476,24 +3504,12 @@ mod online {
             }
             let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
             let arr = json.as_array().ok_or("not an array".to_string())?;
-            // The created issue should appear in the filtered list.
-            if arr.iter().any(|i| {
-                i.get("url")
-                    .and_then(|u| u.as_str())
-                    .is_some_and(|u| u.contains(&issue_id) || u.len() > 0)
-            }) || !arr.is_empty()
-            {
+            if !arr.is_empty() {
                 Ok(())
             } else {
                 Err("filtered list is empty".to_string())
             }
         })
         .expect("issues list --project should return results (after retries)");
-
-        // Clean up.
-        delete_issue(&issue_id);
-        rt.block_on(async {
-            client.project_delete::<Project>(project_id).await.unwrap();
-        });
     }
 }
