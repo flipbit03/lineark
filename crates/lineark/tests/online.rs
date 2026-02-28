@@ -3398,4 +3398,121 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Issues list includes estimate field ─────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_json_includes_estimate_field() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "list",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("estimate").is_some(),
+                "each issue in list output should have an 'estimate' field"
+            );
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_search_json_includes_estimate_field() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "search",
+                "test",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues search should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("estimate").is_some(),
+                "each issue in search output should have an 'estimate' field"
+            );
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_read_json_includes_estimate_field() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] CLI estimate read",
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = created["id"].as_str().unwrap().to_string();
+
+        // Read the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues read should succeed");
+        let detail: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(
+            detail.get("estimate").is_some(),
+            "issues read output should have an 'estimate' field"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
 }
