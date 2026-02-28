@@ -916,5 +916,5 @@ fn issues_update_no_flags_error_mentions_estimate() {
         .args(["--api-token", "fake-token", "issues", "update", "ENG-123"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--estimate"))
+        .stderr(predicate::str::contains("--estimate"));
 }
