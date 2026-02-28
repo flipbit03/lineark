@@ -3398,4 +3398,76 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Issues list with --project filter ───────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_with_project_filter() {
+        let token = api_token();
+
+        // Find an existing project that has at least one issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "list",
+            ])
+            .output()
+            .unwrap();
+        let projects: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let projects_arr = projects.as_array().expect("projects list should be array");
+        assert!(
+            !projects_arr.is_empty(),
+            "workspace must have at least one project"
+        );
+
+        // Try each project until we find one that returns issues with --project filter.
+        let mut found = false;
+        for project in projects_arr {
+            let project_name = project["name"].as_str().unwrap_or("").to_string();
+            if project_name.is_empty() {
+                continue;
+            }
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "list",
+                    "--project",
+                    &project_name,
+                    "--limit",
+                    "5",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                continue;
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            if let Some(arr) = json.as_array() {
+                if !arr.is_empty() {
+                    // Verify all returned issues are in the expected JSON format.
+                    for issue in arr {
+                        assert!(
+                            issue.get("identifier").is_some(),
+                            "each issue should have an identifier"
+                        );
+                    }
+                    found = true;
+                    break;
+                }
+            }
+        }
+        assert!(
+            found,
+            "at least one project should have issues in the workspace"
+        );
+    }
 }
