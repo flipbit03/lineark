@@ -5,7 +5,7 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
+use lineark_sdk::generated::types::{Document, Issue, IssueRelation, Project};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -77,6 +77,24 @@ where
     Err(last_err)
 }
 
+/// Like `retry_with_backoff` but with longer delays (5s), for search indexing
+/// that can take longer (e.g. document/project search).
+fn retry_search_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
+where
+    F: FnMut() -> Result<T, String>,
+{
+    let mut last_err = String::new();
+    for attempt in 0..max_attempts {
+        let delay = if attempt == 0 { 2 } else { 5 };
+        std::thread::sleep(std::time::Duration::from_secs(delay));
+        match f() {
+            Ok(val) => return Ok(val),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
+}
+
 /// RAII guard — permanently deletes a team on drop.
 /// Ensures cleanup even when the test panics mid-way.
 struct TeamGuard {
@@ -129,6 +147,24 @@ impl Drop for ProjectGuard {
         let _ = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { client.project_delete::<Project>(id).await });
+    }
+}
+
+/// RAII guard — permanently deletes a document on drop.
+struct DocumentGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for DocumentGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.document_delete::<Document>(id).await });
     }
 }
 
@@ -3397,5 +3433,255 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Documents search ────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn documents_search_json_returns_array() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "search",
+                "test",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "documents search should succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(json.is_array(), "documents search JSON should be an array");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_search_json_returns_array() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "search",
+                "test",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "projects search should succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(json.is_array(), "projects search JSON should be an array");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn documents_search_finds_created_document() {
+        use lineark_sdk::generated::inputs::DocumentCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        // Get a team ID for document creation.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+
+        // Create a document with unique title using the SDK directly.
+        // Use a UUID-only title to avoid search tokenization issues.
+        let unique = format!("xdocsrch{}", uuid::Uuid::new_v4().simple());
+        let input = DocumentCreateInput {
+            title: Some(unique.clone()),
+            content: Some("CLI search test document.".to_string()),
+            team_id: Some(team_id),
+            ..Default::default()
+        };
+        let doc = rt
+            .block_on(async { client.document_create::<Document>(input).await })
+            .unwrap();
+        let doc_id = doc.id.clone().unwrap();
+        let _doc_guard = DocumentGuard {
+            token: token.clone(),
+            id: doc_id,
+        };
+
+        // Retry search with backoff until the document appears.
+        // Document search indexing can take longer than issue indexing.
+        let found = retry_search_with_backoff(15, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "documents",
+                    "search",
+                    &unique,
+                    "--limit",
+                    "10",
+                ])
+                .output()
+                .map_err(|e| format!("failed to execute: {}", e))?;
+            if !output.status.success() {
+                return Err(format!(
+                    "search failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+            let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+                .map_err(|e| format!("invalid JSON: {}", e))?;
+            let arr = json.as_array().ok_or("expected array")?;
+            let has_match = arr
+                .iter()
+                .any(|item| item["title"].as_str().is_some_and(|t| t.contains(&unique)));
+            if has_match {
+                Ok(())
+            } else {
+                Err(format!(
+                    "document not yet found in search (got {} results)",
+                    arr.len()
+                ))
+            }
+        });
+        assert!(
+            found.is_ok(),
+            "documents search should find the created document: {}",
+            found.unwrap_err()
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_search_finds_created_project() {
+        use lineark_sdk::generated::inputs::ProjectCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        // Get a team ID.
+        let teams_output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&teams_output.stdout).unwrap();
+        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+
+        // Create a project with unique name.
+        let unique = format!("xprojsrch{}", uuid::Uuid::new_v4().simple());
+        let input = ProjectCreateInput {
+            name: Some(unique.clone()),
+            team_ids: Some(vec![team_id]),
+            ..Default::default()
+        };
+        let project = rt
+            .block_on(async { client.project_create::<Project>(None, input).await })
+            .unwrap();
+        let project_id = project.id.clone().unwrap();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id,
+        };
+
+        // Retry search with backoff until the project appears.
+        // Project search indexing can take longer than issue indexing.
+        let found = retry_search_with_backoff(15, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "projects",
+                    "search",
+                    &unique,
+                    "--limit",
+                    "10",
+                ])
+                .output()
+                .map_err(|e| format!("failed to execute: {}", e))?;
+            if !output.status.success() {
+                return Err(format!(
+                    "search failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+            let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+                .map_err(|e| format!("invalid JSON: {}", e))?;
+            let arr = json.as_array().ok_or("expected array")?;
+            let has_match = arr
+                .iter()
+                .any(|item| item["name"].as_str().is_some_and(|n| n.contains(&unique)));
+            if has_match {
+                Ok(())
+            } else {
+                Err(format!(
+                    "project not yet found in search (got {} results)",
+                    arr.len()
+                ))
+            }
+        });
+        assert!(
+            found.is_ok(),
+            "projects search should find the created project: {}",
+            found.unwrap_err()
+        );
+
+        // Clean up via guard drop (ProjectGuard).
+        drop(_project_guard);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn documents_search_with_team_filter() {
+        let token = api_token();
+
+        // Get a team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "documents",
+                "search",
+                "test",
+                "--team",
+                &team_key,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "documents search with --team should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            json.is_array(),
+            "documents search with --team should return an array"
+        );
     }
 }

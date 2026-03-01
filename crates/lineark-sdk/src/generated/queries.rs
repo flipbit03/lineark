@@ -384,6 +384,200 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
             .await
     }
 }
+/// Query builder: Search documents.
+///
+/// Full type: [`DocumentSearchResult`](super::types::DocumentSearchResult)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct SearchDocumentsQueryBuilder<'a, T> {
+    client: &'a Client,
+    term: String,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    include_comments: Option<bool>,
+    team_id: Option<String>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::DocumentSearchResult>>
+    SearchDocumentsQueryBuilder<'a, T>
+{
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub fn include_comments(mut self, value: bool) -> Self {
+        self.include_comments = Some(value);
+        self
+    }
+    pub fn team_id(mut self, value: impl Into<String>) -> Self {
+        self.team_id = Some(value.into());
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        map.insert("term".to_string(), serde_json::json!(self.term));
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_comments {
+            map.insert("includeComments".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.team_id {
+            map.insert("teamId".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "SearchDocuments",
+            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $term: String!, $includeComments: Boolean, $teamId: String",
+            "searchDocuments",
+            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, term: $term, includeComments: $includeComments, teamId: $teamId",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "searchDocuments")
+            .await
+    }
+}
+/// Query builder: Search projects.
+///
+/// Full type: [`ProjectSearchResult`](super::types::ProjectSearchResult)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct SearchProjectsQueryBuilder<'a, T> {
+    client: &'a Client,
+    term: String,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    include_comments: Option<bool>,
+    team_id: Option<String>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectSearchResult>>
+    SearchProjectsQueryBuilder<'a, T>
+{
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub fn include_comments(mut self, value: bool) -> Self {
+        self.include_comments = Some(value);
+        self
+    }
+    pub fn team_id(mut self, value: impl Into<String>) -> Self {
+        self.team_id = Some(value.into());
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        map.insert("term".to_string(), serde_json::json!(self.term));
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_comments {
+            map.insert("includeComments".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.team_id {
+            map.insert("teamId".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "SearchProjects",
+            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $term: String!, $includeComments: Boolean, $teamId: String",
+            "searchProjects",
+            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, term: $term, includeComments: $includeComments, teamId: $teamId",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "searchProjects")
+            .await
+    }
+}
 /// Query builder: Search issues.
 ///
 /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
@@ -1118,6 +1312,48 @@ pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::T
         "Team", "$id: String!", "team", "id: $id", selection
     );
     client.execute::<T>(&query, variables, "team").await
+}
+/// Search documents.
+///
+/// Full type: [`DocumentSearchResult`](super::types::DocumentSearchResult)
+pub fn search_documents<'a, T>(
+    client: &'a Client,
+    term: impl Into<String>,
+) -> SearchDocumentsQueryBuilder<'a, T> {
+    SearchDocumentsQueryBuilder {
+        client,
+        term: term.into(),
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        include_comments: None,
+        team_id: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// Search projects.
+///
+/// Full type: [`ProjectSearchResult`](super::types::ProjectSearchResult)
+pub fn search_projects<'a, T>(
+    client: &'a Client,
+    term: impl Into<String>,
+) -> SearchProjectsQueryBuilder<'a, T> {
+    SearchProjectsQueryBuilder {
+        client,
+        term: term.into(),
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        include_comments: None,
+        team_id: None,
+        _marker: std::marker::PhantomData,
+    }
 }
 /// Search issues.
 ///

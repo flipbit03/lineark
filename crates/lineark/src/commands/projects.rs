@@ -1,14 +1,15 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::{ProjectCreateInput, ProjectFilter};
 use lineark_sdk::generated::types::{
-    Project, ProjectStatus, Team, TeamConnection, User, UserConnection,
+    Project, ProjectSearchResult, ProjectStatus, Team, TeamConnection, User, UserConnection,
 };
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
 use super::helpers::{
-    resolve_project_id, resolve_team_ids, resolve_user_id_or_me, resolve_user_ids_or_me,
+    resolve_project_id, resolve_team_id, resolve_team_ids, resolve_user_id_or_me,
+    resolve_user_ids_or_me,
 };
 use crate::output::{self, Format};
 
@@ -40,6 +41,22 @@ pub enum ProjectsAction {
     Read {
         /// Project name or UUID.
         id: String,
+    },
+    /// Full-text search across project names and descriptions.
+    ///
+    /// Examples:
+    ///   lineark projects search "mobile app"
+    ///   lineark projects search "Q4" --limit 10
+    ///   lineark projects search "infrastructure" --team ENG
+    Search {
+        /// Search query text.
+        query: String,
+        /// Maximum number of results (max 250).
+        #[arg(short = 'l', long, default_value = "25", value_parser = clap::value_parser!(i64).range(1..=250))]
+        limit: i64,
+        /// Filter by team key, name, or UUID.
+        #[arg(long)]
+        team: Option<String>,
     },
     /// Create a new project.
     ///
@@ -191,6 +208,46 @@ struct ProjectRef {
     slug_id: Option<String>,
 }
 
+// ── Search types ────────────────────────────────────────────────────────
+
+/// Lean search result type for `projects search`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = ProjectSearchResult)]
+#[serde(rename_all = "camelCase", default)]
+struct ProjSearchSummary {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub slug_id: Option<String>,
+    pub url: Option<String>,
+    #[graphql(nested)]
+    pub lead: Option<LeadRef>,
+}
+
+#[derive(Debug, Serialize, Tabled)]
+struct ProjSearchRow {
+    id: String,
+    name: String,
+    slug_id: String,
+    lead: String,
+    url: String,
+}
+
+impl From<&ProjSearchSummary> for ProjSearchRow {
+    fn from(p: &ProjSearchSummary) -> Self {
+        Self {
+            id: p.id.clone().unwrap_or_default(),
+            name: p.name.clone().unwrap_or_default(),
+            slug_id: p.slug_id.clone().unwrap_or_default(),
+            lead: p
+                .lead
+                .as_ref()
+                .and_then(|l| l.display_name.clone().or_else(|| l.name.clone()))
+                .unwrap_or_default(),
+            url: p.url.clone().unwrap_or_default(),
+        }
+    }
+}
+
 // ── Command dispatch ────────────────────────────────────────────────────
 
 pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -239,6 +296,21 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             output::print_one(&project, format);
+        }
+        ProjectsAction::Search { query, limit, team } => {
+            let mut builder = client
+                .search_projects::<ProjSearchSummary>(query)
+                .first(limit);
+
+            if let Some(ref team_key) = team {
+                let team_id = resolve_team_id(client, team_key).await?;
+                builder = builder.team_id(team_id);
+            }
+
+            let conn = builder.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            let rows: Vec<ProjSearchRow> = conn.nodes.iter().map(ProjSearchRow::from).collect();
+            output::print_table(&rows, format);
         }
         ProjectsAction::Create {
             name,

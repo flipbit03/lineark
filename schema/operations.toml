@@ -12,6 +12,8 @@ cycles = true
 cycle = true
 issueLabels = true
 searchIssues = true
+searchDocuments = true
+searchProjects = true
 workflowStates = true
 
 # Phase 3 — Rich features

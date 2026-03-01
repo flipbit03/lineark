@@ -42,6 +42,8 @@ COMMANDS:
   lineark users list [--active]                    List users
   lineark projects list [--led-by-me]              List all projects (with lead)
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
+  lineark projects search <QUERY> [-l N]           Full-text search projects
+    [--team KEY]                                   Filter by team
   lineark projects create <NAME> --team KEY[,KEY]  Create a new project
     [--description TEXT] [--lead NAME-OR-ID|me]    Description, project lead
     [--members NAME,...|me]                        Project members (comma-separated)
@@ -87,6 +89,8 @@ COMMANDS:
   lineark documents list [--limit N]               List documents (lean output)
     [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
   lineark documents read <ID>                      Read document (includes content)
+  lineark documents search <QUERY> [-l N]          Full-text search documents
+    [--team KEY]                                   Filter by team
   lineark documents create --title TEXT            Create a document
     [--content TEXT] [--project NAME-OR-ID]        Project name or UUID
     [--issue ID]
