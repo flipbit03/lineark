@@ -1208,6 +1208,29 @@ pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::
     );
     client.execute::<T>(&query, variables, "issue").await
 }
+/// Find issue based on the VCS branch name.
+///
+/// Full type: [`Issue`](super::types::Issue)
+pub async fn issue_vcs_branch_search<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>,
+>(
+    client: &Client,
+    branch_name: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "branchName" : branch_name });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "IssueVcsBranchSearch",
+        "$branchName: String!",
+        "issueVcsBranchSearch",
+        "branchName: $branchName",
+        selection
+    );
+    client
+        .execute::<T>(&query, variables, "issueVcsBranchSearch")
+        .await
+}
 /// All issue relationships.
 ///
 /// Full type: [`IssueRelation`](super::types::IssueRelation)

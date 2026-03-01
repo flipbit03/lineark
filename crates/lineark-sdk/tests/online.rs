@@ -1061,6 +1061,84 @@ mod online {
         client.team_delete(team_id).await.unwrap();
     }
 
+    // ── Issue VCS Branch Search ─────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_vcs_branch_search_found() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+        use lineark_sdk::GraphQLFields;
+
+        let client = test_client();
+
+        // Create an issue so we can look up its branchName.
+        let teams = client.teams::<Team>().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let input = IssueCreateInput {
+            title: Some("[test] SDK issue_vcs_branch_search_found".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let issue_id = entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
+
+        // Read the issue to get its branchName field.
+        let branch_name = entity
+            .branch_name
+            .clone()
+            .expect("newly created issue should have a branchName");
+
+        // Build the query manually using Issue::selection() and call execute_optional.
+        let selection = Issue::selection();
+        let query = format!(
+            "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
+            selection
+        );
+        let variables = serde_json::json!({ "branchName": branch_name });
+        let result: Option<Issue> = client
+            .execute_optional(&query, variables, "issueVcsBranchSearch")
+            .await
+            .unwrap();
+
+        assert!(result.is_some(), "should find issue by branch name");
+        let found = result.unwrap();
+        assert_eq!(found.id, Some(issue_id.clone()));
+
+        // Clean up.
+        client
+            .issue_delete::<Issue>(Some(true), issue_id)
+            .await
+            .unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_vcs_branch_search_not_found() {
+        use lineark_sdk::GraphQLFields;
+
+        let client = test_client();
+
+        let selection = Issue::selection();
+        let query = format!(
+            "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
+            selection
+        );
+        let variables = serde_json::json!({ "branchName": "nonexistent-branch-xyz-999" });
+        let result: Option<Issue> = client
+            .execute_optional(&query, variables, "issueVcsBranchSearch")
+            .await
+            .unwrap();
+
+        assert!(
+            result.is_none(),
+            "should return None for nonexistent branch"
+        );
+    }
+
     // ── Error handling ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
