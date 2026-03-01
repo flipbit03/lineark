@@ -810,6 +810,64 @@ fn usage_includes_teams_create() {
         .stdout(predicate::str::contains("teams members remove"));
 }
 
+// ── Batch update ─────────────────────────────────────────────────────────────
+
+#[test]
+fn issues_batch_update_help_shows_flags() {
+    lineark()
+        .args(["issues", "batch-update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--labels"))
+        .stdout(predicate::str::contains("--assignee"))
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--cycle"));
+}
+
+#[test]
+fn issues_batch_update_requires_identifiers() {
+    lineark()
+        .args(["--api-token", "fake-token", "issues", "batch-update"])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn issues_batch_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "issues",
+            "batch-update",
+            "ENG-1",
+            "ENG-2",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn issues_help_shows_batch_update() {
+    lineark()
+        .args(["issues", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("batch-update"));
+}
+
+#[test]
+fn usage_includes_batch_update() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("batch-update"));
+}
+
 // ── Self command ─────────────────────────────────────────────────────────────
 
 #[test]

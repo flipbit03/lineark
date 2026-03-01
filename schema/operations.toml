@@ -29,6 +29,9 @@ issueUpdate = true
 commentCreate = true
 commentDelete = true
 
+# Phase 3 — Batch operations
+issueBatchUpdate = true
+
 # Phase 3 — Issue lifecycle
 issueArchive = true
 issueUnarchive = true

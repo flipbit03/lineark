@@ -131,6 +131,41 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         permanently: bool,
     },
+    /// Batch update multiple issues at once. Returns the updated issues.
+    ///
+    /// Examples:
+    ///   lineark issues batch-update ENG-1 ENG-2 --priority 2
+    ///   lineark issues batch-update ENG-1 ENG-2 ENG-3 --status "In Progress"
+    ///   lineark issues batch-update ENG-1 ENG-2 --assignee me --labels Bug --label-by adding
+    BatchUpdate {
+        /// Issue identifiers (e.g., ENG-123) or UUIDs. At least one required.
+        #[arg(required = true, num_args = 1..)]
+        identifiers: Vec<String>,
+        /// New status name (resolved against the first issue's team workflow states).
+        #[arg(short = 's', long)]
+        status: Option<String>,
+        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
+        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        priority: Option<i64>,
+        /// Comma-separated label names or UUIDs. Behavior depends on --label-by.
+        #[arg(long, value_delimiter = ',')]
+        labels: Option<Vec<String>>,
+        /// How to apply --labels: "replacing" (default), "adding", or "removing".
+        #[arg(long, default_value = "replacing")]
+        label_by: LabelMode,
+        /// Remove all labels from the issues.
+        #[arg(long, default_value = "false")]
+        clear_labels: bool,
+        /// Assignee: user name, display name, UUID, or `me`.
+        #[arg(long)]
+        assignee: Option<String>,
+        /// Project name or UUID.
+        #[arg(long)]
+        project: Option<String>,
+        /// Cycle name, number, or UUID (resolved within the first issue's team).
+        #[arg(long)]
+        cycle: Option<String>,
+    },
     /// Update an existing issue. Returns the updated issue.
     ///
     /// Examples:
@@ -631,6 +666,110 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&issue, format);
+        }
+        IssuesAction::BatchUpdate {
+            identifiers,
+            status,
+            priority,
+            labels,
+            label_by,
+            clear_labels,
+            assignee,
+            project,
+            cycle,
+        } => {
+            if status.is_none()
+                && priority.is_none()
+                && labels.is_none()
+                && !clear_labels
+                && assignee.is_none()
+                && project.is_none()
+                && cycle.is_none()
+            {
+                return Err(anyhow::anyhow!(
+                    "No update fields provided. Use --status, --priority, --assignee, --labels, --project, or --cycle to specify changes."
+                ));
+            }
+
+            // Resolve all identifiers to UUIDs.
+            let mut ids = Vec::with_capacity(identifiers.len());
+            for ident in &identifiers {
+                ids.push(resolve_issue_id(client, ident).await?);
+            }
+
+            // If we need to resolve status/labels/cycle, get the team from the first issue.
+            let needs_team = status.is_some() || labels.is_some() || cycle.is_some();
+            let team_id = if needs_team {
+                let detail = read_issue(client, &identifiers[0]).await?;
+                detail
+                    .team
+                    .as_ref()
+                    .and_then(|t| t.id.clone())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Could not determine team for issue '{}'", identifiers[0])
+                    })?
+            } else {
+                String::new()
+            };
+
+            let state_id = match status {
+                Some(ref name) => Some(resolve_state_id(client, &team_id, name).await?),
+                None => None,
+            };
+
+            let assignee_id = match assignee {
+                Some(ref a) => Some(resolve_user_id_or_me(client, a).await?),
+                None => None,
+            };
+
+            let project_id = match project {
+                Some(ref p) => Some(resolve_project_id(client, p).await?),
+                None => None,
+            };
+
+            let cycle_id = match cycle {
+                Some(ref c) => Some(resolve_cycle_id(client, c, &team_id).await?),
+                None => None,
+            };
+
+            // Build label fields based on mode.
+            let (label_ids, added_label_ids, removed_label_ids) = if clear_labels {
+                (Some(vec![]), None, None)
+            } else if let Some(raw_labels) = labels {
+                let tid = if needs_team {
+                    Some(team_id.as_str())
+                } else {
+                    None
+                };
+                let resolved = resolve_label_ids(client, &raw_labels, tid).await?;
+                match label_by {
+                    LabelMode::Replacing => (Some(resolved), None, None),
+                    LabelMode::Adding => (None, Some(resolved), None),
+                    LabelMode::Removing => (None, None, Some(resolved)),
+                }
+            } else {
+                (None, None, None)
+            };
+
+            let input = IssueUpdateInput {
+                assignee_id,
+                priority,
+                state_id,
+                label_ids,
+                added_label_ids,
+                removed_label_ids,
+                project_id,
+                cycle_id,
+                ..Default::default()
+            };
+
+            let issues = client
+                .issue_batch_update::<IssueSummary>(input, ids)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            let items: Vec<&IssueSummary> = issues.iter().collect();
+            print_issue_list(&items, format);
         }
         IssuesAction::Update {
             identifier,

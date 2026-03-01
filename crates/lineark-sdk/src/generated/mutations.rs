@@ -325,6 +325,25 @@ pub async fn issue_update<
         .execute_mutation::<T>(&query, variables, "issueUpdate", "issue")
         .await
 }
+/// Updates multiple issues at once.
+///
+/// Full type: [`Issue`](super::types::Issue)
+pub async fn issue_batch_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
+>(
+    client: &Client,
+    input: IssueUpdateInput,
+    ids: Vec<String>,
+) -> Result<Vec<T>, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "ids" : ids });
+    let query = String::from(
+        "mutation IssueBatchUpdate($input: IssueUpdateInput!, $ids: [UUID!]!) { issueBatchUpdate(input: $input, ids: $ids) { success issues { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_batch_mutation::<T>(&query, variables, "issueBatchUpdate", "issues")
+        .await
+}
 /// Archives an issue.
 ///
 /// Full type: [`Issue`](super::types::Issue)

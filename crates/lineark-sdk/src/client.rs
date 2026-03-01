@@ -245,6 +245,49 @@ impl Client {
         })
     }
 
+    /// Execute a batch mutation, check `success`, and extract a list of entities.
+    ///
+    /// Similar to [`execute_mutation`](Self::execute_mutation), but for mutations
+    /// whose payload contains an array of entities (e.g. `issueBatchUpdate`).
+    pub(crate) async fn execute_batch_mutation<T: DeserializeOwned>(
+        &self,
+        query: &str,
+        variables: serde_json::Value,
+        data_path: &str,
+        entity_field: &str,
+    ) -> Result<Vec<T>, LinearError> {
+        let payload = self
+            .execute::<serde_json::Value>(query, variables, data_path)
+            .await?;
+
+        // Check success field.
+        if payload.get("success").and_then(|v| v.as_bool()) != Some(true) {
+            return Err(LinearError::Internal(format!(
+                "Mutation '{}' failed: {}",
+                data_path,
+                serde_json::to_string_pretty(&payload).unwrap_or_default()
+            )));
+        }
+
+        // Extract and deserialize the entity array.
+        let entities = payload
+            .get(entity_field)
+            .ok_or_else(|| {
+                LinearError::MissingData(format!(
+                    "No '{}' field in '{}' payload",
+                    entity_field, data_path
+                ))
+            })?
+            .clone();
+
+        serde_json::from_value(entities).map_err(|e| {
+            LinearError::MissingData(format!(
+                "Failed to deserialize '{}' from '{}': {}",
+                entity_field, data_path, e
+            ))
+        })
+    }
+
     /// Access the underlying HTTP client.
     ///
     /// Used internally by [`helpers`](crate::helpers) for file download/upload
