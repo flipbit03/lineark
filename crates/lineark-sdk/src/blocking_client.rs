@@ -248,6 +248,20 @@ blocking_query_builder! {
 }
 
 blocking_query_builder! {
+    query_type = SearchDocumentsQueryBuilder,
+    node_type = DocumentSearchResult,
+    return_type = Connection<DocumentSearchResult>,
+    methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool), include_comments(bool), team_id(impl Into<String>)]
+}
+
+blocking_query_builder! {
+    query_type = SearchProjectsQueryBuilder,
+    node_type = ProjectSearchResult,
+    return_type = Connection<ProjectSearchResult>,
+    methods = [before(impl Into<String>), after(impl Into<String>), first(i64), last(i64), include_archived(bool), include_comments(bool), team_id(impl Into<String>)]
+}
+
+blocking_query_builder! {
     query_type = DocumentsQueryBuilder,
     node_type = Document,
     return_type = Connection<Document>,
@@ -353,6 +367,34 @@ impl Client {
     {
         BlockingQuery::new(
             self.inner.search_issues::<IssueSearchResult>(term),
+            &self.rt,
+        )
+    }
+
+    /// Search documents (blocking).
+    pub fn search_documents(
+        &self,
+        term: impl Into<String>,
+    ) -> BlockingQuery<
+        '_,
+        crate::generated::queries::SearchDocumentsQueryBuilder<'_, DocumentSearchResult>,
+    > {
+        BlockingQuery::new(
+            self.inner.search_documents::<DocumentSearchResult>(term),
+            &self.rt,
+        )
+    }
+
+    /// Search projects (blocking).
+    pub fn search_projects(
+        &self,
+        term: impl Into<String>,
+    ) -> BlockingQuery<
+        '_,
+        crate::generated::queries::SearchProjectsQueryBuilder<'_, ProjectSearchResult>,
+    > {
+        BlockingQuery::new(
+            self.inner.search_projects::<ProjectSearchResult>(term),
             &self.rt,
         )
     }

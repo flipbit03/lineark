@@ -63,6 +63,21 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::team::<T>(self, id).await
     }
+    /// Search documents.
+    ///
+    /// Full type: [`DocumentSearchResult`](super::types::DocumentSearchResult)
+    pub fn search_documents<T>(
+        &self,
+        term: impl Into<String>,
+    ) -> SearchDocumentsQueryBuilder<'_, T> {
+        crate::generated::queries::search_documents(self, term)
+    }
+    /// Search projects.
+    ///
+    /// Full type: [`ProjectSearchResult`](super::types::ProjectSearchResult)
+    pub fn search_projects<T>(&self, term: impl Into<String>) -> SearchProjectsQueryBuilder<'_, T> {
+        crate::generated::queries::search_projects(self, term)
+    }
     /// Search issues.
     ///
     /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)

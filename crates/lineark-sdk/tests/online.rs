@@ -1061,6 +1061,106 @@ mod online {
         client.team_delete(team_id).await.unwrap();
     }
 
+    // ── Search Documents ─────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn search_documents_returns_connection() {
+        let client = test_client();
+        let conn = client
+            .search_documents::<DocumentSearchResult>("test")
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+        for doc in &conn.nodes {
+            assert!(doc.id.is_some());
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn search_projects_returns_connection() {
+        let client = test_client();
+        let conn = client
+            .search_projects::<ProjectSearchResult>("test")
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+        for proj in &conn.nodes {
+            assert!(proj.id.is_some());
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn search_documents_finds_created_document() {
+        use lineark_sdk::generated::inputs::DocumentCreateInput;
+
+        let client = test_client();
+        let teams = client.teams::<Team>().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create a document with a unique title.
+        let unique = format!("xdocsrch{}", uuid::Uuid::new_v4().simple());
+        let input = DocumentCreateInput {
+            title: Some(unique.clone()),
+            content: Some("Search test document content.".to_string()),
+            team_id: Some(team_id),
+            ..Default::default()
+        };
+        let doc = client.document_create::<Document>(input).await.unwrap();
+        let doc_id = doc.id.clone().unwrap();
+        let _doc_guard = DocumentGuard {
+            token: test_token(),
+            id: doc_id.clone(),
+        };
+
+        // Linear's search index is async — retry with backoff.
+        // Document search indexing can take longer than issue indexing.
+        let mut matched = false;
+        for i in 0..12 {
+            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 1 } else { 3 })).await;
+            let found = match client
+                .search_documents::<DocumentSearchResult>(&unique)
+                .first(5)
+                .send()
+                .await
+            {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            matched = found
+                .nodes
+                .iter()
+                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+            if matched {
+                break;
+            }
+        }
+        assert!(
+            matched,
+            "search_documents(term) should find the created document"
+        );
+
+        // Search for nonsense — should NOT find it.
+        let not_found = client
+            .search_documents::<DocumentSearchResult>("xyzzy_nonexistent_99999")
+            .first(5)
+            .send()
+            .await
+            .expect("nonsense search should not be rate-limited");
+        let false_match = not_found
+            .nodes
+            .iter()
+            .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
+        assert!(
+            !false_match,
+            "search with different term should not find our document"
+        );
+
+        // Clean up.
+        client.document_delete::<Document>(doc_id).await.unwrap();
+    }
+
     // ── Error handling ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

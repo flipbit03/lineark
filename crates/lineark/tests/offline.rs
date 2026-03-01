@@ -187,6 +187,7 @@ fn documents_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("search"))
         .stdout(predicate::str::contains("create"))
         .stdout(predicate::str::contains("update"))
         .stdout(predicate::str::contains("delete"));
@@ -392,6 +393,7 @@ fn projects_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("search"))
         .stdout(predicate::str::contains("create"));
 }
 
@@ -886,4 +888,46 @@ fn usage_includes_comments_delete() {
         .assert()
         .success()
         .stdout(predicate::str::contains("comments delete"));
+}
+
+// ── Documents search ────────────────────────────────────────────────────────
+
+#[test]
+fn documents_search_help_shows_flags() {
+    lineark()
+        .args(["documents", "search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--limit"));
+}
+
+#[test]
+fn usage_includes_documents_search() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("documents search"));
+}
+
+// ── Projects search ─────────────────────────────────────────────────────────
+
+#[test]
+fn projects_search_help_shows_flags() {
+    lineark()
+        .args(["projects", "search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--limit"));
+}
+
+#[test]
+fn usage_includes_projects_search() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("projects search"));
 }

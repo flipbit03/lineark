@@ -1,11 +1,11 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentFilter, DocumentUpdateInput};
-use lineark_sdk::generated::types::Document;
+use lineark_sdk::generated::types::{Document, DocumentSearchResult};
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
-use super::helpers::{resolve_issue_id, resolve_project_id};
+use super::helpers::{resolve_issue_id, resolve_project_id, resolve_team_id};
 use crate::output::{self, Format};
 
 /// Manage documents.
@@ -78,6 +78,22 @@ pub enum DocumentsAction {
         /// Document UUID.
         id: String,
     },
+    /// Full-text search across document titles and content.
+    ///
+    /// Examples:
+    ///   lineark documents search "onboarding"
+    ///   lineark documents search "API design" --limit 10
+    ///   lineark documents search "spec" --team ENG
+    Search {
+        /// Search query text.
+        query: String,
+        /// Maximum number of results (max 250).
+        #[arg(short = 'l', long, default_value = "25", value_parser = clap::value_parser!(i64).range(1..=250))]
+        limit: i64,
+        /// Filter by team key, name, or UUID.
+        #[arg(long)]
+        team: Option<String>,
+    },
 }
 
 // ── Lean types ───────────────────────────────────────────────────────────────
@@ -104,6 +120,18 @@ struct DocumentRef {
     slug_id: Option<String>,
 }
 
+/// Lean search result type for `documents search`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = DocumentSearchResult)]
+#[serde(rename_all = "camelCase", default)]
+struct DocSearchSummary {
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub slug_id: Option<String>,
+    pub url: Option<String>,
+    pub updated_at: Option<String>,
+}
+
 // ── List row ─────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Tabled)]
@@ -119,6 +147,29 @@ impl From<&DocumentSummary> for DocumentRow {
         Self {
             id: d.id.clone().unwrap_or_default(),
             title: d.title.clone().unwrap_or_default(),
+            url: d.url.clone().unwrap_or_default(),
+            updated_at: d.updated_at.clone().unwrap_or_default(),
+        }
+    }
+}
+
+// ── Search row ───────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Tabled)]
+struct DocSearchRow {
+    id: String,
+    title: String,
+    slug_id: String,
+    url: String,
+    updated_at: String,
+}
+
+impl From<&DocSearchSummary> for DocSearchRow {
+    fn from(d: &DocSearchSummary) -> Self {
+        Self {
+            id: d.id.clone().unwrap_or_default(),
+            title: d.title.clone().unwrap_or_default(),
+            slug_id: d.slug_id.clone().unwrap_or_default(),
             url: d.url.clone().unwrap_or_default(),
             updated_at: d.updated_at.clone().unwrap_or_default(),
         }
@@ -240,6 +291,21 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&doc, format);
+        }
+        DocumentsAction::Search { query, limit, team } => {
+            let mut builder = client
+                .search_documents::<DocSearchSummary>(query)
+                .first(limit);
+
+            if let Some(ref team_key) = team {
+                let team_id = resolve_team_id(client, team_key).await?;
+                builder = builder.team_id(team_id);
+            }
+
+            let conn = builder.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            let rows: Vec<DocSearchRow> = conn.nodes.iter().map(DocSearchRow::from).collect();
+            output::print_table(&rows, format);
         }
     }
     Ok(())
