@@ -5,7 +5,7 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
+use lineark_sdk::generated::types::{Issue, IssueRelation, Project, Team};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -3397,5 +3397,85 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Issues find-branch ──────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_find_branch_returns_issue() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+
+        // Create an issue via SDK to get the branch name.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (issue_id, branch_name) = rt.block_on(async {
+            let teams = client.teams::<Team>().first(1).send().await.unwrap();
+            let team_id = teams.nodes[0].id.clone().unwrap();
+
+            let input = IssueCreateInput {
+                title: Some("[test] CLI issues_find_branch_returns_issue".to_string()),
+                team_id: Some(team_id),
+                priority: Some(4),
+                ..Default::default()
+            };
+            let entity = client.issue_create::<Issue>(input).await.unwrap();
+            let issue_id = entity.id.clone().unwrap();
+            let branch_name = entity
+                .branch_name
+                .clone()
+                .expect("created issue should have a branchName");
+            (issue_id, branch_name)
+        });
+
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Run the CLI find-branch command.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "find-branch",
+                &branch_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues find-branch should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            json.get("identifier").is_some(),
+            "find-branch JSON should contain identifier"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_find_branch_no_match_exits_nonzero() {
+        let token = api_token();
+        lineark()
+            .args([
+                "--api-token",
+                &token,
+                "issues",
+                "find-branch",
+                "nonexistent-branch-abc-xyz-987654321",
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("No issue found"));
     }
 }

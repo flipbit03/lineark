@@ -101,6 +101,17 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::issue::<T>(self, id).await
     }
+    /// Find issue based on the VCS branch name.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
+    pub async fn issue_vcs_branch_search<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>,
+    >(
+        &self,
+        branch_name: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::issue_vcs_branch_search::<T>(self, branch_name).await
+    }
     /// All issue relationships.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)

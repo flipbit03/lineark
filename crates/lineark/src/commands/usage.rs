@@ -57,6 +57,7 @@ COMMANDS:
     [--mine]                                       Only issues assigned to me
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
+  lineark issues find-branch <BRANCH>               Find issue by Git branch name
   lineark issues search <QUERY> [-l N]             Full-text search
     [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
     [--status NAME,...] [--show-done]              Comma-separated status names

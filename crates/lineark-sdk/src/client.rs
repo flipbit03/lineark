@@ -56,13 +56,17 @@ impl Client {
         Self::from_token(auth::auto_token()?)
     }
 
-    /// Execute a GraphQL query and extract a single object from the response.
-    pub async fn execute<T: DeserializeOwned>(
+    /// Execute a GraphQL query and extract an optional object from the response.
+    ///
+    /// Returns `Ok(None)` when the API returns `null` for the data path
+    /// (common for nullable queries like `issueVcsBranchSearch`).
+    /// Returns `Ok(Some(T))` on success, `Err` on transport or GraphQL errors.
+    pub async fn execute_optional<T: DeserializeOwned>(
         &self,
         query: &str,
         variables: serde_json::Value,
         data_path: &str,
-    ) -> Result<T, LinearError> {
+    ) -> Result<Option<T>, LinearError> {
         let body = serde_json::json!({
             "query": query,
             "variables": variables,
@@ -134,16 +138,35 @@ impl Client {
             .data
             .ok_or_else(|| LinearError::MissingData("No data in response".to_string()))?;
 
-        let value = data
-            .get(data_path)
-            .ok_or_else(|| {
-                LinearError::MissingData(format!("No '{}' in response data", data_path))
-            })?
-            .clone();
+        let value = match data.get(data_path) {
+            Some(v) if v.is_null() => return Ok(None),
+            Some(v) => v.clone(),
+            None => {
+                return Err(LinearError::MissingData(format!(
+                    "No '{}' in response data",
+                    data_path
+                )))
+            }
+        };
 
-        serde_json::from_value(value).map_err(|e| {
+        serde_json::from_value(value).map(Some).map_err(|e| {
             LinearError::MissingData(format!("Failed to deserialize '{}': {}", data_path, e))
         })
+    }
+
+    /// Execute a GraphQL query and extract a single object from the response.
+    ///
+    /// Delegates to [`execute_optional`](Self::execute_optional), returning an
+    /// error if the data path resolves to `null`.
+    pub async fn execute<T: DeserializeOwned>(
+        &self,
+        query: &str,
+        variables: serde_json::Value,
+        data_path: &str,
+    ) -> Result<T, LinearError> {
+        self.execute_optional(query, variables, data_path)
+            .await?
+            .ok_or_else(|| LinearError::MissingData(format!("'{}' returned null", data_path)))
     }
 
     /// Execute a GraphQL query and extract a Connection from the response.

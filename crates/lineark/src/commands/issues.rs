@@ -131,6 +131,11 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         permanently: bool,
     },
+    /// Find the issue associated with a Git branch name.
+    FindBranch {
+        /// Git branch name to search for.
+        branch_name: String,
+    },
     /// Update an existing issue. Returns the updated issue.
     ///
     /// Examples:
@@ -532,6 +537,27 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 
             let items = filter_done_search(&conn.nodes, show_done);
             print_search_list(&items, format);
+        }
+        IssuesAction::FindBranch { branch_name } => {
+            let selection = <IssueDetail as GraphQLFields>::selection();
+            let query = format!(
+                "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
+                selection
+            );
+            let variables = serde_json::json!({ "branchName": branch_name });
+            let result: Option<IssueDetail> = client
+                .execute_optional(&query, variables, "issueVcsBranchSearch")
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            match result {
+                Some(issue) => output::print_one(&issue, format),
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "No issue found for branch '{}'",
+                        branch_name
+                    ))
+                }
+            }
         }
         IssuesAction::Create {
             title,
