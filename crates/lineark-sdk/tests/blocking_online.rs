@@ -34,10 +34,8 @@ fn test_client() -> Client {
 /// If `LINEAR_TEST_TEAM_KEY` is set, looks up the team by key.
 /// Otherwise falls back to `teams().first(1)` (alphabetical first).
 fn test_team_id_blocking(client: &Client) -> String {
-    use lineark_sdk::generated::types::Team;
-
     if let Ok(key) = std::env::var("LINEAR_TEST_TEAM_KEY") {
-        let conn = client.teams::<Team>().first(50).send().unwrap();
+        let conn = client.teams().first(50).send().unwrap();
         conn.nodes
             .iter()
             .find(|t| t.key.as_deref() == Some(&key))
@@ -46,7 +44,7 @@ fn test_team_id_blocking(client: &Client) -> String {
             .clone()
             .unwrap()
     } else {
-        let conn = client.teams::<Team>().first(1).send().unwrap();
+        let conn = client.teams().first(1).send().unwrap();
         conn.nodes[0].id.clone().unwrap()
     }
 }
