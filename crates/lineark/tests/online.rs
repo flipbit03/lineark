@@ -425,13 +425,7 @@ mod online {
     fn issues_create_update_and_archive() {
         let token = api_token();
 
-        // Get the first team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .expect("failed to execute lineark");
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue.
         let output = lineark()
@@ -509,13 +503,7 @@ mod online {
     fn issues_archive_and_unarchive_cycle() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue.
         let output = lineark()
@@ -661,13 +649,7 @@ mod online {
     fn issues_unarchive_by_human_identifier() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue.
         let output = lineark()
@@ -757,13 +739,7 @@ mod online {
     fn issues_delete_permanently() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue to delete.
         let output = lineark()
@@ -825,13 +801,7 @@ mod online {
     fn issues_delete_trash_and_verify() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue.
         let output = lineark()
@@ -916,14 +886,8 @@ mod online {
     fn documents_create_read_update_and_delete() {
         let token = api_token();
 
-        // Get a team key first (documents require a parent like project/issue/team).
-        // Create an issue to associate the document with.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        // Get a team key (documents require a parent like project/issue/team).
+        let team_key = test_team_key(&token);
 
         let output = lineark()
             .args([
@@ -1111,13 +1075,7 @@ mod online {
     fn cycles_list_with_team_filter() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         let output = lineark()
             .args([
@@ -1146,13 +1104,7 @@ mod online {
     fn cycles_list_around_active() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         let output = lineark()
             .args([
@@ -1392,13 +1344,7 @@ mod online {
     fn issues_read_shows_relations() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create two issues.
         let output = lineark()
@@ -1523,13 +1469,7 @@ mod online {
     fn issues_read_shows_children_and_comments() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create a parent issue.
         let output = lineark()
@@ -1664,13 +1604,7 @@ mod online {
     fn issues_search_with_team_filter() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Search with --team filter.
         let output = lineark()
@@ -1752,13 +1686,7 @@ mod online {
     fn issues_create_with_parent_and_clear_parent() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create parent.
         let output = lineark()
@@ -1866,12 +1794,7 @@ mod online {
         let token = api_token();
 
         // Get a team ID (projectCreate requires teamIds).
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+        let team_id = test_team_id_cli(&token);
 
         // Create a test project via the SDK.
         let client = Client::from_token(api_token()).unwrap();
@@ -2047,13 +1970,7 @@ mod online {
     fn projects_create_and_delete() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create a project via CLI.
         let output = lineark()
@@ -2202,13 +2119,7 @@ mod online {
     fn projects_read_by_id_and_name() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create a project with --lead me.
         let output = lineark()
@@ -2324,13 +2235,7 @@ mod online {
     fn projects_create_with_members_and_read_back() {
         let token = api_token();
 
-        // Get a team key and find two users.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create a project with --lead me --members me.
         let output = lineark()
@@ -2424,13 +2329,7 @@ mod online {
     fn issues_create_with_assignee_me() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Get my user ID.
         let output = lineark()
@@ -2502,13 +2401,7 @@ mod online {
     fn issues_update_with_assignee_me() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Get my user ID.
         let output = lineark()
@@ -2605,13 +2498,7 @@ mod online {
     fn comments_create_on_issue() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue to comment on.
         let output = lineark()
@@ -2675,13 +2562,7 @@ mod online {
     fn comments_create_and_delete() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let team_key = test_team_key(&token);
 
         // Create an issue to comment on.
         let output = lineark()
@@ -3177,8 +3058,12 @@ mod online {
         ((a_id, a_guard), (b_id, b_guard))
     }
 
-    /// Helper: get the first team key.
-    fn first_team_key(token: &str) -> String {
+    /// Returns the team key to use for tests.
+    /// Prefers `LINEAR_TEST_TEAM_KEY` if set, otherwise falls back to the first team from `teams list`.
+    fn test_team_key(token: &str) -> String {
+        if let Ok(key) = std::env::var("LINEAR_TEST_TEAM_KEY") {
+            return key;
+        }
         let output = lineark()
             .args(["--api-token", token, "--format", "json", "teams", "list"])
             .output()
@@ -3187,10 +3072,33 @@ mod online {
         teams[0]["key"].as_str().unwrap().to_string()
     }
 
+    /// Returns the team UUID for tests (needed for SDK-level calls in CLI tests).
+    /// Prefers `LINEAR_TEST_TEAM_KEY` if set, otherwise falls back to the first team.
+    fn test_team_id_cli(token: &str) -> String {
+        let output = lineark()
+            .args(["--api-token", token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        if let Ok(key) = std::env::var("LINEAR_TEST_TEAM_KEY") {
+            teams
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| t["key"].as_str() == Some(&key))
+                .unwrap_or_else(|| panic!("LINEAR_TEST_TEAM_KEY={key} not found"))["id"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        } else {
+            teams[0]["id"].as_str().unwrap().to_string()
+        }
+    }
+
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocks() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3221,7 +3129,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocked_by() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // "A --blocked-by B" means B blocks A.
@@ -3253,7 +3161,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_related() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3284,7 +3192,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_duplicate() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3315,7 +3223,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_similar() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3346,7 +3254,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_and_delete() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let team_key = test_team_key(&token);
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // Create a relation.
