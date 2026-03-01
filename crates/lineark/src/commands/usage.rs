@@ -75,8 +75,13 @@ COMMANDS:
   lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
     [--permanently]                                Permanently delete instead of trashing
-  lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
-  lineark comments delete <COMMENT-UUID>           Delete a comment
+  lineark comments create <ISSUE-ID> --body TEXT    Comment on an issue
+  lineark comments update <COMMENT-UUID>            Update a comment
+    --body TEXT                                     New body in markdown
+  lineark comments resolve <COMMENT-UUID>           Resolve a comment thread
+    [--resolving-comment UUID]                      Reply that resolves thread
+  lineark comments unresolve <COMMENT-UUID>         Unresolve a comment thread
+  lineark comments delete <COMMENT-UUID>            Delete a comment
   lineark relations create <ISSUE>                 Create an issue relation
     --blocks <ISSUE>                               Source blocks target
     --blocked-by <ISSUE>                           Source is blocked by target

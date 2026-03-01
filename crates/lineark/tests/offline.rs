@@ -887,3 +887,95 @@ fn usage_includes_comments_delete() {
         .success()
         .stdout(predicate::str::contains("comments delete"));
 }
+
+// ── Comments update/resolve/unresolve ──────────────────────────────────────
+
+#[test]
+fn comments_help_shows_update_subcommand() {
+    lineark()
+        .args(["comments", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("update"));
+}
+
+#[test]
+fn comments_update_help_shows_flags() {
+    lineark()
+        .args(["comments", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--body"))
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn comments_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "comments",
+            "update",
+            "some-uuid",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn comments_help_shows_resolve_subcommand() {
+    lineark()
+        .args(["comments", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("resolve"));
+}
+
+#[test]
+fn comments_help_shows_unresolve_subcommand() {
+    lineark()
+        .args(["comments", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("unresolve"));
+}
+
+#[test]
+fn comments_resolve_help_shows_flags() {
+    lineark()
+        .args(["comments", "resolve", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"))
+        .stdout(predicate::str::contains("--resolving-comment"));
+}
+
+#[test]
+fn comments_unresolve_help_shows_id() {
+    lineark()
+        .args(["comments", "unresolve", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn usage_includes_comments_update() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("comments update"));
+}
+
+#[test]
+fn usage_includes_comments_resolve() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("comments resolve"))
+        .stdout(predicate::str::contains("comments unresolve"));
+}

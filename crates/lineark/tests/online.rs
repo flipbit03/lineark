@@ -5,7 +5,7 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
+use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project, Team};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -3397,5 +3397,262 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Comments update/resolve/unresolve ──────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn comments_update_resolve_unresolve_lifecycle() {
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+
+        // Create an issue via SDK (more reliable than CLI for setup).
+        let teams = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .issue_create::<Issue>(lineark_sdk::generated::inputs::IssueCreateInput {
+                    title: Some("[test] CLI comments_lifecycle".to_string()),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let issue_id = issue.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Create a comment (retry to allow issue propagation).
+        let comment_id = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "comments",
+                    "create",
+                    &issue_id,
+                    "--body",
+                    "Original body",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let comment: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            Ok(comment["id"].as_str().unwrap().to_string())
+        })
+        .expect("comment create should succeed (after retries)");
+
+        // Update the comment body.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "update",
+                &comment_id,
+                "--body",
+                "Updated body",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            updated["body"].as_str(),
+            Some("Updated body"),
+            "body should be updated"
+        );
+
+        // Resolve the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "resolve",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment resolve should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let resolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            resolved["resolvedAt"].as_str().is_some(),
+            "resolvedAt should be set after resolve"
+        );
+
+        // Unresolve the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "unresolve",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment unresolve should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let unresolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            unresolved["resolvedAt"].is_null(),
+            "resolvedAt should be null after unresolve"
+        );
+
+        // Delete the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "delete",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up: permanently delete the issue.
+        delete_issue(&issue_id);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn comments_resolve_with_resolving_comment() {
+        use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
+
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+
+        // Create an issue via SDK.
+        let teams = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some("[test] CLI comments_resolve_with_resolving_comment".to_string()),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let issue_id = issue.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Create a parent comment via CLI (retry to allow issue propagation).
+        let parent_id = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "comments",
+                    "create",
+                    &issue_id,
+                    "--body",
+                    "Parent comment thread",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let parent: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            Ok(parent["id"].as_str().unwrap().to_string())
+        })
+        .expect("parent comment create should succeed (after retries)");
+
+        // Create a reply comment via SDK (using parent_id).
+        let reply = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .comment_create::<Comment>(CommentCreateInput {
+                    body: Some("Reply that resolves thread".to_string()),
+                    issue_id: Some(issue_id.clone()),
+                    parent_id: Some(parent_id.clone()),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let reply_id = reply.id.clone().unwrap();
+
+        // Resolve parent with --resolving-comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "resolve",
+                &parent_id,
+                "--resolving-comment",
+                &reply_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment resolve with resolving-comment should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let resolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            resolved["resolvedAt"].as_str().is_some(),
+            "resolvedAt should be set after resolve with resolving-comment"
+        );
+
+        // Clean up: permanently delete the issue.
+        delete_issue(&issue_id);
     }
 }
