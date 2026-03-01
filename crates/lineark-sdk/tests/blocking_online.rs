@@ -30,6 +30,27 @@ fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create blocking test client")
 }
 
+/// Returns the team ID to use for blocking tests.
+/// If `LINEAR_TEST_TEAM_KEY` is set, looks up the team by key.
+/// Otherwise falls back to `teams().first(1)` (alphabetical first).
+fn test_team_id_blocking(client: &Client) -> String {
+    use lineark_sdk::generated::types::Team;
+
+    if let Ok(key) = std::env::var("LINEAR_TEST_TEAM_KEY") {
+        let conn = client.teams::<Team>().first(50).send().unwrap();
+        conn.nodes
+            .iter()
+            .find(|t| t.key.as_deref() == Some(&key))
+            .unwrap_or_else(|| panic!("LINEAR_TEST_TEAM_KEY={key} not found in workspace"))
+            .id
+            .clone()
+            .unwrap()
+    } else {
+        let conn = client.teams::<Team>().first(1).send().unwrap();
+        conn.nodes[0].id.clone().unwrap()
+    }
+}
+
 /// RAII guard — permanently deletes an issue on drop.
 struct IssueGuard {
     token: String,
@@ -117,8 +138,7 @@ mod blocking_online {
         let client = test_client();
 
         // Get a team (documents require at least one parent).
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let team_id = test_team_id_blocking(&client);
 
         // Create.
         let input = DocumentCreateInput {
@@ -171,8 +191,7 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let team_id = test_team_id_blocking(&client);
 
         let input = IssueCreateInput {
             title: Some("[test] blocking issue_create".to_string()),
@@ -197,8 +216,7 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let team_id = test_team_id_blocking(&client);
 
         let input = IssueCreateInput {
             title: Some("[test] blocking archive/unarchive".to_string()),
