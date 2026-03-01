@@ -104,7 +104,8 @@ fn emit_mutation(
 
     // Find the single entity (Object) field in the payload, if any.
     // Mutations with an entity field become generic; those without keep Value return.
-    let mut entity_info: Option<(String, String)> = None; // (field_name, type_name)
+    // Tuple: (field_name, type_name, is_list).
+    let mut entity_info: Option<(String, String, bool)> = None;
     let mut scalar_parts: Vec<String> = Vec::new();
 
     for pf in &payload_obj.fields {
@@ -120,7 +121,8 @@ fn emit_mutation(
                 if entity_info.is_none() {
                     if let Some(obj) = object_map.get(base) {
                         if obj.fields.iter().any(|f| f.name == "id") {
-                            entity_info = Some((pf.name.clone(), base.to_string()));
+                            entity_info =
+                                Some((pf.name.clone(), base.to_string(), is_list_type(&pf.ty)));
                         }
                     }
                 }
@@ -129,40 +131,72 @@ fn emit_mutation(
         }
     }
 
-    if let Some((entity_field_name, entity_type_name)) = entity_info {
-        // ── Generic mutation: returns T, SDK handles success + extraction ──
+    if let Some((entity_field_name, entity_type_name, is_list)) = entity_info {
         let entity_type_ident = quote::format_ident!("{}", entity_type_name);
         let type_hint =
             format!(" Full type: [`{entity_type_name}`](super::types::{entity_type_name})");
         let doc = quote! { #doc #[doc = ""] #[doc = #type_hint] };
-        let query_prefix = format!(
-            "mutation {}({}) {{ {}({}) {{ success {} {{ ",
-            operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
-        );
-        let query_suffix = " } } }";
         let entity_field_lit = entity_field_name.as_str();
 
-        let standalone_fn = quote! {
-            #doc
-            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                client: &Client, #(#params),*
-            ) -> Result<T, LinearError> {
-                let variables = serde_json::json!({ #(#variables_json),* });
-                let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
-                client.execute_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
-            }
-        };
+        if is_list {
+            // ── Batch mutation: returns Vec<T> ──
+            let query_prefix = format!(
+                "mutation {}({}) {{ {}({}) {{ success {} {{ ",
+                operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
+            );
+            let query_suffix = " } } }";
 
-        let client_method = quote! {
-            #doc
-            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                &self, #(#params),*
-            ) -> Result<T, LinearError> {
-                crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
-            }
-        };
+            let standalone_fn = quote! {
+                #doc
+                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                    client: &Client, #(#params),*
+                ) -> Result<Vec<T>, LinearError> {
+                    let variables = serde_json::json!({ #(#variables_json),* });
+                    let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
+                    client.execute_batch_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
+                }
+            };
 
-        Some((standalone_fn, client_method))
+            let client_method = quote! {
+                #doc
+                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                    &self, #(#params),*
+                ) -> Result<Vec<T>, LinearError> {
+                    crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
+                }
+            };
+
+            Some((standalone_fn, client_method))
+        } else {
+            // ── Generic mutation: returns T, SDK handles success + extraction ──
+            let query_prefix = format!(
+                "mutation {}({}) {{ {}({}) {{ success {} {{ ",
+                operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
+            );
+            let query_suffix = " } } }";
+
+            let standalone_fn = quote! {
+                #doc
+                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                    client: &Client, #(#params),*
+                ) -> Result<T, LinearError> {
+                    let variables = serde_json::json!({ #(#variables_json),* });
+                    let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
+                    client.execute_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
+                }
+            };
+
+            let client_method = quote! {
+                #doc
+                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                    &self, #(#params),*
+                ) -> Result<T, LinearError> {
+                    crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
+                }
+            };
+
+            Some((standalone_fn, client_method))
+        }
     } else {
         // ── Non-entity mutation (e.g. file_upload): keep Value return ──
         let mut entity_selection_exprs: Vec<TokenStream> = Vec::new();
@@ -295,6 +329,15 @@ fn resolve_mutation_arg_inner(
             let elem = resolve_mutation_arg_inner(inner, type_kind_map);
             quote! { Vec<#elem> }
         }
+    }
+}
+
+/// Check if a GqlType is a list (possibly wrapped in NonNull).
+fn is_list_type(ty: &GqlType) -> bool {
+    match ty {
+        GqlType::List(_) => true,
+        GqlType::NonNull(inner) => is_list_type(inner),
+        GqlType::Named(_) => false,
     }
 }
 

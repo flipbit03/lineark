@@ -1061,6 +1061,71 @@ mod online {
         client.team_delete(team_id).await.unwrap();
     }
 
+    // ── Batch mutations ──────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_batch_update_changes_priority() {
+        use lineark_sdk::generated::inputs::{IssueCreateInput, IssueUpdateInput};
+
+        let client = test_client();
+
+        // Get a team to create issues in.
+        let teams = client.teams::<Team>().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create two issues.
+        let input_a = IssueCreateInput {
+            title: Some("[test] SDK batch_update A".to_string()),
+            team_id: Some(team_id.clone()),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let id_a = entity_a.id.clone().unwrap();
+        let _guard_a = IssueGuard {
+            token: test_token(),
+            id: id_a.clone(),
+        };
+
+        let input_b = IssueCreateInput {
+            title: Some("[test] SDK batch_update B".to_string()),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let id_b = entity_b.id.clone().unwrap();
+        let _guard_b = IssueGuard {
+            token: test_token(),
+            id: id_b.clone(),
+        };
+
+        // Batch update both issues' priority.
+        let update_input = IssueUpdateInput {
+            priority: Some(2),
+            ..Default::default()
+        };
+        let result = client
+            .issue_batch_update::<Issue>(update_input, vec![id_a.clone(), id_b.clone()])
+            .await
+            .unwrap();
+
+        assert_eq!(result.len(), 2, "batch update should return 2 issues");
+        for issue in &result {
+            assert!(issue.id.is_some());
+        }
+
+        // Clean up.
+        client
+            .issue_delete::<Issue>(Some(true), id_a)
+            .await
+            .unwrap();
+        client
+            .issue_delete::<Issue>(Some(true), id_b)
+            .await
+            .unwrap();
+    }
+
     // ── Error handling ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

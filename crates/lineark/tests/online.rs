@@ -3398,4 +3398,188 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Batch update ─────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_changes_priority() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+        use lineark_sdk::generated::types::Team;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+
+        // Get a team to create issues in.
+        let teams = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create two issues via SDK.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let issue_a = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some("[test] CLI batch-update A".to_string()),
+                    team_id: Some(team_id.clone()),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_a = issue_a.id.clone().unwrap();
+        let _guard_a = IssueGuard {
+            token: token.clone(),
+            id: id_a.clone(),
+        };
+
+        let issue_b = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some("[test] CLI batch-update B".to_string()),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_b = issue_b.id.clone().unwrap();
+        let _guard_b = IssueGuard {
+            token: token.clone(),
+            id: id_b.clone(),
+        };
+
+        // Run batch-update via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                &id_a,
+                &id_b,
+                "--priority",
+                "1",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "batch-update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = result.as_array().expect("should be an array");
+        assert_eq!(arr.len(), 2, "should return 2 updated issues");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_changes_status() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+        use lineark_sdk::generated::types::Team;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+
+        // Get a team.
+        let teams = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create two issues.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let issue_a = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some("[test] CLI batch-update status A".to_string()),
+                    team_id: Some(team_id.clone()),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_a = issue_a.id.clone().unwrap();
+        let _guard_a = IssueGuard {
+            token: token.clone(),
+            id: id_a.clone(),
+        };
+
+        let issue_b = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some("[test] CLI batch-update status B".to_string()),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_b = issue_b.id.clone().unwrap();
+        let _guard_b = IssueGuard {
+            token: token.clone(),
+            id: id_b.clone(),
+        };
+
+        // Run batch-update with --status "Done".
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                &id_a,
+                &id_b,
+                "--status",
+                "Done",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "batch-update --status should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = result.as_array().expect("should be an array");
+        assert_eq!(arr.len(), 2, "should return 2 updated issues");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_invalid_id_fails() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                "FAKE-99999",
+                "--priority",
+                "2",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "batch-update with invalid ID should fail"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("not found") || stderr.contains("Error"),
+            "stderr should contain an error message, got: {stderr}"
+        );
+    }
 }

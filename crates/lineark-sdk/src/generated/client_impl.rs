@@ -344,6 +344,19 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_update::<T>(self, input, id).await
     }
+    /// Updates multiple issues at once.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
+    pub async fn issue_batch_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
+    >(
+        &self,
+        input: IssueUpdateInput,
+        ids: Vec<String>,
+    ) -> Result<Vec<T>, LinearError> {
+        crate::generated::mutations::issue_batch_update::<T>(self, input, ids).await
+    }
     /// Archives an issue.
     ///
     /// Full type: [`Issue`](super::types::Issue)

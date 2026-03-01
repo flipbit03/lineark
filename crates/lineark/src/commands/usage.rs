@@ -71,6 +71,8 @@ COMMANDS:
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                 Set or remove parent
     [--project NAME-OR-ID] [--cycle NAME-OR-ID]    Project, cycle
+  lineark issues batch-update ID [ID ...]            Batch update multiple issues
+    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]   Status, priority, assignee
   lineark issues archive <IDENTIFIER>              Archive an issue
   lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
