@@ -194,9 +194,48 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::comment_create::<T>(self, input).await
     }
+    /// Updates a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        skip_edited_at: Option<bool>,
+        input: CommentUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
+    }
     /// Deletes a comment.
     pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::comment_delete(self, id).await
+    }
+    /// Resolves a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_resolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        resolving_comment_id: Option<String>,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
+    }
+    /// Unresolves a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_unresolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_unresolve::<T>(self, id).await
     }
     /// Creates a new project.
     ///

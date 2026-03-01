@@ -27,7 +27,10 @@ projectMilestone = true
 issueCreate = true
 issueUpdate = true
 commentCreate = true
+commentUpdate = true
 commentDelete = true
+commentResolve = true
+commentUnresolve = true
 
 # Phase 3 — Issue lifecycle
 issueArchive = true
