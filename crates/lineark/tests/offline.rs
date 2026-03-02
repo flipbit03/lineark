@@ -887,3 +887,74 @@ fn usage_includes_comments_delete() {
         .success()
         .stdout(predicate::str::contains("comments delete"));
 }
+
+// ── Initiatives ──────────────────────────────────────────────────────────────
+
+#[test]
+fn initiatives_help_shows_subcommands() {
+    lineark()
+        .args(["initiatives", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("archive"))
+        .stdout(predicate::str::contains("unarchive"))
+        .stdout(predicate::str::contains("delete"))
+        .stdout(predicate::str::contains("projects"));
+}
+
+#[test]
+fn initiatives_create_help_shows_flags() {
+    lineark()
+        .args(["initiatives", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--owner"))
+        .stdout(predicate::str::contains("--status"));
+}
+
+#[test]
+fn initiatives_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "initiatives",
+            "update",
+            "some-uuid",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn initiatives_projects_add_help_shows_flags() {
+    lineark()
+        .args(["initiatives", "projects", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("<INITIATIVE>"));
+}
+
+#[test]
+fn usage_includes_initiatives_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("initiatives list"))
+        .stdout(predicate::str::contains("initiatives read"))
+        .stdout(predicate::str::contains("initiatives create"))
+        .stdout(predicate::str::contains("initiatives update"))
+        .stdout(predicate::str::contains("initiatives archive"))
+        .stdout(predicate::str::contains("initiatives unarchive"))
+        .stdout(predicate::str::contains("initiatives delete"))
+        .stdout(predicate::str::contains("initiatives projects add"))
+        .stdout(predicate::str::contains("initiatives projects remove"));
+}

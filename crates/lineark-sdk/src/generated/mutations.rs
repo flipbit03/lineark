@@ -49,6 +49,44 @@ pub async fn image_upload_from_url(
         .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
         .await
 }
+/// Creates a new initiativeToProject join.
+///
+/// Full type: [`InitiativeToProject`](super::types::InitiativeToProject)
+pub async fn initiative_to_project_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::InitiativeToProject>,
+>(
+    client: &Client,
+    input: InitiativeToProjectCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation InitiativeToProjectCreate($input: InitiativeToProjectCreateInput!) { initiativeToProjectCreate(input: $input) { success initiativeToProject { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(
+            &query,
+            variables,
+            "initiativeToProjectCreate",
+            "initiativeToProject",
+        )
+        .await
+}
+/// Deletes a initiativeToProject.
+pub async fn initiative_to_project_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from(
+        "mutation InitiativeToProjectDelete($id: String!) { initiativeToProjectDelete(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "initiativeToProjectDelete")
+        .await
+}
 /// Creates a new comment.
 ///
 /// Full type: [`Comment`](super::types::Comment)
@@ -418,6 +456,95 @@ pub async fn issue_relation_delete(
         + " } }";
     client
         .execute::<serde_json::Value>(&query, variables, "issueRelationDelete")
+        .await
+}
+/// Creates a new initiative.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub async fn initiative_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+>(
+    client: &Client,
+    input: InitiativeCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation InitiativeCreate($input: InitiativeCreateInput!) { initiativeCreate(input: $input) { success initiative { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "initiativeCreate", "initiative")
+        .await
+}
+/// Updates a initiative.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub async fn initiative_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+>(
+    client: &Client,
+    input: InitiativeUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation InitiativeUpdate($input: InitiativeUpdateInput!, $id: String!) { initiativeUpdate(input: $input, id: $id) { success initiative { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "initiativeUpdate", "initiative")
+        .await
+}
+/// Archives a initiative.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub async fn initiative_archive<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation InitiativeArchive($id: String!) { initiativeArchive(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "initiativeArchive", "entity")
+        .await
+}
+/// Unarchives a initiative.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub async fn initiative_unarchive<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation InitiativeUnarchive($id: String!) { initiativeUnarchive(id: $id) { success entity { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "initiativeUnarchive", "entity")
+        .await
+}
+/// Deletes (trashes) an initiative.
+pub async fn initiative_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query =
+        String::from("mutation InitiativeDelete($id: String!) { initiativeDelete(id: $id) { ")
+            + &response_parts.join(" ")
+            + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "initiativeDelete")
         .await
 }
 /// Creates a new document.

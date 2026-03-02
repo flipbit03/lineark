@@ -837,6 +837,101 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel
             .await
     }
 }
+/// Query builder: All initiatives in the workspace.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct InitiativesQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<InitiativeFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    sort: Option<InitiativeSortInput>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Initiative>>
+    InitiativesQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: InitiativeFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub fn sort(mut self, value: InitiativeSortInput) -> Self {
+        self.sort = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.sort {
+            map.insert("sort".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "Initiatives",
+            "$filter: InitiativeFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [InitiativeSortInput!]",
+            "initiatives",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "initiatives")
+            .await
+    }
+}
 /// Query builder: All documents in the workspace.
 ///
 /// Full type: [`Document`](super::types::Document)
@@ -1257,6 +1352,40 @@ pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T>
         order_by: None,
         _marker: std::marker::PhantomData,
     }
+}
+/// All initiatives in the workspace.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub fn initiatives<'a, T>(client: &'a Client) -> InitiativesQueryBuilder<'a, T> {
+    InitiativesQueryBuilder {
+        client,
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        sort: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// One specific initiative.
+///
+/// Full type: [`Initiative`](super::types::Initiative)
+pub async fn initiative<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::Initiative>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "Initiative", "$id: String!", "initiative", "id: $id", selection
+    );
+    client.execute::<T>(&query, variables, "initiative").await
 }
 /// All documents in the workspace.
 ///

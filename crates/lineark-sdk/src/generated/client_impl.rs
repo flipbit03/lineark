@@ -124,6 +124,23 @@ impl Client {
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
+    /// All initiatives in the workspace.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub fn initiatives<T>(&self) -> InitiativesQueryBuilder<'_, T> {
+        crate::generated::queries::initiatives(self)
+    }
+    /// One specific initiative.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub async fn initiative<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::Initiative>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::initiative::<T>(self, id).await
+    }
     /// All documents in the workspace.
     ///
     /// Full type: [`Document`](super::types::Document)
@@ -181,6 +198,25 @@ impl Client {
         url: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::image_upload_from_url(self, url).await
+    }
+    /// Creates a new initiativeToProject join.
+    ///
+    /// Full type: [`InitiativeToProject`](super::types::InitiativeToProject)
+    pub async fn initiative_to_project_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::InitiativeToProject>,
+    >(
+        &self,
+        input: InitiativeToProjectCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::initiative_to_project_create::<T>(self, input).await
+    }
+    /// Deletes a initiativeToProject.
+    pub async fn initiative_to_project_delete(
+        &self,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::initiative_to_project_delete(self, id).await
     }
     /// Creates a new comment.
     ///
@@ -402,6 +438,59 @@ impl Client {
         id: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::issue_relation_delete(self, id).await
+    }
+    /// Creates a new initiative.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub async fn initiative_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+    >(
+        &self,
+        input: InitiativeCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::initiative_create::<T>(self, input).await
+    }
+    /// Updates a initiative.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub async fn initiative_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+    >(
+        &self,
+        input: InitiativeUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::initiative_update::<T>(self, input, id).await
+    }
+    /// Archives a initiative.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub async fn initiative_archive<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::initiative_archive::<T>(self, id).await
+    }
+    /// Unarchives a initiative.
+    ///
+    /// Full type: [`Initiative`](super::types::Initiative)
+    pub async fn initiative_unarchive<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Initiative>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::initiative_unarchive::<T>(self, id).await
+    }
+    /// Deletes (trashes) an initiative.
+    pub async fn initiative_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::initiative_delete(self, id).await
     }
     /// Creates a new document.
     ///
