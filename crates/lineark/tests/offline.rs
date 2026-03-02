@@ -324,6 +324,73 @@ fn labels_list_help_shows_team_flag() {
         .stdout(predicate::str::contains("--team"));
 }
 
+#[test]
+fn labels_help_shows_subcommands() {
+    lineark()
+        .args(["labels", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("delete"));
+}
+
+#[test]
+fn labels_create_help_shows_flags() {
+    lineark()
+        .args(["labels", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--parent"));
+}
+
+#[test]
+fn labels_update_help_shows_flags() {
+    lineark()
+        .args(["labels", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--name"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--parent"));
+}
+
+#[test]
+fn labels_update_no_flags_prints_error() {
+    lineark()
+        .args(["--api-token", "fake-token", "labels", "update", "some-uuid"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn labels_delete_help_shows_description() {
+    lineark()
+        .args(["labels", "delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn usage_includes_labels_crud() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("labels read"))
+        .stdout(predicate::str::contains("labels create"))
+        .stdout(predicate::str::contains("labels update"))
+        .stdout(predicate::str::contains("labels delete"));
+}
+
 // ── Auth error handling ─────────────────────────────────────────────────────
 
 #[test]

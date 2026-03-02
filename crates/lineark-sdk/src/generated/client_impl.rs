@@ -124,6 +124,17 @@ impl Client {
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
+    /// One specific label.
+    ///
+    /// Full type: [`IssueLabel`](super::types::IssueLabel)
+    pub async fn issue_label<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::issue_label::<T>(self, id).await
+    }
     /// All documents in the workspace.
     ///
     /// Full type: [`Document`](super::types::Document)
@@ -402,6 +413,38 @@ impl Client {
         id: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::issue_relation_delete(self, id).await
+    }
+    /// Creates a new label.
+    ///
+    /// Full type: [`IssueLabel`](super::types::IssueLabel)
+    pub async fn issue_label_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+    >(
+        &self,
+        replace_team_labels: Option<bool>,
+        input: IssueLabelCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_label_create::<T>(self, replace_team_labels, input).await
+    }
+    /// Updates a label.
+    ///
+    /// Full type: [`IssueLabel`](super::types::IssueLabel)
+    pub async fn issue_label_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+    >(
+        &self,
+        replace_team_labels: Option<bool>,
+        input: IssueLabelUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::issue_label_update::<T>(self, replace_team_labels, input, id)
+            .await
+    }
+    /// Deletes an issue label.
+    pub async fn issue_label_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::issue_label_delete(self, id).await
     }
     /// Creates a new document.
     ///

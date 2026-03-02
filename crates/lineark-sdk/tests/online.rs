@@ -95,6 +95,27 @@ impl Drop for DocumentGuard {
     }
 }
 
+/// RAII guard — deletes an issue label on drop.
+struct LabelGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for LabelGuard {
+    fn drop(&mut self) {
+        let token = self.token.clone();
+        let id = self.id.clone();
+        let _ = std::thread::spawn(move || {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                if let Ok(client) = Client::from_token(token) {
+                    let _ = client.issue_label_delete(id).await;
+                }
+            });
+        })
+        .join();
+    }
+}
+
 test_with::tokio_runner!(online);
 
 #[test_with::module]
@@ -211,6 +232,57 @@ mod online {
             assert!(label.id.is_some());
             assert!(label.name.is_some());
         }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn issue_label_create_update_and_delete() {
+        use lineark_sdk::generated::inputs::{IssueLabelCreateInput, IssueLabelUpdateInput};
+
+        let client = test_client();
+
+        // Create a workspace-level label with a unique name.
+        let unique = format!(
+            "[test] sdk-label {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        let input = IssueLabelCreateInput {
+            name: Some(unique.clone()),
+            color: Some("#eb5757".to_string()),
+            ..Default::default()
+        };
+        let label = client
+            .issue_label_create::<IssueLabel>(None, input)
+            .await
+            .unwrap();
+        let label_id = label.id.clone().unwrap();
+        let _label_guard = LabelGuard {
+            token: test_token(),
+            id: label_id.clone(),
+        };
+        assert!(!label_id.is_empty());
+        assert_eq!(label.name, Some(unique));
+        assert_eq!(label.color, Some("#eb5757".to_string()));
+
+        // Update the label's color.
+        let update_input = IssueLabelUpdateInput {
+            color: Some("#4ea7fc".to_string()),
+            ..Default::default()
+        };
+        let updated = client
+            .issue_label_update::<IssueLabel>(None, update_input, label_id.clone())
+            .await
+            .unwrap();
+        assert!(updated.id.is_some());
+
+        // Verify the update by reading the label.
+        let fetched = client
+            .issue_label::<IssueLabel>(label_id.clone())
+            .await
+            .unwrap();
+        assert_eq!(fetched.color, Some("#4ea7fc".to_string()));
+
+        // Delete the label.
+        client.issue_label_delete(label_id).await.unwrap();
     }
 
     // ── Cycles ──────────────────────────────────────────────────────────────
