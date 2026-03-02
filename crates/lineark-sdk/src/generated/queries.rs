@@ -1258,6 +1258,23 @@ pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T>
         _marker: std::marker::PhantomData,
     }
 }
+/// One specific label.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub async fn issue_label<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "IssueLabel", "$id: String!", "issueLabel", "id: $id", selection
+    );
+    client.execute::<T>(&query, variables, "issueLabel").await
+}
 /// All documents in the workspace.
 ///
 /// Full type: [`Document`](super::types::Document)

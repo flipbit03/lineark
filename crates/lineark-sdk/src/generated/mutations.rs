@@ -420,6 +420,64 @@ pub async fn issue_relation_delete(
         .execute::<serde_json::Value>(&query, variables, "issueRelationDelete")
         .await
 }
+/// Creates a new label.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub async fn issue_label_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+>(
+    client: &Client,
+    replace_team_labels: Option<bool>,
+    input: IssueLabelCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "replaceTeamLabels" : replace_team_labels, "input" : input }
+    );
+    let query = String::from(
+        "mutation IssueLabelCreate($replaceTeamLabels: Boolean, $input: IssueLabelCreateInput!) { issueLabelCreate(replaceTeamLabels: $replaceTeamLabels, input: $input) { success issueLabel { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "issueLabelCreate", "issueLabel")
+        .await
+}
+/// Updates a label.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub async fn issue_label_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+>(
+    client: &Client,
+    replace_team_labels: Option<bool>,
+    input: IssueLabelUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "replaceTeamLabels" : replace_team_labels, "input" : input, "id" : id }
+    );
+    let query = String::from(
+        "mutation IssueLabelUpdate($replaceTeamLabels: Boolean, $input: IssueLabelUpdateInput!, $id: String!) { issueLabelUpdate(replaceTeamLabels: $replaceTeamLabels, input: $input, id: $id) { success issueLabel { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "issueLabelUpdate", "issueLabel")
+        .await
+}
+/// Deletes an issue label.
+pub async fn issue_label_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query =
+        String::from("mutation IssueLabelDelete($id: String!) { issueLabelDelete(id: $id) { ")
+            + &response_parts.join(" ")
+            + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "issueLabelDelete")
+        .await
+}
 /// Creates a new document.
 ///
 /// Full type: [`Document`](super::types::Document)

@@ -49,6 +49,14 @@ COMMANDS:
     [-p 0-4] [--content TEXT]                      Priority, markdown content
     [--icon ICON] [--color COLOR]                  Icon, color
   lineark labels list [--team KEY]                 List issue labels (includes team key)
+  lineark labels read <ID>                         Full label detail
+  lineark labels create <NAME>                     Create a label (workspace-wide if no --team)
+    [--team KEY] [--color HEX]                     Team, color
+    [--description TEXT] [--parent ID]             Description, parent label
+  lineark labels update <ID>                       Update a label
+    [--name TEXT] [--color HEX]                    Name, color
+    [--description TEXT] [--parent ID]             Description, parent label
+  lineark labels delete <ID>                       Delete a label
   lineark cycles list [-l N] [--team KEY]          List cycles
     [--active]                                     Only the active cycle
     [--around-active N]                            Active ± N neighbors

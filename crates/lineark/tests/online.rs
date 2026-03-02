@@ -132,6 +132,24 @@ impl Drop for ProjectGuard {
     }
 }
 
+/// RAII guard — deletes an issue label on drop.
+struct LabelGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for LabelGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.issue_label_delete(id).await });
+    }
+}
+
 test_with::runner!(online);
 
 #[test_with::module]
@@ -243,6 +261,112 @@ mod online {
                 label["team"]
             );
         }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn labels_create_update_and_delete() {
+        let token = api_token();
+
+        // Create a workspace-level label.
+        let unique_name = format!("[test] lbl-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &unique_name,
+                "--color",
+                "#eb5757",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let label_id = created["id"]
+            .as_str()
+            .expect("created label should have id")
+            .to_string();
+        let _label_guard = LabelGuard {
+            token: token.clone(),
+            id: label_id.clone(),
+        };
+        assert_eq!(created["name"].as_str(), Some(unique_name.as_str()));
+        assert_eq!(created["color"].as_str(), Some("#eb5757"));
+
+        // Read the label back.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "read",
+                &label_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(detail["id"].as_str(), Some(label_id.as_str()));
+        assert_eq!(detail["name"].as_str(), Some(unique_name.as_str()));
+
+        // Update the label color.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &label_id,
+                "--color",
+                "#4ea7fc",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(updated["color"].as_str(), Some("#4ea7fc"));
+
+        // Delete the label via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "delete",
+                &label_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
     }
 
     // ── Issues ────────────────────────────────────────────────────────────────
