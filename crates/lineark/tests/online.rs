@@ -3398,4 +3398,108 @@ mod online {
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
     }
+
+    // ── Notifications ────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn notifications_list_returns_json() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "notifications",
+                "list",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "notifications list should succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        assert!(
+            json.is_array(),
+            "notifications list JSON should be an array"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn notifications_archive_and_unarchive() {
+        let token = api_token();
+
+        // List notifications to find one to archive.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "notifications",
+                "list",
+                "-l",
+                "5",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "notifications list should succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+
+        if arr.is_empty() {
+            // No notifications — skip gracefully.
+            return;
+        }
+
+        let notification_id = arr[0]["id"].as_str().expect("notification should have id");
+
+        // Archive the notification.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "notifications",
+                "archive",
+                notification_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "notifications archive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Unarchive the notification.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "notifications",
+                "unarchive",
+                notification_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "notifications unarchive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
 }

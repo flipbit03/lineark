@@ -68,13 +68,16 @@ fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> To
 }
 
 /// Check if a field should be included in the struct.
-/// Includes Scalar, Enum, and Object types (for nested objects).
-/// Excludes Interface and Union types (not representable as simple structs).
+/// Includes Scalar, Enum, Object, and Interface types.
+/// Excludes Union types (not representable as simple structs).
 fn is_includable_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> bool {
     let base = ty.base_name();
     matches!(
         type_kind_map.get(base),
-        Some(TypeKind::Scalar) | Some(TypeKind::Enum) | Some(TypeKind::Object)
+        Some(TypeKind::Scalar)
+            | Some(TypeKind::Enum)
+            | Some(TypeKind::Object)
+            | Some(TypeKind::Interface)
     )
 }
 
@@ -85,7 +88,10 @@ fn is_includable_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) 
 fn resolve_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let inner = resolve_inner_type(ty, type_kind_map);
     let base = ty.base_name();
-    if matches!(type_kind_map.get(base), Some(TypeKind::Object)) {
+    if matches!(
+        type_kind_map.get(base),
+        Some(TypeKind::Object) | Some(TypeKind::Interface)
+    ) {
         quote! { Option<Box<#inner>> }
     } else {
         quote! { Option<#inner> }
@@ -98,7 +104,7 @@ fn resolve_inner_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -
         GqlType::Named(name) => {
             let base = name.as_str();
             match type_kind_map.get(base) {
-                Some(TypeKind::Object) => {
+                Some(TypeKind::Object) | Some(TypeKind::Interface) => {
                     let ident = quote::format_ident!("{}", name);
                     quote! { #ident }
                 }

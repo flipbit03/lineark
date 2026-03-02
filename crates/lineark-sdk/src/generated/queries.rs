@@ -576,6 +576,93 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMil
             .await
     }
 }
+/// Query builder: All notifications.
+///
+/// Full type: [`Notification`](super::types::Notification)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct NotificationsQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<NotificationFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Notification>>
+    NotificationsQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: NotificationFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "Notifications",
+            "$filter: NotificationFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "notifications",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "notifications")
+            .await
+    }
+}
 /// Query builder: All issues.
 ///
 /// Full type: [`Issue`](super::types::Issue)
@@ -1175,6 +1262,39 @@ pub async fn project_milestone<
     client
         .execute::<T>(&query, variables, "projectMilestone")
         .await
+}
+/// All notifications.
+///
+/// Full type: [`Notification`](super::types::Notification)
+pub fn notifications<'a, T>(client: &'a Client) -> NotificationsQueryBuilder<'a, T> {
+    NotificationsQueryBuilder {
+        client,
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// One specific notification.
+///
+/// Full type: [`Notification`](super::types::Notification)
+pub async fn notification<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::Notification>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "Notification", "$id: String!", "notification", "id: $id", selection
+    );
+    client.execute::<T>(&query, variables, "notification").await
 }
 /// All issues.
 ///

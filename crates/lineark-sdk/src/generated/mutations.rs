@@ -288,6 +288,51 @@ pub async fn project_milestone_delete(
         .execute::<serde_json::Value>(&query, variables, "projectMilestoneDelete")
         .await
 }
+/// Updates a notification.
+pub async fn notification_update(
+    client: &Client,
+    input: NotificationUpdateInput,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string()];
+    let query = String::from(
+        "mutation NotificationUpdate($input: NotificationUpdateInput!, $id: String!) { notificationUpdate(input: $input, id: $id) { ",
+    ) + &response_parts.join(" ") + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "notificationUpdate")
+        .await
+}
+/// Archives a notification.
+pub async fn notification_archive(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string()];
+    let query = String::from(
+        "mutation NotificationArchive($id: String!) { notificationArchive(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "notificationArchive")
+        .await
+}
+/// Unarchives a notification.
+pub async fn notification_unarchive(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string()];
+    let query = String::from(
+        "mutation NotificationUnarchive($id: String!) { notificationUnarchive(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "notificationUnarchive")
+        .await
+}
 /// Creates a new issue.
 ///
 /// Full type: [`Issue`](super::types::Issue)

@@ -4,6 +4,165 @@
 use super::enums::*;
 use crate::field_selection::GraphQLFields;
 use serde::{Deserialize, Serialize};
+/// A generic payload return from entity archive or deletion mutations.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ArchivePayload {
+    /// The identifier of the last sync operation.
+    pub last_sync_id: Option<f64>,
+    /// Whether the operation was successful.
+    pub success: Option<bool>,
+}
+impl GraphQLFields for ArchivePayload {
+    type FullType = Self;
+    fn selection() -> String {
+        "lastSyncId success".into()
+    }
+}
+/// A basic entity.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Entity {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+    /// The time at which the entity was created.
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    /// been updated after creation.
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which the entity was archived. Null if the entity has not been archived.
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+impl GraphQLFields for Entity {
+    type FullType = Self;
+    fn selection() -> String {
+        "id createdAt updatedAt archivedAt".into()
+    }
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Node {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+}
+impl GraphQLFields for Node {
+    type FullType = Self;
+    fn selection() -> String {
+        "id".into()
+    }
+}
+/// A notification sent to a user.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Notification {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+    /// The time at which the entity was created.
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    /// been updated after creation.
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which the entity was archived. Null if the entity has not been archived.
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Notification type.
+    pub r#type: Option<String>,
+    /// The user that caused the notification.
+    pub actor: Option<Box<User>>,
+    /// The external user that caused the notification.
+    pub external_user_actor: Option<Box<ExternalUser>>,
+    /// The user that received the notification.
+    pub user: Option<Box<User>>,
+    /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
+    pub read_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at when an email reminder for this notification was sent to the user. Null, if no email
+    /// reminder has been sent.
+    pub emailed_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time until a notification will be snoozed. After that it will appear in the inbox again.
+    pub snoozed_until_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which a notification was unsnoozed..
+    pub unsnoozed_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The category of the notification.
+    pub category: Option<NotificationCategory>,
+    /// `Internal` URL to the target of the notification.
+    pub url: Option<String>,
+    /// `Internal` Inbox URL for the notification.
+    pub inbox_url: Option<String>,
+    /// `Internal` Notification title.
+    pub title: Option<String>,
+    /// `Internal` Notification subtitle.
+    pub subtitle: Option<String>,
+    /// `Internal` If notification actor was Linear.
+    pub is_linear_actor: Option<bool>,
+    /// `Internal` Notification avatar URL.
+    pub actor_avatar_url: Option<String>,
+    /// `Internal` Notification actor initials if avatar is not available.
+    pub actor_initials: Option<String>,
+    /// `Internal` Notification actor initials if avatar is not available.
+    pub actor_avatar_color: Option<String>,
+    /// `Internal` Issue's status type for issue notifications.
+    pub issue_status_type: Option<String>,
+    /// `Internal` Project update health for new updates.
+    pub project_update_health: Option<String>,
+    /// `Internal` Initiative update health for new updates.
+    pub initiative_update_health: Option<String>,
+    /// `Internal` Notifications with the same grouping key will be grouped together in the UI.
+    pub grouping_key: Option<String>,
+    /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
+    pub grouping_priority: Option<f64>,
+    /// The bot that caused the notification.
+    pub bot_actor: Option<Box<ActorBot>>,
+}
+impl GraphQLFields for Notification {
+    type FullType = Self;
+    fn selection() -> String {
+        "id createdAt updatedAt archivedAt type readAt emailedAt snoozedUntilAt unsnoozedAt category url inboxUrl title subtitle isLinearActor actorAvatarUrl actorInitials actorAvatarColor issueStatusType projectUpdateHealth initiativeUpdateHealth groupingKey groupingPriority"
+            .into()
+    }
+}
+/// Notification subscriptions for models.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct NotificationSubscription {
+    /// The unique identifier of the entity.
+    pub id: Option<String>,
+    /// The time at which the entity was created.
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+    /// been updated after creation.
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The time at which the entity was archived. Null if the entity has not been archived.
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The user that subscribed to receive notifications.
+    pub subscriber: Option<Box<User>>,
+    /// The customer associated with the notification subscription.
+    pub customer: Option<Box<Customer>>,
+    /// The contextual custom view associated with the notification subscription.
+    pub custom_view: Option<Box<CustomView>>,
+    /// The contextual cycle view associated with the notification subscription.
+    pub cycle: Option<Box<Cycle>>,
+    /// The contextual label view associated with the notification subscription.
+    pub label: Option<Box<IssueLabel>>,
+    /// The contextual project view associated with the notification subscription.
+    pub project: Option<Box<Project>>,
+    /// The contextual initiative view associated with the notification subscription.
+    pub initiative: Option<Box<Initiative>>,
+    /// The team associated with the notification subscription.
+    pub team: Option<Box<Team>>,
+    /// The user view associated with the notification subscription.
+    pub user: Option<Box<User>>,
+    /// The type of view to which the notification subscription context is associated with.
+    pub context_view_type: Option<ContextViewType>,
+    /// The type of user view to which the notification subscription context is associated with.
+    pub user_context_view_type: Option<UserContextViewType>,
+    /// Whether the subscription is active or not.
+    pub active: Option<bool>,
+}
+impl GraphQLFields for NotificationSubscription {
+    type FullType = Self;
+    fn selection() -> String {
+        "id createdAt updatedAt archivedAt contextViewType userContextViewType active".into()
+    }
+}
 /// `Internal` An access key for CI/CD integrations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -5294,6 +5453,8 @@ pub struct IssueNotification {
     pub parent_comment: Option<Box<Comment>>,
     /// The team related to the issue notification.
     pub team: Option<Box<Team>>,
+    /// The subscriptions related to the notification.
+    pub subscriptions: Option<Box<Vec<NotificationSubscription>>>,
 }
 impl GraphQLFields for IssueNotification {
     type FullType = Self;
@@ -5920,6 +6081,8 @@ pub struct NotificationArchivePayload {
     pub last_sync_id: Option<f64>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
+    /// The archived/unarchived entity. Null if entity was deleted.
+    pub entity: Option<Box<Notification>>,
 }
 impl GraphQLFields for NotificationArchivePayload {
     type FullType = Self;
@@ -5932,6 +6095,8 @@ impl GraphQLFields for NotificationArchivePayload {
 pub struct NotificationBatchActionPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
+    /// The notifications that were updated.
+    pub notifications: Option<Box<Vec<Notification>>>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -6005,6 +6170,7 @@ impl GraphQLFields for NotificationChannelPreferences {
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationConnection {
     pub edges: Option<Box<Vec<NotificationEdge>>>,
+    pub nodes: Option<Box<Vec<Notification>>>,
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for NotificationConnection {
@@ -6086,6 +6252,7 @@ impl GraphQLFields for NotificationDeliveryPreferencesSchedule {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationEdge {
+    pub node: Option<Box<Notification>>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -6100,6 +6267,8 @@ impl GraphQLFields for NotificationEdge {
 pub struct NotificationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
+    /// The notification that was created or updated.
+    pub notification: Option<Box<Notification>>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -6113,6 +6282,7 @@ impl GraphQLFields for NotificationPayload {
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationSubscriptionConnection {
     pub edges: Option<Box<Vec<NotificationSubscriptionEdge>>>,
+    pub nodes: Option<Box<Vec<NotificationSubscription>>>,
     pub page_info: Option<Box<PageInfo>>,
 }
 impl GraphQLFields for NotificationSubscriptionConnection {
@@ -6124,6 +6294,7 @@ impl GraphQLFields for NotificationSubscriptionConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationSubscriptionEdge {
+    pub node: Option<Box<NotificationSubscription>>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -6138,6 +6309,8 @@ impl GraphQLFields for NotificationSubscriptionEdge {
 pub struct NotificationSubscriptionPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
+    /// The notification subscription that was created or updated.
+    pub notification_subscription: Option<Box<NotificationSubscription>>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }

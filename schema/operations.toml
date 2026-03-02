@@ -22,6 +22,10 @@ issueRelation = true
 projectMilestones = true
 projectMilestone = true
 
+# Notifications
+notifications = true
+notification = true
+
 [mutations]
 # Phase 2 — Core writes
 issueCreate = true
@@ -53,3 +57,8 @@ teamUpdate = true
 teamDelete = true
 teamMembershipCreate = true
 teamMembershipDelete = true
+
+# Notifications
+notificationUpdate = true
+notificationArchive = true
+notificationUnarchive = true

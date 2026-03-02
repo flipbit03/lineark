@@ -47,6 +47,8 @@ enum Command {
     ProjectMilestones(commands::milestones::MilestonesCmd),
     /// Manage file embeds (download/upload).
     Embeds(commands::embeds::EmbedsCmd),
+    /// Manage notifications.
+    Notifications(commands::notifications::NotificationsCmd),
     /// Print a compact LLM-friendly command reference.
     Usage,
     /// Manage lineark itself (update, etc.).
@@ -122,6 +124,7 @@ async fn main() {
         Command::Relations(cmd) => commands::relations::run(cmd, &client, format).await,
         Command::Documents(cmd) => commands::documents::run(cmd, &client, format).await,
         Command::Embeds(cmd) => commands::embeds::run(cmd, &client, format).await,
+        Command::Notifications(cmd) => commands::notifications::run(cmd, &client, format).await,
         Command::ProjectMilestones(cmd) => commands::milestones::run(cmd, &client, format).await,
         Command::Usage | Command::SelfCmd(_) => unreachable!(),
     };

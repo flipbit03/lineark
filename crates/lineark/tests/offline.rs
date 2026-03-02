@@ -887,3 +887,68 @@ fn usage_includes_comments_delete() {
         .success()
         .stdout(predicate::str::contains("comments delete"));
 }
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+#[test]
+fn notifications_help_shows_subcommands() {
+    lineark()
+        .args(["notifications", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("mark-read"))
+        .stdout(predicate::str::contains("archive"))
+        .stdout(predicate::str::contains("unarchive"));
+}
+
+#[test]
+fn notifications_list_help_shows_flags() {
+    lineark()
+        .args(["notifications", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--unread"))
+        .stdout(predicate::str::contains("--limit"));
+}
+
+#[test]
+fn notifications_mark_read_help_shows_id() {
+    lineark()
+        .args(["notifications", "mark-read", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn notifications_archive_help_shows_id() {
+    lineark()
+        .args(["notifications", "archive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn notifications_unarchive_help_shows_id() {
+    lineark()
+        .args(["notifications", "unarchive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
+}
+
+#[test]
+fn usage_includes_notifications_commands() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("notifications list"))
+        .stdout(predicate::str::contains("notifications read"))
+        .stdout(predicate::str::contains("notifications mark-read"))
+        .stdout(predicate::str::contains("notifications archive"))
+        .stdout(predicate::str::contains("notifications unarchive"));
+}
