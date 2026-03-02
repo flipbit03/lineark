@@ -53,3 +53,6 @@ teamUpdate = true
 teamDelete = true
 teamMembershipCreate = true
 teamMembershipDelete = true
+cycleCreate = true
+cycleUpdate = true
+cycleArchive = true

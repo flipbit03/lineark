@@ -5,7 +5,7 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
+use lineark_sdk::generated::types::{Cycle, Issue, IssueRelation, Project};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -129,6 +129,24 @@ impl Drop for ProjectGuard {
         let _ = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { client.project_delete::<Project>(id).await });
+    }
+}
+
+/// RAII guard — archives a cycle on drop (cycles cannot be deleted, only archived).
+struct CycleGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for CycleGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.cycle_archive::<Cycle>(id).await });
     }
 }
 
@@ -3397,5 +3415,108 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Cycles CRUD ──────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn cycles_create_update_and_archive() {
+        let token = api_token();
+
+        // Get the first team key.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .expect("failed to execute lineark");
+        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a cycle with future dates.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "create",
+                "--team",
+                &team_key,
+                "--starts-at",
+                "2027-06-01",
+                "--ends-at",
+                "2027-06-14",
+                "--name",
+                "[test] CLI cycle CRUD",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let cycle_id = created["id"]
+            .as_str()
+            .expect("created cycle should have id")
+            .to_string();
+        let _cycle_guard = CycleGuard {
+            token: token.clone(),
+            id: cycle_id.clone(),
+        };
+
+        // Update the cycle name.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "update",
+                &cycle_id,
+                "--name",
+                "[test] CLI cycle CRUD — updated",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            updated.get("id").is_some(),
+            "update response should contain id"
+        );
+
+        // Archive the cycle.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "cycles",
+                "archive",
+                &cycle_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "cycles archive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let archived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            archived.get("id").is_some(),
+            "archive response should contain id"
+        );
     }
 }
