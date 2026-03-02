@@ -1,8 +1,9 @@
+use chrono::{NaiveDate, TimeZone, Utc};
 use clap::Args;
-use lineark_sdk::generated::inputs::CycleFilter;
+use lineark_sdk::generated::inputs::{CycleCreateInput, CycleFilter, CycleUpdateInput};
 use lineark_sdk::generated::types::Cycle;
-use lineark_sdk::Client;
-use serde::Serialize;
+use lineark_sdk::{Client, GraphQLFields};
+use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
 use super::helpers::resolve_team_id;
@@ -16,6 +17,7 @@ pub struct CyclesCmd {
 }
 
 #[derive(Debug, clap::Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum CyclesAction {
     /// List cycles. By default shows all cycles; use --active to filter.
     ///
@@ -50,6 +52,57 @@ pub enum CyclesAction {
         #[arg(long)]
         team: Option<String>,
     },
+    /// Create a new cycle.
+    ///
+    /// Examples:
+    ///   lineark cycles create --team ENG --starts-at 2026-03-10 --ends-at 2026-03-24
+    ///   lineark cycles create --team ENG --starts-at 2026-04-01 --ends-at 2026-04-14 --name "Sprint 5"
+    Create {
+        /// Team key, name, or UUID.
+        #[arg(long)]
+        team: String,
+        /// Start date (YYYY-MM-DD).
+        #[arg(long)]
+        starts_at: String,
+        /// End date (YYYY-MM-DD).
+        #[arg(long)]
+        ends_at: String,
+        /// Custom cycle name.
+        #[arg(long)]
+        name: Option<String>,
+        /// Cycle description.
+        #[arg(long)]
+        description: Option<String>,
+    },
+    /// Update an existing cycle.
+    ///
+    /// Examples:
+    ///   lineark cycles update CYCLE-UUID --name "Sprint 5 (revised)"
+    ///   lineark cycles update CYCLE-UUID --starts-at 2026-03-11 --ends-at 2026-03-25
+    Update {
+        /// Cycle UUID.
+        id: String,
+        /// New cycle name.
+        #[arg(long)]
+        name: Option<String>,
+        /// New cycle description.
+        #[arg(long)]
+        description: Option<String>,
+        /// New start date (YYYY-MM-DD).
+        #[arg(long)]
+        starts_at: Option<String>,
+        /// New end date (YYYY-MM-DD).
+        #[arg(long)]
+        ends_at: Option<String>,
+    },
+    /// Archive a cycle.
+    ///
+    /// Examples:
+    ///   lineark cycles archive CYCLE-UUID
+    Archive {
+        /// Cycle UUID.
+        id: String,
+    },
 }
 
 #[derive(Debug, Serialize, Tabled)]
@@ -60,6 +113,18 @@ pub struct CycleRow {
     pub starts_at: String,
     pub ends_at: String,
     pub active: String,
+}
+
+/// Lean result type for cycle mutations.
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Cycle)]
+#[serde(rename_all = "camelCase", default)]
+struct CycleRef {
+    id: Option<String>,
+    name: Option<String>,
+    number: Option<f64>,
+    starts_at: Option<String>,
+    ends_at: Option<String>,
 }
 
 fn cycle_status_label(cycle: &Cycle) -> String {
@@ -76,6 +141,17 @@ fn cycle_status_label(cycle: &Cycle) -> String {
     } else {
         String::new()
     }
+}
+
+/// Parse a YYYY-MM-DD string into a `DateTime<Utc>` at midnight UTC.
+fn parse_date_to_utc(s: &str, field_name: &str) -> anyhow::Result<chrono::DateTime<Utc>> {
+    let date = s
+        .parse::<NaiveDate>()
+        .map_err(|e| anyhow::anyhow!("Invalid {} (expected YYYY-MM-DD): {}", field_name, e))?;
+    let dt = date
+        .and_hms_opt(0, 0, 0)
+        .ok_or_else(|| anyhow::anyhow!("Invalid {} datetime", field_name))?;
+    Ok(Utc.from_utc_datetime(&dt))
 }
 
 pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -196,6 +272,76 @@ pub async fn run(cmd: CyclesCmd, client: &Client, format: Format) -> anyhow::Res
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&full_cycle, format);
+        }
+        CyclesAction::Create {
+            team,
+            starts_at,
+            ends_at,
+            name,
+            description,
+        } => {
+            let team_id = resolve_team_id(client, &team).await?;
+            let starts_at_dt = parse_date_to_utc(&starts_at, "starts-at")?;
+            let ends_at_dt = parse_date_to_utc(&ends_at, "ends-at")?;
+
+            let input = CycleCreateInput {
+                team_id: Some(team_id),
+                starts_at: Some(starts_at_dt),
+                ends_at: Some(ends_at_dt),
+                name,
+                description,
+                ..Default::default()
+            };
+
+            let cycle = client
+                .cycle_create::<CycleRef>(input)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            output::print_one(&cycle, format);
+        }
+        CyclesAction::Update {
+            id,
+            name,
+            description,
+            starts_at,
+            ends_at,
+        } => {
+            if name.is_none() && description.is_none() && starts_at.is_none() && ends_at.is_none() {
+                return Err(anyhow::anyhow!(
+                    "No update fields provided. Use --name, --description, --starts-at, or --ends-at."
+                ));
+            }
+
+            let starts_at_dt = starts_at
+                .map(|s| parse_date_to_utc(&s, "starts-at"))
+                .transpose()?;
+            let ends_at_dt = ends_at
+                .map(|s| parse_date_to_utc(&s, "ends-at"))
+                .transpose()?;
+
+            let input = CycleUpdateInput {
+                name,
+                description,
+                starts_at: starts_at_dt,
+                ends_at: ends_at_dt,
+                ..Default::default()
+            };
+
+            let cycle = client
+                .cycle_update::<CycleRef>(input, id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            output::print_one(&cycle, format);
+        }
+        CyclesAction::Archive { id } => {
+            let cycle = client
+                .cycle_archive::<CycleRef>(id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            output::print_one(&cycle, format);
         }
     }
     Ok(())

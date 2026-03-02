@@ -440,4 +440,41 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::document_delete::<T>(self, id).await
     }
+    /// Creates a new cycle.
+    ///
+    /// Full type: [`Cycle`](super::types::Cycle)
+    pub async fn cycle_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+    >(
+        &self,
+        input: CycleCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::cycle_create::<T>(self, input).await
+    }
+    /// Updates a cycle.
+    ///
+    /// Full type: [`Cycle`](super::types::Cycle)
+    pub async fn cycle_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+    >(
+        &self,
+        input: CycleUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::cycle_update::<T>(self, input, id).await
+    }
+    /// Archives a cycle.
+    ///
+    /// Full type: [`Cycle`](super::types::Cycle)
+    pub async fn cycle_archive<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::cycle_archive::<T>(self, id).await
+    }
 }

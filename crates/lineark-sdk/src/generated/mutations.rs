@@ -476,3 +476,59 @@ pub async fn document_delete<
         .execute_mutation::<T>(&query, variables, "documentDelete", "entity")
         .await
 }
+/// Creates a new cycle.
+///
+/// Full type: [`Cycle`](super::types::Cycle)
+pub async fn cycle_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+>(
+    client: &Client,
+    input: CycleCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation CycleCreate($input: CycleCreateInput!) { cycleCreate(input: $input) { success cycle { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "cycleCreate", "cycle")
+        .await
+}
+/// Updates a cycle.
+///
+/// Full type: [`Cycle`](super::types::Cycle)
+pub async fn cycle_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+>(
+    client: &Client,
+    input: CycleUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input, "id" : id });
+    let query = String::from(
+        "mutation CycleUpdate($input: CycleUpdateInput!, $id: String!) { cycleUpdate(input: $input, id: $id) { success cycle { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "cycleUpdate", "cycle")
+        .await
+}
+/// Archives a cycle.
+///
+/// Full type: [`Cycle`](super::types::Cycle)
+pub async fn cycle_archive<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Cycle>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation CycleArchive($id: String!) { cycleArchive(id: $id) { success entity { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "cycleArchive", "entity")
+        .await
+}

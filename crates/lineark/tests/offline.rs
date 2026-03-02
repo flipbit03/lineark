@@ -254,7 +254,10 @@ fn cycles_help_shows_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("list"))
-        .stdout(predicate::str::contains("read"));
+        .stdout(predicate::str::contains("read"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("update"))
+        .stdout(predicate::str::contains("archive"));
 }
 
 #[test]
@@ -276,6 +279,41 @@ fn cycles_read_help_shows_team_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--team"));
+}
+
+#[test]
+fn cycles_create_help_shows_flags() {
+    lineark()
+        .args(["cycles", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--starts-at"))
+        .stdout(predicate::str::contains("--ends-at"));
+}
+
+#[test]
+fn cycles_update_no_flags_prints_error() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake-token",
+            "cycles",
+            "update",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No update fields provided"));
+}
+
+#[test]
+fn cycles_archive_help_shows_id() {
+    lineark()
+        .args(["cycles", "archive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("<ID>"));
 }
 
 // ── Usage includes Phase 3 commands ─────────────────────────────────────────
@@ -311,6 +349,17 @@ fn usage_includes_cycles_flags() {
         .success()
         .stdout(predicate::str::contains("--active"))
         .stdout(predicate::str::contains("--around-active"));
+}
+
+#[test]
+fn usage_includes_cycles_crud() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("cycles create"))
+        .stdout(predicate::str::contains("cycles update"))
+        .stdout(predicate::str::contains("cycles archive"));
 }
 
 // ── Labels ──────────────────────────────────────────────────────────────────

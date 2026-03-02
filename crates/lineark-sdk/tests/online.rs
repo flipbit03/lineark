@@ -95,6 +95,27 @@ impl Drop for DocumentGuard {
     }
 }
 
+/// RAII guard — archives a cycle on drop (cycles cannot be deleted, only archived).
+struct CycleGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for CycleGuard {
+    fn drop(&mut self) {
+        let token = self.token.clone();
+        let id = self.id.clone();
+        let _ = std::thread::spawn(move || {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                if let Ok(client) = Client::from_token(token) {
+                    let _ = client.cycle_archive::<Cycle>(id).await;
+                }
+            });
+        })
+        .join();
+    }
+}
+
 test_with::tokio_runner!(online);
 
 #[test_with::module]
@@ -1059,6 +1080,53 @@ mod online {
 
         // Clean up: delete the team.
         client.team_delete(team_id).await.unwrap();
+    }
+
+    // ── Cycle CRUD ────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn cycle_create_update_and_archive() {
+        use lineark_sdk::generated::inputs::{CycleCreateInput, CycleUpdateInput};
+
+        let client = test_client();
+
+        // Get the first team to create a cycle in.
+        let teams = client.teams::<Team>().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        // Create a cycle with future dates.
+        let starts_at = chrono::Utc::now() + chrono::Duration::days(365);
+        let ends_at = starts_at + chrono::Duration::days(14);
+
+        let input = CycleCreateInput {
+            team_id: Some(team_id),
+            starts_at: Some(starts_at),
+            ends_at: Some(ends_at),
+            name: Some("[test] SDK cycle_create_update_and_archive".to_string()),
+            ..Default::default()
+        };
+        let cycle = client.cycle_create::<Cycle>(input).await.unwrap();
+        let cycle_id = cycle.id.clone().unwrap();
+        let _cycle_guard = CycleGuard {
+            token: test_token(),
+            id: cycle_id.clone(),
+        };
+        assert!(!cycle_id.is_empty());
+
+        // Update the cycle's name.
+        let update_input = CycleUpdateInput {
+            name: Some("[test] SDK cycle — updated".to_string()),
+            ..Default::default()
+        };
+        let updated = client
+            .cycle_update::<Cycle>(update_input, cycle_id.clone())
+            .await
+            .unwrap();
+        assert!(updated.id.is_some());
+
+        // Archive the cycle.
+        let archived = client.cycle_archive::<Cycle>(cycle_id).await.unwrap();
+        assert!(archived.id.is_some());
     }
 
     // ── Error handling ──────────────────────────────────────────────────────
