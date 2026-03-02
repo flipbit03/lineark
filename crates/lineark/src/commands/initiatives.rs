@@ -491,9 +491,7 @@ pub async fn run(cmd: InitiativesCmd, client: &Client, format: Format) -> anyhow
                     .find(|n| n.initiative.id.as_deref() == Some(&initiative_id))
                     .and_then(|n| n.id.clone())
                     .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "No link found between this initiative and project"
-                        )
+                        anyhow::anyhow!("No link found between this initiative and project")
                     })?;
 
                 let result = client
