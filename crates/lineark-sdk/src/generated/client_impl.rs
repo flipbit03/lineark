@@ -86,6 +86,23 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::project_milestone::<T>(self, id).await
     }
+    /// All notifications.
+    ///
+    /// Full type: [`Notification`](super::types::Notification)
+    pub fn notifications<T>(&self) -> NotificationsQueryBuilder<'_, T> {
+        crate::generated::queries::notifications(self)
+    }
+    /// One specific notification.
+    ///
+    /// Full type: [`Notification`](super::types::Notification)
+    pub async fn notification<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::Notification>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::queries::notification::<T>(self, id).await
+    }
     /// All issues.
     ///
     /// Full type: [`Issue`](super::types::Issue)
@@ -318,6 +335,25 @@ impl Client {
         id: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::project_milestone_delete(self, id).await
+    }
+    /// Updates a notification.
+    pub async fn notification_update(
+        &self,
+        input: NotificationUpdateInput,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::notification_update(self, input, id).await
+    }
+    /// Archives a notification.
+    pub async fn notification_archive(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::notification_archive(self, id).await
+    }
+    /// Unarchives a notification.
+    pub async fn notification_unarchive(
+        &self,
+        id: String,
+    ) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::notification_unarchive(self, id).await
     }
     /// Creates a new issue.
     ///

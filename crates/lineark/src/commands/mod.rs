@@ -6,6 +6,7 @@ pub mod helpers;
 pub mod issues;
 pub mod labels;
 pub mod milestones;
+pub mod notifications;
 pub mod projects;
 pub mod relations;
 pub mod self_cmd;

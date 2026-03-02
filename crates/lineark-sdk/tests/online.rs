@@ -1061,6 +1061,54 @@ mod online {
         client.team_delete(team_id).await.unwrap();
     }
 
+    // ── Notifications ─────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn notifications_list() {
+        let client = test_client();
+        let conn = client
+            .notifications::<Notification>()
+            .first(10)
+            .send()
+            .await
+            .unwrap();
+        // Connection should deserialize; may be empty if no notifications.
+        let _ = conn.page_info;
+        for notification in &conn.nodes {
+            assert!(notification.id.is_some());
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn notification_archive_and_unarchive() {
+        let client = test_client();
+        let conn = client
+            .notifications::<Notification>()
+            .first(5)
+            .send()
+            .await
+            .unwrap();
+
+        if conn.nodes.is_empty() {
+            // No notifications to test with — skip gracefully.
+            return;
+        }
+
+        let notification_id = conn.nodes[0].id.clone().unwrap();
+
+        // Archive the notification.
+        client
+            .notification_archive(notification_id.clone())
+            .await
+            .unwrap();
+
+        // Unarchive the notification.
+        client
+            .notification_unarchive(notification_id)
+            .await
+            .unwrap();
+    }
+
     // ── Error handling ──────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

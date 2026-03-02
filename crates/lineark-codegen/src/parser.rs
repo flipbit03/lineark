@@ -163,7 +163,14 @@ pub fn parse(schema_text: &str) -> ParsedSchema {
             }
             cst::Definition::InterfaceTypeDefinition(i) => {
                 let name = extract_name(&i.name());
+                let description = extract_description(&i.description());
                 type_kind_map.insert(name.clone(), TypeKind::Interface);
+                let fields = extract_fields(&i.fields_definition());
+                objects.push(ObjectDef {
+                    name,
+                    description,
+                    fields,
+                });
             }
             cst::Definition::UnionTypeDefinition(u) => {
                 let name = extract_name(&u.name());

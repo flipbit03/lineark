@@ -110,6 +110,11 @@ COMMANDS:
                                                    --public only works for images (not SVG)
   lineark embeds download <URL>                    Download any file by URL (works with
     [--output PATH] [--overwrite]                  Linear CDN URLs and external URLs alike)
+  lineark notifications list [-l N] [--unread]     List notifications
+  lineark notifications read <ID>                  Full notification detail
+  lineark notifications mark-read <ID>             Mark a notification as read
+  lineark notifications archive <ID>               Archive a notification
+  lineark notifications unarchive <ID>             Unarchive a notification
   lineark self update                              Update lineark to the latest release
   lineark self update --check                      Check if an update is available
 
