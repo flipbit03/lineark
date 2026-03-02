@@ -55,9 +55,9 @@ COMMANDS:
   lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark cycles create --team KEY                 Create a cycle
     --starts-at DATE --ends-at DATE                Dates (YYYY-MM-DD)
-    [--name TEXT] [--description TEXT]              Optional name and description
+    [--name TEXT] [--description TEXT]             Optional name and description
   lineark cycles update <ID>                       Update a cycle
-    [--name TEXT] [--description TEXT]              Name, description
+    [--name TEXT] [--description TEXT]             Name, description
     [--starts-at DATE] [--ends-at DATE]            Dates (YYYY-MM-DD)
   lineark cycles archive <ID>                      Archive a cycle
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
