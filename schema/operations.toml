@@ -22,6 +22,10 @@ issueRelation = true
 projectMilestones = true
 projectMilestone = true
 
+# Phase 4 — Initiatives
+initiatives = true
+initiative = true
+
 [mutations]
 # Phase 2 — Core writes
 issueCreate = true
@@ -53,3 +57,12 @@ teamUpdate = true
 teamDelete = true
 teamMembershipCreate = true
 teamMembershipDelete = true
+
+# Phase 4 — Initiatives
+initiativeCreate = true
+initiativeUpdate = true
+initiativeArchive = true
+initiativeUnarchive = true
+initiativeDelete = true
+initiativeToProjectCreate = true
+initiativeToProjectDelete = true

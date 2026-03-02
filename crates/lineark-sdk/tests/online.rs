@@ -95,6 +95,48 @@ impl Drop for DocumentGuard {
     }
 }
 
+/// RAII guard — deletes an initiative on drop.
+struct InitiativeGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for InitiativeGuard {
+    fn drop(&mut self) {
+        let token = self.token.clone();
+        let id = self.id.clone();
+        let _ = std::thread::spawn(move || {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                if let Ok(client) = Client::from_token(token) {
+                    let _ = client.initiative_delete(id).await;
+                }
+            });
+        })
+        .join();
+    }
+}
+
+/// RAII guard — permanently deletes a project on drop.
+struct ProjectGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for ProjectGuard {
+    fn drop(&mut self) {
+        let token = self.token.clone();
+        let id = self.id.clone();
+        let _ = std::thread::spawn(move || {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                if let Ok(client) = Client::from_token(token) {
+                    let _ = client.project_delete::<Project>(id).await;
+                }
+            });
+        })
+        .join();
+    }
+}
+
 test_with::tokio_runner!(online);
 
 #[test_with::module]
@@ -1068,5 +1110,116 @@ mod online {
         let client = Client::from_token("lin_api_invalid_token_12345").unwrap();
         let result = client.whoami::<User>().await;
         assert!(result.is_err(), "invalid token should produce an error");
+    }
+
+    // ── Initiatives ─────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn initiative_create_update_and_delete() {
+        use lineark_sdk::generated::inputs::{InitiativeCreateInput, InitiativeUpdateInput};
+
+        let client = test_client();
+
+        // Create an initiative.
+        let input = InitiativeCreateInput {
+            name: Some("[test] SDK initiative_create_update_and_delete".to_string()),
+            description: Some("Automated test — will be deleted immediately.".to_string()),
+            ..Default::default()
+        };
+        let entity = client.initiative_create::<Initiative>(input).await.unwrap();
+        let initiative_id = entity.id.clone().unwrap();
+        let _initiative_guard = InitiativeGuard {
+            token: test_token(),
+            id: initiative_id.clone(),
+        };
+        assert!(!initiative_id.is_empty());
+
+        // Update the initiative.
+        let update_input = InitiativeUpdateInput {
+            name: Some("[test] SDK initiative — updated".to_string()),
+            ..Default::default()
+        };
+        let updated = client
+            .initiative_update::<Initiative>(update_input, initiative_id.clone())
+            .await
+            .unwrap();
+        assert!(updated.id.is_some());
+
+        // Read the initiative by ID.
+        let fetched = client
+            .initiative::<Initiative>(initiative_id.clone())
+            .await
+            .unwrap();
+        assert_eq!(fetched.id, Some(initiative_id.clone()));
+        assert_eq!(
+            fetched.name,
+            Some("[test] SDK initiative — updated".to_string())
+        );
+
+        // Delete the initiative.
+        client.initiative_delete(initiative_id).await.unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn initiative_to_project_create_and_delete() {
+        use lineark_sdk::generated::inputs::{
+            InitiativeCreateInput, InitiativeToProjectCreateInput, ProjectCreateInput,
+        };
+
+        let client = test_client();
+
+        // Create an initiative.
+        let init_input = InitiativeCreateInput {
+            name: Some("[test] SDK initiative_to_project".to_string()),
+            ..Default::default()
+        };
+        let initiative = client
+            .initiative_create::<Initiative>(init_input)
+            .await
+            .unwrap();
+        let initiative_id = initiative.id.clone().unwrap();
+        let _initiative_guard = InitiativeGuard {
+            token: test_token(),
+            id: initiative_id.clone(),
+        };
+
+        // Create a project.
+        let teams = client.teams::<Team>().first(1).send().await.unwrap();
+        let team_id = teams.nodes[0].id.clone().unwrap();
+
+        let proj_input = ProjectCreateInput {
+            name: Some("[test] SDK initiative link project".to_string()),
+            team_ids: Some(vec![team_id]),
+            ..Default::default()
+        };
+        let project = client
+            .project_create::<Project>(None, proj_input)
+            .await
+            .unwrap();
+        let project_id = project.id.clone().unwrap();
+        let _project_guard = ProjectGuard {
+            token: test_token(),
+            id: project_id.clone(),
+        };
+
+        // Link the project to the initiative.
+        let link_input = InitiativeToProjectCreateInput {
+            initiative_id: Some(initiative_id.clone()),
+            project_id: Some(project_id.clone()),
+            ..Default::default()
+        };
+        let join = client
+            .initiative_to_project_create::<InitiativeToProject>(link_input)
+            .await
+            .unwrap();
+        let join_id = join.id.clone().unwrap();
+        assert!(!join_id.is_empty());
+
+        // Delete the link.
+        client.initiative_to_project_delete(join_id).await.unwrap();
+
+        // Clean up.
+        client.initiative_delete(initiative_id).await.unwrap();
+        client.project_delete::<Project>(project_id).await.unwrap();
     }
 }

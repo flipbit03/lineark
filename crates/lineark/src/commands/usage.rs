@@ -104,6 +104,23 @@ COMMANDS:
     [--target-date DATE] [--description TEXT]
   lineark project-milestones delete <ID>           Delete a milestone
     [--project NAME-OR-ID]
+  lineark initiatives list [-l N]                  List all initiatives
+  lineark initiatives read <NAME-OR-ID>            Full initiative detail (owner, projects, dates)
+  lineark initiatives create <NAME>                Create an initiative
+    [--description TEXT] [--owner NAME-OR-ID|me]   Description, initiative owner
+    [--status Planned|Active|Completed]            Status
+    [--target-date DATE] [--color HEX] [--icon IC] Target date, color, icon
+  lineark initiatives update <NAME-OR-ID>          Update an initiative
+    [--name TEXT] [--description TEXT]             Name, description
+    [--owner NAME-OR-ID|me] [--status STATUS]      Owner, status
+    [--target-date DATE]                           Target date
+  lineark initiatives archive <NAME-OR-ID>         Archive an initiative
+  lineark initiatives unarchive <NAME-OR-ID>       Unarchive an initiative
+  lineark initiatives delete <NAME-OR-ID>          Delete an initiative
+  lineark initiatives projects add <INIT>          Link a project to an initiative
+    --project NAME-OR-ID
+  lineark initiatives projects remove <INIT>       Unlink a project from an initiative
+    --project NAME-OR-ID
   lineark embeds upload <FILE> [--public]          Upload file to Linear, returns asset URL
                                                    Embed as markdown [name](url) in issues,
                                                    comments, or documents

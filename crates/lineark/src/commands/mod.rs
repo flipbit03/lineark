@@ -3,6 +3,7 @@ pub mod cycles;
 pub mod documents;
 pub mod embeds;
 pub mod helpers;
+pub mod initiatives;
 pub mod issues;
 pub mod labels;
 pub mod milestones;

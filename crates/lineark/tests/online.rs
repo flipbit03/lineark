@@ -132,6 +132,24 @@ impl Drop for ProjectGuard {
     }
 }
 
+/// RAII guard — deletes an initiative on drop.
+struct InitiativeGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for InitiativeGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.initiative_delete(id).await });
+    }
+}
+
 test_with::runner!(online);
 
 #[test_with::module]
@@ -3397,5 +3415,296 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Initiatives ─────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn initiatives_create_update_and_delete() {
+        let token = api_token();
+
+        // Create an initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "create",
+                "[test] CLI initiative CRUD",
+                "--description",
+                "Automated CLI test initiative.",
+                "--status",
+                "Planned",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let initiative_id = created["id"]
+            .as_str()
+            .expect("created initiative should have id")
+            .to_string();
+        let _initiative_guard = InitiativeGuard {
+            token: token.clone(),
+            id: initiative_id.clone(),
+        };
+        assert!(created.get("name").is_some());
+
+        // Update the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "update",
+                &initiative_id,
+                "--name",
+                "[test] CLI initiative CRUD — updated",
+                "--status",
+                "Active",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            updated.get("id").is_some(),
+            "update response should contain id"
+        );
+
+        // Delete the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "delete",
+                &initiative_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn initiatives_archive_and_unarchive() {
+        let token = api_token();
+
+        // Create an initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "create",
+                "[test] CLI initiative archive",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "initiative creation should succeed"
+        );
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let initiative_id = created["id"].as_str().unwrap().to_string();
+        let _initiative_guard = InitiativeGuard {
+            token: token.clone(),
+            id: initiative_id.clone(),
+        };
+
+        // Archive the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "archive",
+                &initiative_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives archive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let archived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            archived.get("id").is_some(),
+            "archive response should contain id"
+        );
+
+        // Unarchive the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "unarchive",
+                &initiative_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives unarchive should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let unarchived: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            unarchived.get("id").is_some(),
+            "unarchive response should contain id"
+        );
+
+        // Clean up: delete the initiative.
+        let client = Client::from_token(api_token()).unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client.initiative_delete(initiative_id).await.unwrap();
+        });
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn initiatives_projects_add_and_remove() {
+        let token = api_token();
+
+        // Create an initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "create",
+                "[test] CLI initiative projects",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            output.status.success(),
+            "initiative creation should succeed"
+        );
+        let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let initiative_id = created["id"].as_str().unwrap().to_string();
+        let _initiative_guard = InitiativeGuard {
+            token: token.clone(),
+            id: initiative_id.clone(),
+        };
+
+        // Create a project to link.
+        let client = Client::from_token(api_token()).unwrap();
+        let teams_conn = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .teams::<lineark_sdk::generated::types::Team>()
+                .first(1)
+                .send()
+                .await
+                .unwrap()
+        });
+        let team_id = teams_conn.nodes[0].id.clone().unwrap();
+
+        let project_input = ProjectCreateInput {
+            name: Some("[test] CLI initiative link project".to_string()),
+            team_ids: Some(vec![team_id]),
+            ..Default::default()
+        };
+        let project = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .project_create::<Project>(None, project_input)
+                .await
+                .unwrap()
+        });
+        let project_id = project.id.clone().unwrap();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
+
+        // Link the project to the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "projects",
+                "add",
+                &initiative_id,
+                "--project",
+                &project_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives projects add should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let add_result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            add_result.get("id").is_some(),
+            "add result should contain join entity id"
+        );
+
+        // Unlink the project from the initiative.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "initiatives",
+                "projects",
+                "remove",
+                &initiative_id,
+                "--project",
+                &project_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "initiatives projects remove should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up: delete initiative and project.
+        let client = Client::from_token(api_token()).unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client.initiative_delete(initiative_id).await.unwrap();
+            client.project_delete::<Project>(project_id).await.unwrap();
+        });
     }
 }

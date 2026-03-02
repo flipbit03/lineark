@@ -31,6 +31,8 @@ enum Command {
     Users(commands::users::UsersCmd),
     /// Manage projects.
     Projects(commands::projects::ProjectsCmd),
+    /// Manage initiatives.
+    Initiatives(commands::initiatives::InitiativesCmd),
     /// Manage issue labels.
     Labels(commands::labels::LabelsCmd),
     /// Manage cycles.
@@ -115,6 +117,7 @@ async fn main() {
         Command::Teams(cmd) => commands::teams::run(cmd, &client, format).await,
         Command::Users(cmd) => commands::users::run(cmd, &client, format).await,
         Command::Projects(cmd) => commands::projects::run(cmd, &client, format).await,
+        Command::Initiatives(cmd) => commands::initiatives::run(cmd, &client, format).await,
         Command::Labels(cmd) => commands::labels::run(cmd, &client, format).await,
         Command::Cycles(cmd) => commands::cycles::run(cmd, &client, format).await,
         Command::Issues(cmd) => commands::issues::run(cmd, &client, format).await,

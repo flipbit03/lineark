@@ -1,4 +1,6 @@
-use lineark_sdk::generated::types::{Cycle, IssueLabel, IssueSearchResult, Project, Team, User};
+use lineark_sdk::generated::types::{
+    Cycle, Initiative, IssueLabel, IssueSearchResult, Project, Team, User,
+};
 use lineark_sdk::Client;
 
 /// Resolve a team key or name (e.g., "ENG" or "Engineering") to a team UUID.
@@ -378,4 +380,50 @@ pub async fn resolve_cycle_id(
         name_or_id,
         available.join(", ")
     ))
+}
+
+/// Resolve an initiative name or UUID to an initiative UUID.
+/// If the input already looks like a UUID, return it as-is.
+/// Matches case-insensitively on `name`.
+pub async fn resolve_initiative_id(client: &Client, name_or_id: &str) -> anyhow::Result<String> {
+    if uuid::Uuid::parse_str(name_or_id).is_ok() {
+        return Ok(name_or_id.to_string());
+    }
+    let conn = client
+        .initiatives::<Initiative>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let matches: Vec<&Initiative> = conn
+        .nodes
+        .iter()
+        .filter(|i| {
+            i.name
+                .as_deref()
+                .is_some_and(|n| n.eq_ignore_ascii_case(name_or_id))
+        })
+        .collect();
+
+    match matches.len() {
+        0 => {
+            let available: Vec<String> = conn.nodes.iter().filter_map(|i| i.name.clone()).collect();
+            Err(anyhow::anyhow!(
+                "Initiative '{}' not found. Available: {}",
+                name_or_id,
+                available.join(", ")
+            ))
+        }
+        1 => Ok(matches[0].id.clone().unwrap_or_default()),
+        _ => {
+            let names: Vec<String> = matches.iter().filter_map(|i| i.name.clone()).collect();
+            Err(anyhow::anyhow!(
+                "Ambiguous initiative '{}'. Matches: {}",
+                name_or_id,
+                names.join(", ")
+            ))
+        }
+    }
 }
