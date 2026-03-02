@@ -4,7 +4,8 @@ use lineark_sdk::generated::inputs::{
     InitiativeCreateInput, InitiativeToProjectCreateInput, InitiativeUpdateInput,
 };
 use lineark_sdk::generated::types::{
-    Initiative, InitiativeToProject, Project, ProjectConnection, User,
+    Initiative, InitiativeToProject, InitiativeToProjectConnection, Project, ProjectConnection,
+    User,
 };
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
@@ -260,6 +261,40 @@ struct InitiativeToProjectRef {
     id: Option<String>,
 }
 
+/// Lean type for querying a project's initiative links (used by remove).
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Project)]
+#[serde(rename_all = "camelCase", default)]
+struct ProjectWithInitiativeLinks {
+    id: Option<String>,
+    #[graphql(nested)]
+    initiative_to_projects: ProjectInitiativeToProjectConnection,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = InitiativeToProjectConnection)]
+#[serde(rename_all = "camelCase", default)]
+struct ProjectInitiativeToProjectConnection {
+    #[graphql(nested)]
+    nodes: Vec<InitiativeToProjectNode>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = InitiativeToProject)]
+#[serde(rename_all = "camelCase", default)]
+struct InitiativeToProjectNode {
+    id: Option<String>,
+    #[graphql(nested)]
+    initiative: InitiativeIdRef,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Initiative)]
+#[serde(rename_all = "camelCase", default)]
+struct InitiativeIdRef {
+    id: Option<String>,
+}
+
 // ── Command dispatch ────────────────────────────────────────────────────
 
 pub async fn run(cmd: InitiativesCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -443,25 +478,23 @@ pub async fn run(cmd: InitiativesCmd, client: &Client, format: Format) -> anyhow
                 let initiative_id = resolve_initiative_id(client, &initiative).await?;
                 let project_id = resolve_project_id(client, &project).await?;
 
-                // To delete the link we need the InitiativeToProject join entity ID.
-                // The Linear API only returns this from the create mutation; there is
-                // no standalone query for join entities. We use a create-then-delete
-                // pattern: creating a duplicate link returns the existing join entity
-                // (idempotent), giving us its ID, which we then delete.
-                let input = InitiativeToProjectCreateInput {
-                    initiative_id: Some(initiative_id),
-                    project_id: Some(project_id),
-                    ..Default::default()
-                };
-
-                let join = client
-                    .initiative_to_project_create::<InitiativeToProjectRef>(input)
+                // Query the project's initiative links to find the join entity ID.
+                let proj = client
+                    .project::<ProjectWithInitiativeLinks>(project_id)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-                let join_id = join.id.ok_or_else(|| {
-                    anyhow::anyhow!("Failed to resolve initiative-to-project link")
-                })?;
+                let join_id = proj
+                    .initiative_to_projects
+                    .nodes
+                    .iter()
+                    .find(|n| n.initiative.id.as_deref() == Some(&initiative_id))
+                    .and_then(|n| n.id.clone())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "No link found between this initiative and project"
+                        )
+                    })?;
 
                 let result = client
                     .initiative_to_project_delete(join_id)
