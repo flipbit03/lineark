@@ -241,7 +241,10 @@ api_token = "lin_default_123"
 api_token = "lin_work_456"
 "#,
         );
-        assert_eq!(token_from_config_at(&path, None).unwrap(), "lin_default_123");
+        assert_eq!(
+            token_from_config_at(&path, None).unwrap(),
+            "lin_default_123"
+        );
     }
 
     #[test]
@@ -271,8 +274,14 @@ api_token = "lin_abc"
         );
         let err = token_from_config_at(&path, Some("nonexistent")).unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("nonexistent"), "Error should name the profile: {msg}");
-        assert!(msg.contains("not found"), "Error should say not found: {msg}");
+        assert!(
+            msg.contains("nonexistent"),
+            "Error should name the profile: {msg}"
+        );
+        assert!(
+            msg.contains("not found"),
+            "Error should say not found: {msg}"
+        );
     }
 
     #[test]
@@ -285,7 +294,10 @@ api_token = "   "
         );
         let err = token_from_config_at(&path, None).unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("empty"), "Error should mention empty token: {msg}");
+        assert!(
+            msg.contains("empty"),
+            "Error should mention empty token: {msg}"
+        );
     }
 
     #[test]
