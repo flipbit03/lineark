@@ -40,7 +40,7 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), lineark_sdk::LinearError> {
-    /// let client = lineark_sdk::Client::auto()?;
+    /// let client = lineark_sdk::Client::auto(None)?;
     /// let result = client.download_url("https://uploads.linear.app/...").await?;
     /// std::fs::write("output.png", &result.bytes).unwrap();
     /// # Ok(())
@@ -108,7 +108,7 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), lineark_sdk::LinearError> {
-    /// let client = lineark_sdk::Client::auto()?;
+    /// let client = lineark_sdk::Client::auto(None)?;
     /// let bytes = std::fs::read("screenshot.png").unwrap();
     /// let result = client
     ///     .upload_file("screenshot.png", "image/png", bytes, false)

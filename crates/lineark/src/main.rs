@@ -9,9 +9,13 @@ use lineark_sdk::Client;
 #[derive(Debug, Parser)]
 #[command(name = "lineark", version, about, after_help = update_hint_blocking())]
 struct Cli {
-    /// API token (overrides $LINEAR_API_TOKEN and ~/.linear_api_token).
+    /// API token (overrides all other auth methods).
     #[arg(long, global = true)]
     api_token: Option<String>,
+
+    /// Config profile to use from ~/.config/lineark/config.toml.
+    #[arg(long, global = true)]
+    profile: Option<String>,
 
     /// Output format. Auto-detected if not specified (human for terminal, json for pipe).
     #[arg(long, global = true)]
@@ -100,7 +104,7 @@ async fn main() {
     // Resolve client.
     let client = match &cli.api_token {
         Some(token) => Client::from_token(token),
-        None => Client::auto(),
+        None => Client::auto(cli.profile.as_deref()),
     };
     let client = match client {
         Ok(c) => c,
