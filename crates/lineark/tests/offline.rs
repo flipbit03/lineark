@@ -887,3 +887,179 @@ fn usage_includes_comments_delete() {
         .success()
         .stdout(predicate::str::contains("comments delete"));
 }
+
+// ── Multi-profile auth ──────────────────────────────────────────────────────
+
+#[test]
+fn help_shows_profile_flag() {
+    lineark()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"));
+}
+
+#[test]
+fn usage_includes_profile_flag() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("config.toml"))
+        .stdout(predicate::str::contains("LINEAR_PROFILE"));
+}
+
+#[test]
+fn usage_includes_config_file_example() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[profiles.default]"))
+        .stdout(predicate::str::contains("api_token"));
+}
+
+#[test]
+fn profile_flag_with_missing_config_shows_error() {
+    // --profile with no config file should give a clear error, not panic
+    lineark()
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("config"));
+}
+
+#[test]
+fn profile_flag_with_valid_config() {
+    // Create a temp config file and point HOME at the temp dir
+    let dir = tempfile::tempdir().unwrap();
+    let config_dir = dir.path().join(".config").join("lineark");
+    std::fs::create_dir_all(&config_dir).unwrap();
+    std::fs::write(
+        config_dir.join("config.toml"),
+        r#"
+[profiles.default]
+api_token = "lin_test_default"
+
+[profiles.work]
+api_token = "lin_test_work"
+"#,
+    )
+    .unwrap();
+
+    // With HOME overridden, --profile work should try to use lin_test_work
+    // It will fail on the API call (invalid token), but the auth resolution succeeds
+    lineark()
+        .env("HOME", dir.path().to_str().unwrap())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Authentication")
+                .or(predicate::str::contains("401"))
+                .or(predicate::str::contains("Unauthorized")),
+        );
+}
+
+#[test]
+fn default_profile_used_when_no_flags() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_dir = dir.path().join(".config").join("lineark");
+    std::fs::create_dir_all(&config_dir).unwrap();
+    std::fs::write(
+        config_dir.join("config.toml"),
+        r#"
+[profiles.default]
+api_token = "lin_test_default_token"
+"#,
+    )
+    .unwrap();
+
+    // With no --profile and no env var, should pick up "default" from config
+    lineark()
+        .env("HOME", dir.path().to_str().unwrap())
+        .env_remove("LINEAR_API_TOKEN")
+        .env_remove("LINEAR_PROFILE")
+        .args(["whoami"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Authentication")
+                .or(predicate::str::contains("401"))
+                .or(predicate::str::contains("Unauthorized")),
+        );
+}
+
+#[test]
+fn linear_profile_env_var_selects_profile() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_dir = dir.path().join(".config").join("lineark");
+    std::fs::create_dir_all(&config_dir).unwrap();
+    std::fs::write(
+        config_dir.join("config.toml"),
+        r#"
+[profiles.default]
+api_token = "lin_default"
+
+[profiles.staging]
+api_token = "lin_staging_token"
+"#,
+    )
+    .unwrap();
+
+    // LINEAR_PROFILE=staging should use the staging token
+    lineark()
+        .env("HOME", dir.path().to_str().unwrap())
+        .env("LINEAR_PROFILE", "staging")
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["whoami"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Authentication")
+                .or(predicate::str::contains("401"))
+                .or(predicate::str::contains("Unauthorized")),
+        );
+}
+
+#[test]
+fn profile_flag_nonexistent_profile_shows_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_dir = dir.path().join(".config").join("lineark");
+    std::fs::create_dir_all(&config_dir).unwrap();
+    std::fs::write(
+        config_dir.join("config.toml"),
+        r#"
+[profiles.default]
+api_token = "lin_default"
+"#,
+    )
+    .unwrap();
+
+    lineark()
+        .env("HOME", dir.path().to_str().unwrap())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "nonexistent", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("nonexistent"))
+        .stderr(predicate::str::contains("not found"));
+}
+
+#[test]
+fn api_token_flag_overrides_profile() {
+    // --api-token should take precedence over --profile
+    lineark()
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--api-token", "lin_explicit", "--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Authentication")
+                .or(predicate::str::contains("401"))
+                .or(predicate::str::contains("Unauthorized")),
+        );
+}
