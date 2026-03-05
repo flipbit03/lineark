@@ -18,7 +18,7 @@
 //! ```no_run
 //! use lineark_sdk::blocking_client::Client;
 //!
-//! let client = Client::auto().unwrap();
+//! let client = Client::auto(None).unwrap();
 //! let me = client.whoami().unwrap();
 //! println!("Logged in as: {:?}", me.name);
 //!
@@ -79,10 +79,21 @@ impl Client {
         })
     }
 
-    /// Create a blocking client by auto-detecting the token (env -> file).
-    pub fn auto() -> Result<Self, LinearError> {
+    /// Create a blocking client from a named profile in `~/.config/lineark/config.toml`.
+    pub fn from_profile(profile: Option<&str>) -> Result<Self, LinearError> {
         Ok(Self {
-            inner: crate::Client::auto()?,
+            inner: crate::Client::from_profile(profile)?,
+            rt: build_runtime()?,
+        })
+    }
+
+    /// Create a blocking client by auto-detecting the token.
+    ///
+    /// Precedence: env var -> config profile -> legacy file.
+    /// If `profile` is `Some`, skips env var and goes straight to the config file.
+    pub fn auto(profile: Option<&str>) -> Result<Self, LinearError> {
+        Ok(Self {
+            inner: crate::Client::auto(profile)?,
             rt: build_runtime()?,
         })
     }

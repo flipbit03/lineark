@@ -51,9 +51,19 @@ impl Client {
         Self::from_token(auth::token_from_file()?)
     }
 
-    /// Create a client by auto-detecting the token (env -> file).
-    pub fn auto() -> Result<Self, LinearError> {
-        Self::from_token(auth::auto_token()?)
+    /// Create a client from a named profile in `~/.config/lineark/config.toml`.
+    ///
+    /// If `profile` is `None`, uses the `default` profile.
+    pub fn from_profile(profile: Option<&str>) -> Result<Self, LinearError> {
+        Self::from_token(auth::token_from_config(profile)?)
+    }
+
+    /// Create a client by auto-detecting the token.
+    ///
+    /// Precedence: env var -> config profile -> legacy file.
+    /// If `profile` is `Some`, skips env var and goes straight to the config file.
+    pub fn auto(profile: Option<&str>) -> Result<Self, LinearError> {
+        Self::from_token(auth::auto_token(profile)?)
     }
 
     /// Execute a GraphQL query and extract a single object from the response.

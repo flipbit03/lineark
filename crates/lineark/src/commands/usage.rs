@@ -15,6 +15,23 @@ pub async fn run() {
     } else {
         ""
     };
+    let config_hint = if std::env::var("HOME")
+        .map(|h| {
+            std::path::Path::new(&h)
+                .join(".config/lineark/config.toml")
+                .exists()
+        })
+        .unwrap_or(false)
+    {
+        " (found)"
+    } else {
+        ""
+    };
+    let profile_hint = if std::env::var("LINEAR_PROFILE").is_ok() {
+        " (set)"
+    } else {
+        ""
+    };
 
     print!(
         r#"lineark — Linear CLI for humans and LLMs
@@ -115,12 +132,22 @@ COMMANDS:
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token
+  --profile <NAME>      Use a named profile from config file
   --format human|json   Force output format (auto-detected by default)
 
 AUTH (in precedence order):
   1. --api-token flag
   2. $LINEAR_API_TOKEN env var{env_hint}
-  3. ~/.linear_api_token file{file_hint}
+  3. --profile flag / $LINEAR_PROFILE env var{profile_hint}
+  4. [profiles.default] in ~/.config/lineark/config.toml{config_hint}
+  5. ~/.linear_api_token file{file_hint}
+
+CONFIG FILE (~/.config/lineark/config.toml):
+  [profiles.default]
+  api_token = "lin_api_..."
+
+  [profiles.work]
+  api_token = "lin_api_..."
 "#
     );
 

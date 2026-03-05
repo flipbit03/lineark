@@ -1,15 +1,32 @@
 //! API token resolution.
 //!
-//! Supports three sources (in precedence order): explicit token, the
-//! `LINEAR_API_TOKEN` environment variable, and `~/.linear_api_token` file.
+//! Supports multiple sources (in precedence order):
+//! 1. Explicit token (CLI flag)
+//! 2. `LINEAR_API_TOKEN` environment variable
+//! 3. Named profile from `~/.config/lineark/config.toml`
+//! 4. `default` profile from `~/.config/lineark/config.toml`
+//! 5. Legacy `~/.linear_api_token` file
 
 use crate::error::LinearError;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Resolve a Linear API token from the filesystem.
-/// Reads `~/.linear_api_token`.
+/// A named profile from the config file.
+#[derive(Debug, serde::Deserialize)]
+pub(crate) struct Profile {
+    pub api_token: String,
+}
+
+/// Top-level config file structure.
+#[derive(Debug, serde::Deserialize)]
+pub(crate) struct Config {
+    #[serde(default)]
+    pub profiles: HashMap<String, Profile>,
+}
+
+/// Resolve a Linear API token from the legacy `~/.linear_api_token` file.
 pub fn token_from_file() -> Result<String, LinearError> {
-    let path = token_file_path()?;
+    let path = legacy_token_path()?;
     std::fs::read_to_string(&path)
         .map(|s| s.trim().to_string())
         .map_err(|e| {
@@ -31,13 +48,74 @@ pub fn token_from_env() -> Result<String, LinearError> {
     }
 }
 
-/// Resolve a Linear API token with precedence: env var -> file.
-/// (CLI flag takes highest precedence but is handled at the CLI layer.)
-pub fn auto_token() -> Result<String, LinearError> {
-    token_from_env().or_else(|_| token_from_file())
+/// Resolve a Linear API token from a named profile in `~/.config/lineark/config.toml`.
+///
+/// If `profile` is `None`, looks up the `default` profile.
+pub fn token_from_config(profile: Option<&str>) -> Result<String, LinearError> {
+    let path = config_file_path()?;
+    let contents = std::fs::read_to_string(&path).map_err(|e| {
+        LinearError::AuthConfig(format!(
+            "Could not read config file {}: {}",
+            path.display(),
+            e
+        ))
+    })?;
+
+    let config: Config = toml::from_str(&contents).map_err(|e| {
+        LinearError::AuthConfig(format!("Invalid config file {}: {}", path.display(), e))
+    })?;
+
+    let name = profile.unwrap_or("default");
+    let p = config.profiles.get(name).ok_or_else(|| {
+        LinearError::AuthConfig(format!(
+            "Profile '{}' not found in {}",
+            name,
+            path.display()
+        ))
+    })?;
+
+    let token = p.api_token.trim().to_string();
+    if token.is_empty() {
+        return Err(LinearError::AuthConfig(format!(
+            "Profile '{}' has an empty api_token",
+            name
+        )));
+    }
+    Ok(token)
 }
 
-fn token_file_path() -> Result<PathBuf, LinearError> {
+/// Resolve a Linear API token with precedence:
+/// env var -> profile config -> legacy file.
+///
+/// If `profile` is `Some`, the config file lookup uses that profile name.
+/// If `profile` is `None`, falls through: env -> config `default` -> legacy file.
+pub fn auto_token(profile: Option<&str>) -> Result<String, LinearError> {
+    // If an explicit profile was requested, skip env and legacy — go straight to config.
+    if profile.is_some() {
+        return token_from_config(profile);
+    }
+
+    // Check $LINEAR_PROFILE env var for profile selection.
+    if let Ok(env_profile) = std::env::var("LINEAR_PROFILE") {
+        let env_profile = env_profile.trim().to_string();
+        if !env_profile.is_empty() {
+            return token_from_config(Some(&env_profile));
+        }
+    }
+
+    token_from_env()
+        .or_else(|_| token_from_config(None))
+        .or_else(|_| token_from_file())
+}
+
+/// Path to the config file: `~/.config/lineark/config.toml`.
+pub fn config_file_path() -> Result<PathBuf, LinearError> {
+    let home = home::home_dir()
+        .ok_or_else(|| LinearError::AuthConfig("Could not determine home directory".to_string()))?;
+    Ok(home.join(".config").join("lineark").join("config.toml"))
+}
+
+fn legacy_token_path() -> Result<PathBuf, LinearError> {
     let home = home::home_dir()
         .ok_or_else(|| LinearError::AuthConfig("Could not determine home directory".to_string()))?;
     Ok(home.join(".linear_api_token"))
@@ -91,7 +169,7 @@ mod tests {
     #[test]
     fn auto_token_prefers_env() {
         with_env_token(Some("env-token-auto"), || {
-            assert_eq!(auto_token().unwrap(), "env-token-auto");
+            assert_eq!(auto_token(None).unwrap(), "env-token-auto");
         });
     }
 
@@ -117,9 +195,81 @@ mod tests {
     }
 
     #[test]
-    fn token_file_path_is_home_based() {
-        let path = token_file_path().unwrap();
+    fn legacy_token_path_is_home_based() {
+        let path = legacy_token_path().unwrap();
         assert!(path.to_str().unwrap().contains(".linear_api_token"));
         assert!(path.to_str().unwrap().starts_with("/"));
+    }
+
+    #[test]
+    fn config_file_path_is_xdg_based() {
+        let path = config_file_path().unwrap();
+        let s = path.to_str().unwrap();
+        assert!(s.contains(".config/lineark/config.toml"));
+        assert!(s.starts_with("/"));
+    }
+
+    #[test]
+    fn token_from_config_parses_valid_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join(".config").join("lineark");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let config_path = config_dir.join("config.toml");
+        std::fs::write(
+            &config_path,
+            r#"
+[profiles.default]
+api_token = "lin_default_123"
+
+[profiles.work]
+api_token = "lin_work_456"
+"#,
+        )
+        .unwrap();
+
+        // Parse directly to test the TOML structure
+        let contents = std::fs::read_to_string(&config_path).unwrap();
+        let config: Config = toml::from_str(&contents).unwrap();
+        assert_eq!(config.profiles["default"].api_token, "lin_default_123");
+        assert_eq!(config.profiles["work"].api_token, "lin_work_456");
+        assert_eq!(config.profiles.len(), 2);
+    }
+
+    #[test]
+    fn config_missing_profile_errors() {
+        let contents = r#"
+[profiles.default]
+api_token = "lin_abc"
+"#;
+        let config: Config = toml::from_str(contents).unwrap();
+        assert!(config.profiles.get("nonexistent").is_none());
+    }
+
+    #[test]
+    fn config_empty_token_detected() {
+        let contents = r#"
+[profiles.default]
+api_token = "   "
+"#;
+        let config: Config = toml::from_str(contents).unwrap();
+        assert!(config.profiles["default"].api_token.trim().is_empty());
+    }
+
+    #[test]
+    fn explicit_profile_skips_env() {
+        // When --profile is specified, env var should be ignored.
+        // We can't test the full auto_token flow without a real config file,
+        // but we verify the logic: explicit profile goes straight to config lookup.
+        with_env_token(Some("env-token"), || {
+            let result = auto_token(Some("nonexistent"));
+            // Should fail looking for "nonexistent" in config, NOT succeed with env token
+            assert!(result.is_err());
+            let err = result.unwrap_err().to_string();
+            assert!(
+                err.contains("nonexistent") || err.contains("config"),
+                "Expected config-related error, got: {}",
+                err
+            );
+        });
     }
 }
