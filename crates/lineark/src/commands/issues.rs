@@ -125,6 +125,11 @@ pub enum IssuesAction {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
     },
+    /// Find the issue associated with a Git branch name.
+    FindBranch {
+        /// Git branch name to search for.
+        branch_name: String,
+    },
     /// Delete (trash) an issue. Use --permanently to delete permanently.
     ///
     /// Examples:
@@ -136,11 +141,6 @@ pub enum IssuesAction {
         /// Permanently delete the issue instead of trashing it.
         #[arg(long, default_value = "false")]
         permanently: bool,
-    },
-    /// Find the issue associated with a Git branch name.
-    FindBranch {
-        /// Git branch name to search for.
-        branch_name: String,
     },
     /// Update an existing issue. Returns the updated issue.
     ///
@@ -563,14 +563,8 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             print_search_list(&items, format);
         }
         IssuesAction::FindBranch { branch_name } => {
-            let selection = <IssueDetail as GraphQLFields>::selection();
-            let query = format!(
-                "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
-                selection
-            );
-            let variables = serde_json::json!({ "branchName": branch_name });
             let result: Option<IssueDetail> = client
-                .execute(&query, variables, "issueVcsBranchSearch")
+                .issue_vcs_branch_search(branch_name.clone())
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             match result {

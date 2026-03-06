@@ -1066,7 +1066,6 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn issue_vcs_branch_search_found() {
         use lineark_sdk::generated::inputs::IssueCreateInput;
-        use lineark_sdk::GraphQLFields;
 
         let client = test_client();
 
@@ -1074,8 +1073,9 @@ mod online {
         let teams = client.teams::<Team>().first(1).send().await.unwrap();
         let team_id = teams.nodes[0].id.clone().unwrap();
 
+        let uid = &uuid::Uuid::new_v4().to_string()[..8];
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_vcs_branch_search_found".to_string()),
+            title: Some(format!("[test] SDK branch search {uid}")),
             team_id: Some(team_id),
             priority: Some(4),
             ..Default::default()
@@ -1093,43 +1093,22 @@ mod online {
             .clone()
             .expect("newly created issue should have a branchName");
 
-        // Build the query manually using Issue::selection() and call execute.
-        let selection = Issue::selection();
-        let query = format!(
-            "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
-            selection
-        );
-        let variables = serde_json::json!({ "branchName": branch_name });
-        let result: Option<Issue> = client
-            .execute(&query, variables, "issueVcsBranchSearch")
+        let result = client
+            .issue_vcs_branch_search::<Issue>(branch_name)
             .await
             .unwrap();
 
         assert!(result.is_some(), "should find issue by branch name");
         let found = result.unwrap();
-        assert_eq!(found.id, Some(issue_id.clone()));
-
-        // Clean up.
-        client
-            .issue_delete::<Issue>(Some(true), issue_id)
-            .await
-            .unwrap();
+        assert_eq!(found.id, Some(issue_id));
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn issue_vcs_branch_search_not_found() {
-        use lineark_sdk::GraphQLFields;
-
         let client = test_client();
 
-        let selection = Issue::selection();
-        let query = format!(
-            "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
-            selection
-        );
-        let variables = serde_json::json!({ "branchName": "nonexistent-branch-xyz-999" });
-        let result: Option<Issue> = client
-            .execute(&query, variables, "issueVcsBranchSearch")
+        let result = client
+            .issue_vcs_branch_search::<Issue>("nonexistent-branch-xyz-999".to_string())
             .await
             .unwrap();
 
