@@ -3405,7 +3405,21 @@ mod online {
     fn issues_list_with_project_filter() {
         let token = api_token();
 
-        // Find an existing project that has at least one issue.
+        // Get a team key to create resources against.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "teams", "list"])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams list should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let teams: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+
+        // Create a project for the test.
         let output = lineark()
             .args([
                 "--api-token",
@@ -3413,24 +3427,68 @@ mod online {
                 "--format",
                 "json",
                 "projects",
-                "list",
+                "create",
+                "[test] CLI project filter",
+                "--team",
+                &team_key,
             ])
             .output()
-            .unwrap();
-        let projects: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let projects_arr = projects.as_array().expect("projects list should be array");
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            !projects_arr.is_empty(),
-            "workspace must have at least one project"
+            output.status.success(),
+            "projects create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
+        let created_project: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created_project["id"]
+            .as_str()
+            .expect("created project should have id")
+            .to_string();
+        let project_name = created_project["name"]
+            .as_str()
+            .expect("created project should have name")
+            .to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id,
+        };
 
-        // Try each project until we find one that returns issues with --project filter.
-        let mut found = false;
-        for project in projects_arr {
-            let project_name = project["name"].as_str().unwrap_or("").to_string();
-            if project_name.is_empty() {
-                continue;
-            }
+        // Create an issue inside that project.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                "[test] project filter issue",
+                "--team",
+                &team_key,
+                "--project",
+                &project_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created_issue: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created_issue["id"]
+            .as_str()
+            .expect("created issue should have id")
+            .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id,
+        };
+
+        // List issues with --project filter (retry for eventual consistency).
+        retry_with_backoff(5, || {
             let output = lineark()
                 .args([
                     "--api-token",
@@ -3447,27 +3505,28 @@ mod online {
                 .output()
                 .unwrap();
             if !output.status.success() {
-                continue;
+                return Err(format!(
+                    "issues list --project failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
             }
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-            if let Some(arr) = json.as_array() {
-                if !arr.is_empty() {
-                    // Verify all returned issues are in the expected JSON format.
-                    for issue in arr {
-                        assert!(
-                            issue.get("identifier").is_some(),
-                            "each issue should have an identifier"
-                        );
-                    }
-                    found = true;
-                    break;
-                }
+            let json: serde_json::Value =
+                serde_json::from_str(&stdout).map_err(|e| format!("invalid JSON: {e}"))?;
+            let arr = json
+                .as_array()
+                .ok_or_else(|| "expected array".to_string())?;
+            if arr.is_empty() {
+                return Err("no issues returned yet".to_string());
             }
-        }
-        assert!(
-            found,
-            "at least one project should have issues in the workspace"
-        );
+            for issue in arr {
+                assert!(
+                    issue.get("identifier").is_some(),
+                    "each issue should have an identifier"
+                );
+            }
+            Ok(())
+        })
+        .expect("issues list --project should return at least one issue");
     }
 }
