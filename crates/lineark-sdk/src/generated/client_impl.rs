@@ -109,7 +109,7 @@ impl Client {
     >(
         &self,
         branch_name: String,
-    ) -> Result<T, LinearError> {
+    ) -> Result<Option<T>, LinearError> {
         crate::generated::queries::issue_vcs_branch_search::<T>(self, branch_name).await
     }
     /// All issue relationships.

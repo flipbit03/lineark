@@ -1216,7 +1216,7 @@ pub async fn issue_vcs_branch_search<
 >(
     client: &Client,
     branch_name: String,
-) -> Result<T, LinearError> {
+) -> Result<Option<T>, LinearError> {
     let variables = serde_json::json!({ "branchName" : branch_name });
     let selection = T::selection();
     let query = format!(
@@ -1228,7 +1228,7 @@ pub async fn issue_vcs_branch_search<
         selection
     );
     client
-        .execute::<T>(&query, variables, "issueVcsBranchSearch")
+        .execute::<Option<T>>(&query, variables, "issueVcsBranchSearch")
         .await
 }
 /// All issue relationships.

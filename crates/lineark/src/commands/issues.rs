@@ -217,6 +217,7 @@ struct IssueRow {
     state: String,
     assignee: String,
     team: String,
+    estimate: String,
     #[tabled(skip)]
     url: String,
 }
@@ -242,6 +243,7 @@ impl From<&IssueSummary> for IssueRow {
                 .as_ref()
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
+            estimate: format_estimate(i.estimate),
             url: i.url.clone().unwrap_or_default(),
         }
     }
@@ -268,6 +270,7 @@ impl From<&SearchSummary> for IssueRow {
                 .as_ref()
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
+            estimate: format_estimate(i.estimate),
             url: i.url.clone().unwrap_or_default(),
         }
     }
@@ -285,6 +288,7 @@ pub struct IssueSummary {
     pub title: Option<String>,
     pub priority: Option<f64>,
     pub priority_label: Option<String>,
+    pub estimate: Option<f64>,
     pub url: Option<String>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
@@ -304,6 +308,7 @@ pub struct SearchSummary {
     pub title: Option<String>,
     pub priority: Option<f64>,
     pub priority_label: Option<String>,
+    pub estimate: Option<f64>,
     pub url: Option<String>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
@@ -829,6 +834,14 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 // TODO(phase2): query workflowStates types instead of hardcoding state names
 const DONE_STATES: &[&str] = &["Done", "Canceled", "Cancelled", "Duplicate"];
 
+fn format_estimate(estimate: Option<f64>) -> String {
+    match estimate {
+        Some(v) if v.fract() == 0.0 => format!("{}", v as i64),
+        Some(v) => format!("{v}"),
+        None => String::new(),
+    }
+}
+
 fn print_issue_list(items: &[&IssueSummary], format: Format) {
     let rows: Vec<IssueRow> = items.iter().map(|i| IssueRow::from(*i)).collect();
     output::print_table(&rows, format);
@@ -927,4 +940,26 @@ async fn resolve_state_id(
         state_name,
         available.join(", ")
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_estimate_none_returns_empty() {
+        assert_eq!(format_estimate(None), "");
+    }
+
+    #[test]
+    fn format_estimate_whole_number_omits_decimal() {
+        assert_eq!(format_estimate(Some(3.0)), "3");
+        assert_eq!(format_estimate(Some(0.0)), "0");
+    }
+
+    #[test]
+    fn format_estimate_fractional_preserves_decimal() {
+        assert_eq!(format_estimate(Some(1.5)), "1.5");
+        assert_eq!(format_estimate(Some(0.5)), "0.5");
+    }
 }
