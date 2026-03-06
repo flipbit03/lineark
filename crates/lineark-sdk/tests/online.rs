@@ -95,6 +95,23 @@ impl Drop for DocumentGuard {
     }
 }
 
+/// Helper: create a fresh test team and return its ID + RAII guard.
+async fn create_test_team(client: &Client) -> (String, TeamGuard) {
+    use lineark_sdk::generated::inputs::TeamCreateInput;
+    let unique = format!("[test] sdk {}", &uuid::Uuid::new_v4().to_string()[..8]);
+    let input = TeamCreateInput {
+        name: Some(unique),
+        ..Default::default()
+    };
+    let team = client.team_create::<Team>(None, input).await.unwrap();
+    let team_id = team.id.clone().unwrap();
+    let guard = TeamGuard {
+        token: test_token(),
+        id: team_id.clone(),
+    };
+    (team_id, guard)
+}
+
 test_with::tokio_runner!(online);
 
 #[test_with::module]
@@ -126,6 +143,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn teams_returns_at_least_one_team() {
         let client = test_client();
+        let (_team_id, _team_guard) = create_test_team(&client).await;
         let conn = client.teams::<Team>().first(10).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
@@ -140,9 +158,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_by_id() {
         let client = test_client();
-        let conn = client.teams::<Team>().first(1).send().await.unwrap();
-        assert!(!conn.nodes.is_empty());
-        let team_id = conn.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
         let team = client.team::<Team>(team_id.clone()).await.unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -150,9 +166,8 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_fields_deserialize_correctly() {
         let client = test_client();
-        let conn = client.teams::<Team>().first(1).send().await.unwrap();
-        assert!(!conn.nodes.is_empty());
-        let team = &conn.nodes[0];
+        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = client.team::<Team>(team_id).await.unwrap();
         assert!(team.id.is_some());
         assert!(team.key.is_some());
         assert!(team.name.is_some());
@@ -391,8 +406,7 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue with a unique title.
         let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
@@ -460,8 +474,7 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams::<Team>().first(10).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue with a unique title in the first team.
         let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
@@ -572,9 +585,7 @@ mod online {
 
         let client = test_client();
 
-        // Get the first team to create an issue in.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue.
         let input = IssueCreateInput {
@@ -606,8 +617,7 @@ mod online {
         let client = test_client();
 
         // Create an issue to update.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_update".to_string()),
@@ -649,8 +659,7 @@ mod online {
         let client = test_client();
 
         // Create an issue to archive.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
@@ -691,8 +700,7 @@ mod online {
         let client = test_client();
 
         // Create an issue to comment on.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         let issue_input = IssueCreateInput {
             title: Some("[test] SDK comment_create".to_string()),
@@ -750,9 +758,8 @@ mod online {
 
         let client = test_client();
 
-        // Get a team to associate the document with (Linear requires at least one parent).
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        // Create a team to associate the document with (Linear requires at least one parent).
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create a document.
         let input = DocumentCreateInput {
@@ -815,9 +822,8 @@ mod online {
 
         let client = test_client();
 
-        // Get a team to create issues in.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        // Create a team for the test issues.
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create two issues to relate.
         let input_a = IssueCreateInput {
