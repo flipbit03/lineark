@@ -322,6 +322,7 @@ pub struct IssueDetail {
     pub description: Option<String>,
     pub priority: Option<f64>,
     pub priority_label: Option<String>,
+    pub estimate: Option<f64>,
     pub url: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
