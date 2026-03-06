@@ -33,6 +33,9 @@ pub enum IssuesAction {
         /// Filter by team key, name, or UUID.
         #[arg(long)]
         team: Option<String>,
+        /// Filter by project name or UUID.
+        #[arg(long)]
+        project: Option<String>,
         /// Show only issues assigned to the authenticated user.
         #[arg(long, default_value = "false")]
         mine: bool,
@@ -420,6 +423,7 @@ pub struct CommentsConnection {
 #[graphql(full_type = Comment)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CommentSummary {
+    pub id: Option<String>,
     pub body: Option<String>,
     #[graphql(nested)]
     pub user: Option<UserRef>,
@@ -442,6 +446,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
         IssuesAction::List {
             limit,
             team,
+            project,
             mine,
             show_done,
         } => {
@@ -457,6 +462,13 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 filter_map.insert(
                     "team".into(),
                     serde_json::json!({ "id": { "eq": team_id } }),
+                );
+            }
+            if let Some(ref project_val) = project {
+                let project_id = resolve_project_id(client, project_val).await?;
+                filter_map.insert(
+                    "project".into(),
+                    serde_json::json!({ "id": { "eq": project_id } }),
                 );
             }
             if mine {

@@ -54,6 +54,7 @@ COMMANDS:
     [--around-active N]                            Active ± N neighbors
   lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
+    [--project NAME-OR-ID]                         Filter by project
     [--mine]                                       Only issues assigned to me
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
