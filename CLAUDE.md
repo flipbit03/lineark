@@ -97,6 +97,8 @@ When opening a PR, include a summary of changes and a test plan. If codegen was 
 
 Before merging, run `/update-docs` to review and update all documentation (top-level README, CLI README, SDK README) so they reflect the current codebase. Documentation must stay in sync with code.
 
+**Working on contributor fork branches:** When a contributor grants push access to their fork, use `git merge origin/main` (not rebase) to bring their branch up to date. Rebasing rewrites their commit history and requires force-pushing to their branch, which is inconsiderate if they're working concurrently.
+
 ## Commit style
 
 - Use conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, etc.)
