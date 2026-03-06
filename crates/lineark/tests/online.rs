@@ -3419,7 +3419,11 @@ mod online {
         let teams: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         let team_key = teams[0]["key"].as_str().unwrap().to_string();
 
-        // Create a project for the test.
+        // Create a project for the test (unique name to avoid conflicts).
+        let project_label = format!(
+            "[test] CLI project filter {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
         let output = lineark()
             .args([
                 "--api-token",
@@ -3428,7 +3432,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI project filter",
+                &project_label,
                 "--team",
                 &team_key,
             ])

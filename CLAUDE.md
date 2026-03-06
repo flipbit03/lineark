@@ -47,7 +47,7 @@ cargo test -p lineark-sdk --test online -- --test-threads=1
 cargo test -p lineark --test online -- --test-threads=1
 ```
 
-**Online tests must be self-contained.** Never assume resources (projects, issues, teams, etc.) already exist in the test workspace. Each test must create the resources it needs and clean them up afterwards using RAII guards (`TeamGuard`, `IssueGuard`, `ProjectGuard`). These guards auto-delete the resource on drop, ensuring cleanup even when the test panics. Use `retry_with_backoff` when querying recently-created resources, since the Linear API is eventually consistent. Always check `output.status.success()` and include stdout/stderr in assertion messages before parsing JSON output — a bare `.unwrap()` on JSON parsing hides the real error (e.g. auth failures).
+**Online tests must be self-contained.** Never assume resources (projects, issues, teams, etc.) already exist in the test workspace. Each test must create the resources it needs and clean them up afterwards using RAII guards (`TeamGuard`, `IssueGuard`, `ProjectGuard`). These guards auto-delete the resource on drop, ensuring cleanup even when the test panics. Use unique names for created resources (e.g. `format!("[test] my thing {}", &uuid::Uuid::new_v4().to_string()[..8])`) to avoid conflicts from zombie resources left by previously-failed runs. Use `retry_with_backoff` when querying recently-created resources, since the Linear API is eventually consistent. Always check `output.status.success()` and include stdout/stderr in assertion messages before parsing JSON output — a bare `.unwrap()` on JSON parsing hides the real error (e.g. auth failures).
 
 ## Updating the schema
 
