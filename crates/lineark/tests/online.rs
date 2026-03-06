@@ -424,6 +424,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_update_and_archive() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI create+update {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get the first team key.
         let output = lineark()
@@ -442,7 +446,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI create+update",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -480,7 +484,7 @@ mod online {
                 "--priority",
                 "2",
                 "--title",
-                "[test] CLI create+update — updated",
+                &format!("{unique_name} — updated"),
             ])
             .output()
             .expect("failed to execute lineark");
@@ -508,6 +512,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_archive_and_unarchive_cycle() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI archive/unarchive {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -526,7 +534,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI archive/unarchive",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -660,6 +668,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_unarchive_by_human_identifier() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] unarchive by identifier {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -678,7 +690,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] unarchive by identifier",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -756,6 +768,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_permanently() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI issues delete {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -774,7 +790,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI issues delete",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -824,6 +840,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_trash_and_verify() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI issues trash {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -842,7 +862,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI issues trash",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -915,6 +935,9 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn documents_create_read_update_and_delete() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let issue_name = format!("[test] doc parent issue {suffix}");
+        let doc_name = format!("[test] CLI documents CRUD {suffix}");
 
         // Get a team key first (documents require a parent like project/issue/team).
         // Create an issue to associate the document with.
@@ -933,7 +956,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] doc parent issue",
+                &issue_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -959,7 +982,7 @@ mod online {
                 "documents",
                 "create",
                 "--title",
-                "[test] CLI documents CRUD",
+                &doc_name,
                 "--content",
                 "Automated CLI test document.",
                 "--issue",
@@ -998,10 +1021,7 @@ mod online {
             "documents read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
         let read_doc: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert_eq!(
-            read_doc["title"].as_str(),
-            Some("[test] CLI documents CRUD")
-        );
+        assert_eq!(read_doc["title"].as_str(), Some(doc_name.as_str()));
 
         // Update the document.
         let output = lineark()
@@ -1014,7 +1034,7 @@ mod online {
                 "update",
                 doc_id,
                 "--title",
-                "[test] CLI documents CRUD — updated",
+                &format!("{doc_name} — updated"),
             ])
             .output()
             .expect("failed to execute lineark");
@@ -1391,6 +1411,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_relations() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         // Get a team key.
         let output = lineark()
@@ -1409,7 +1430,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation parent",
+                &format!("[test] relation parent {suffix}"),
                 "--team",
                 &team_key,
                 "--priority",
@@ -1433,7 +1454,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation child",
+                &format!("[test] relation child {suffix}"),
                 "--team",
                 &team_key,
                 "--priority",
@@ -1522,6 +1543,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_children_and_comments() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         // Get a team key.
         let output = lineark()
@@ -1540,7 +1562,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] parent with children",
+                &format!("[test] parent with children {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1568,7 +1590,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] child issue",
+                &format!("[test] child issue {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1751,6 +1773,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_parent_and_clear_parent() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         // Get a team key.
         let output = lineark()
@@ -1769,7 +1792,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] clear-parent parent",
+                &format!("[test] clear-parent parent {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1794,7 +1817,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] clear-parent child",
+                &format!("[test] clear-parent child {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1864,6 +1887,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn project_milestones_full_crud() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let project_label = format!("[test] milestones CRUD project {suffix}");
+        let milestone_name = format!("[test] Beta Release {suffix}");
+        let milestone_updated = format!("[test] GA Release {suffix}");
 
         // Get a team ID (projectCreate requires teamIds).
         let output = lineark()
@@ -1878,7 +1905,7 @@ mod online {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let project: Project = rt.block_on(async {
             let input = ProjectCreateInput {
-                name: Some("[test] milestones CRUD project".to_string()),
+                name: Some(project_label.clone()),
                 team_ids: Some(vec![team_id]),
                 ..Default::default()
             };
@@ -1899,7 +1926,7 @@ mod online {
                 "json",
                 "project-milestones",
                 "create",
-                "[test] Beta Release",
+                &milestone_name,
                 "--project",
                 &project_id,
                 "--target-date",
@@ -1966,7 +1993,7 @@ mod online {
                     "json",
                     "project-milestones",
                     "read",
-                    "[test] Beta Release",
+                    &milestone_name,
                     "--project",
                     &project_id,
                 ])
@@ -1996,7 +2023,7 @@ mod online {
                 "update",
                 &milestone_id,
                 "--name",
-                "[test] GA Release",
+                &milestone_updated,
                 "--target-date",
                 "2027-03-15",
             ])
@@ -2011,7 +2038,7 @@ mod online {
         let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(
             updated["name"].as_str(),
-            Some("[test] GA Release"),
+            Some(milestone_updated.as_str()),
             "updated name should match"
         );
 
@@ -2046,6 +2073,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_and_delete() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI projects create {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2064,7 +2095,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI projects create",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--description",
@@ -2201,6 +2232,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_read_by_id_and_name() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI projects read {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2219,7 +2254,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI projects read",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--lead",
@@ -2263,7 +2298,7 @@ mod online {
         );
         let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(detail["id"].as_str(), Some(project_id.as_str()));
-        assert_eq!(detail["name"].as_str(), Some("[test] CLI projects read"));
+        assert_eq!(detail["name"].as_str(), Some(unique_name.as_str()));
         assert!(
             detail.get("lead").is_some() && !detail["lead"].is_null(),
             "read output should have a lead (set to me)"
@@ -2291,7 +2326,7 @@ mod online {
                     "json",
                     "projects",
                     "read",
-                    "[test] CLI projects read",
+                    &unique_name,
                 ])
                 .output()
                 .expect("failed to execute lineark");
@@ -2323,6 +2358,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_with_members_and_read_back() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI members test {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key and find two users.
         let output = lineark()
@@ -2341,7 +2380,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI members test",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--lead",
@@ -2423,6 +2462,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_assignee_me() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI assignee me {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2449,7 +2492,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI assignee me",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--assignee",
@@ -2501,6 +2544,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_update_with_assignee_me() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI update assignee me {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2527,7 +2574,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI update assignee me",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -2604,6 +2651,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_on_issue() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI comments_create {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2622,7 +2673,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI comments_create",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -2674,6 +2725,10 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_and_delete() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI comments_delete {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
         // Get a team key.
         let output = lineark()
@@ -2692,7 +2747,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI comments_delete",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -3126,6 +3181,7 @@ mod online {
         token: &str,
         team_key: &str,
     ) -> ((String, IssueGuard), (String, IssueGuard)) {
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let out1 = lineark()
             .args([
                 "--api-token",
@@ -3134,7 +3190,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation issue A",
+                &format!("[test] relation issue A {suffix}"),
                 "--team",
                 team_key,
                 "--priority",
@@ -3158,7 +3214,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation issue B",
+                &format!("[test] relation issue B {suffix}"),
                 "--team",
                 team_key,
                 "--priority",
@@ -3467,7 +3523,10 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] project filter issue",
+                &format!(
+                    "[test] project filter issue {}",
+                    &uuid::Uuid::new_v4().to_string()[..8]
+                ),
                 "--team",
                 &team_key,
                 "--project",
