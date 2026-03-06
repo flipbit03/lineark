@@ -423,10 +423,11 @@ mod online {
             id: issue_id.clone(),
         };
 
-        // Linear's search index is async — retry with backoff.
+        // Linear's search index is eventually consistent — retry with generous backoff.
+        // Issues in freshly-created teams may take longer to appear in search.
         let mut matched = false;
-        for i in 0..8 {
-            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 1 } else { 3 })).await;
+        for i in 0..12 {
+            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 2 } else { 5 })).await;
             let found = match client
                 .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
@@ -491,10 +492,10 @@ mod online {
             id: issue_id.clone(),
         };
 
-        // Linear's search index is async — retry a few times.
+        // Linear's search index is eventually consistent — retry with generous backoff.
         let mut found = false;
-        for _ in 0..8 {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        for _ in 0..12 {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             let with_team = match client
                 .search_issues::<IssueSearchResult>(&unique)
                 .first(5)
