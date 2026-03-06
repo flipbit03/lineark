@@ -1093,7 +1093,7 @@ mod online {
             .clone()
             .expect("newly created issue should have a branchName");
 
-        // Build the query manually using Issue::selection() and call execute_optional.
+        // Build the query manually using Issue::selection() and call execute.
         let selection = Issue::selection();
         let query = format!(
             "query IssueVcsBranchSearch($branchName: String!) {{ issueVcsBranchSearch(branchName: $branchName) {{ {} }} }}",
@@ -1101,7 +1101,7 @@ mod online {
         );
         let variables = serde_json::json!({ "branchName": branch_name });
         let result: Option<Issue> = client
-            .execute_optional(&query, variables, "issueVcsBranchSearch")
+            .execute(&query, variables, "issueVcsBranchSearch")
             .await
             .unwrap();
 
@@ -1129,7 +1129,7 @@ mod online {
         );
         let variables = serde_json::json!({ "branchName": "nonexistent-branch-xyz-999" });
         let result: Option<Issue> = client
-            .execute_optional(&query, variables, "issueVcsBranchSearch")
+            .execute(&query, variables, "issueVcsBranchSearch")
             .await
             .unwrap();
 

@@ -1,4 +1,4 @@
-.PHONY: codegen update-schema check test
+.PHONY: codegen update-schema check test test-online
 
 # Fetch the latest Linear GraphQL schema + regenerate SDK types.
 # No API key required — Linear's introspection endpoint is public.
@@ -17,6 +17,12 @@ check:
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 	cargo build --workspace
 
-# Run tests only.
+# Run offline tests (unit + integration). Safe, fast, no API token needed.
 test:
-	cargo test --workspace
+	cargo test --workspace --lib
+	cargo test --workspace --test offline
+
+# Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
+test-online:
+	cargo test --workspace --test online -- --test-threads=1
+	cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1
