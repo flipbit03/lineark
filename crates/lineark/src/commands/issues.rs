@@ -125,6 +125,11 @@ pub enum IssuesAction {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
     },
+    /// Find the issue associated with a Git branch name.
+    FindBranch {
+        /// Git branch name to search for.
+        branch_name: String,
+    },
     /// Delete (trash) an issue. Use --permanently to delete permanently.
     ///
     /// Examples:
@@ -556,6 +561,21 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
 
             let items = filter_done_search(&conn.nodes, show_done);
             print_search_list(&items, format);
+        }
+        IssuesAction::FindBranch { branch_name } => {
+            let result: Option<IssueDetail> = client
+                .issue_vcs_branch_search(branch_name.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            match result {
+                Some(issue) => output::print_one(&issue, format),
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "No issue found for branch '{}'",
+                        branch_name
+                    ))
+                }
+            }
         }
         IssuesAction::Create {
             title,
