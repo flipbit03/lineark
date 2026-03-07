@@ -123,12 +123,11 @@ struct LabelParentRef {
 
 #[derive(Debug, Serialize, Tabled)]
 pub struct LabelRow {
-    pub id: String,
     pub name: String,
     pub color: String,
-    pub group: String,
+    pub is_label_group: String,
     pub team: String,
-    pub parent: String,
+    pub parent_label: String,
 }
 
 /// Lean result type for label mutations.
@@ -139,6 +138,28 @@ struct LabelRef {
     pub id: Option<String>,
     pub name: Option<String>,
     pub color: Option<String>,
+}
+
+fn label_to_row(l: &LabelSummary) -> LabelRow {
+    LabelRow {
+        name: l.name.clone().unwrap_or_default(),
+        color: l.color.clone().unwrap_or_default(),
+        is_label_group: if l.is_group.unwrap_or(false) {
+            "yes".to_string()
+        } else {
+            String::new()
+        },
+        team: l
+            .team
+            .as_ref()
+            .and_then(|t| t.key.clone())
+            .unwrap_or_default(),
+        parent_label: l
+            .parent
+            .as_ref()
+            .and_then(|p| p.name.clone())
+            .unwrap_or_default(),
+    }
 }
 
 pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Result<()> {
@@ -157,30 +178,53 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
 
             let conn = query.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
-            let rows: Vec<LabelRow> = conn
-                .nodes
+            // Sort: groups first (with their children right after), then ungrouped labels.
+            let labels = &conn.nodes;
+            let mut rows: Vec<LabelRow> = Vec::with_capacity(labels.len());
+
+            // Collect group labels and their children.
+            let mut used_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+            for g in labels.iter().filter(|l| l.is_group.unwrap_or(false)) {
+                let gid = g.id.clone().unwrap_or_default();
+                let gname = g.name.clone().unwrap_or_default();
+                used_ids.insert(gid.clone());
+                rows.push(label_to_row(g));
+                // Children of this group, sorted by name.
+                let mut children: Vec<&LabelSummary> = labels
+                    .iter()
+                    .filter(|l| {
+                        l.parent
+                            .as_ref()
+                            .and_then(|p| p.name.as_deref())
+                            .is_some_and(|n| n == gname)
+                    })
+                    .collect();
+                children.sort_by(|a, b| {
+                    a.name
+                        .as_deref()
+                        .unwrap_or("")
+                        .cmp(b.name.as_deref().unwrap_or(""))
+                });
+                for c in children {
+                    used_ids.insert(c.id.clone().unwrap_or_default());
+                    rows.push(label_to_row(c));
+                }
+            }
+
+            // Remaining ungrouped labels (no parent, not a group).
+            let mut rest: Vec<&LabelSummary> = labels
                 .iter()
-                .map(|l| LabelRow {
-                    id: l.id.clone().unwrap_or_default(),
-                    name: l.name.clone().unwrap_or_default(),
-                    color: l.color.clone().unwrap_or_default(),
-                    group: if l.is_group.unwrap_or(false) {
-                        "yes".to_string()
-                    } else {
-                        String::new()
-                    },
-                    team: l
-                        .team
-                        .as_ref()
-                        .and_then(|t| t.key.clone())
-                        .unwrap_or_default(),
-                    parent: l
-                        .parent
-                        .as_ref()
-                        .and_then(|p| p.name.clone())
-                        .unwrap_or_default(),
-                })
+                .filter(|l| !used_ids.contains(l.id.as_deref().unwrap_or("")))
                 .collect();
+            rest.sort_by(|a, b| {
+                a.name
+                    .as_deref()
+                    .unwrap_or("")
+                    .cmp(b.name.as_deref().unwrap_or(""))
+            });
+            for l in rest {
+                rows.push(label_to_row(l));
+            }
 
             output::print_table(&rows, format);
         }

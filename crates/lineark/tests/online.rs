@@ -450,22 +450,22 @@ mod online {
 
         let group_row = labels
             .iter()
-            .find(|l| l["id"].as_str() == Some(&group_id))
+            .find(|l| l["name"].as_str() == Some(group_name.as_str()))
             .expect("group should appear in list");
         assert_eq!(
-            group_row["group"].as_str(),
+            group_row["is_label_group"].as_str(),
             Some("yes"),
-            "group label should show 'yes' in group column"
+            "group label should show 'yes' in is_label_group column"
         );
 
         let child_row = labels
             .iter()
-            .find(|l| l["id"].as_str() == Some(&child_id))
+            .find(|l| l["name"].as_str() == Some(child_name.as_str()))
             .expect("child should appear in list");
         assert_eq!(
-            child_row["parent"].as_str(),
+            child_row["parent_label"].as_str(),
             Some(group_name.as_str()),
-            "child should show parent name in list"
+            "child should show parent_label name in list"
         );
 
         // 4. Clear the child's parent with --clear-parent.
@@ -526,22 +526,22 @@ mod online {
 
         let group_row = labels
             .iter()
-            .find(|l| l["id"].as_str() == Some(&group_id))
+            .find(|l| l["name"].as_str() == Some(group_name.as_str()))
             .expect("group should still appear in list");
         assert_eq!(
-            group_row["group"].as_str(),
+            group_row["is_label_group"].as_str(),
             Some(""),
-            "group column should be empty after --no-group"
+            "is_label_group should be empty after --no-group"
         );
 
         let child_row = labels
             .iter()
-            .find(|l| l["id"].as_str() == Some(&child_id))
+            .find(|l| l["name"].as_str() == Some(child_name.as_str()))
             .expect("child should appear in list");
         assert_eq!(
-            child_row["parent"].as_str(),
+            child_row["parent_label"].as_str(),
             Some(""),
-            "parent should be empty after --clear-parent"
+            "parent_label should be empty after --clear-parent"
         );
     }
 
