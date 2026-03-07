@@ -32,7 +32,7 @@ pub enum LabelsAction {
     ///   lineark labels create "Bug" --color "#eb5757"
     ///   lineark labels create "Feature" --team ENG --color "#4ea7fc" --description "Feature requests"
     ///   lineark labels create "Category" --make-label-group --color "#000000"
-    ///   lineark labels create "Sub-label" --parent PARENT-UUID --color "#ffffff"
+    ///   lineark labels create "Sub-label" --parent-label-group GROUP-UUID --color "#ffffff"
     Create {
         /// Label name.
         name: String,
@@ -45,9 +45,9 @@ pub enum LabelsAction {
         /// Label description.
         #[arg(long)]
         description: Option<String>,
-        /// Parent label UUID (makes this a sub-label; parent must be a group).
+        /// Parent label group UUID (makes this a sub-label; parent must be a group).
         #[arg(long)]
-        parent: Option<String>,
+        parent_label_group: Option<String>,
         /// Create as a group label (required before other labels can use it as --parent).
         #[arg(long, default_value = "false")]
         make_label_group: bool,
@@ -71,12 +71,12 @@ pub enum LabelsAction {
         /// New label description.
         #[arg(long)]
         description: Option<String>,
-        /// New parent label UUID (parent must be a group).
+        /// New parent label group UUID (parent must be a group).
         #[arg(long)]
-        parent: Option<String>,
-        /// Remove the parent label relationship.
-        #[arg(long, default_value = "false", conflicts_with = "parent")]
-        clear_parent: bool,
+        parent_label_group: Option<String>,
+        /// Remove the parent label group relationship.
+        #[arg(long, default_value = "false", conflicts_with = "parent_label_group")]
+        clear_parent_label_group: bool,
         /// Promote this label to a group (required before other labels can use it as --parent).
         #[arg(long, default_value = "false", conflicts_with = "clear_label_group")]
         make_label_group: bool,
@@ -237,7 +237,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             team,
             color,
             description,
-            parent,
+            parent_label_group,
             make_label_group,
         } => {
             let team_id = match team {
@@ -249,7 +249,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 name: Some(name),
                 color,
                 description,
-                parent_id: parent,
+                parent_id: parent_label_group,
                 team_id,
                 is_group: if make_label_group { Some(true) } else { None },
                 ..Default::default()
@@ -267,21 +267,21 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             name,
             color,
             description,
-            parent,
-            clear_parent,
+            parent_label_group,
+            clear_parent_label_group,
             make_label_group,
             clear_label_group,
         } => {
             if name.is_none()
                 && color.is_none()
                 && description.is_none()
-                && parent.is_none()
-                && !clear_parent
+                && parent_label_group.is_none()
+                && !clear_parent_label_group
                 && !make_label_group
                 && !clear_label_group
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --name, --color, --description, --parent, --clear-parent, --make-label-group, or --clear-label-group."
+                    "No update fields provided. Use --name, --color, --description, --parent-label-group, --clear-parent-label-group, --make-label-group, or --clear-label-group."
                 ));
             }
 
@@ -297,14 +297,14 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 name,
                 color,
                 description,
-                parent_id: parent,
+                parent_id: parent_label_group,
                 is_group,
                 ..Default::default()
             };
 
-            // When --clear-parent is used, send `parentId: null` to the API.
+            // When --clear-parent-label-group is used, send `parentId: null` to the API.
             // The generated input uses skip_serializing_if so None omits the field.
-            let label = if clear_parent {
+            let label = if clear_parent_label_group {
                 let mut input_val = serde_json::to_value(&input)?;
                 input_val
                     .as_object_mut()

@@ -417,7 +417,7 @@ mod online {
                 &child_name,
                 "--color",
                 "#ffffff",
-                "--parent",
+                "--parent-label-group",
                 &group_id,
             ])
             .output()
@@ -478,7 +478,7 @@ mod online {
                 "labels",
                 "update",
                 &child_id,
-                "--clear-parent",
+                "--clear-parent-label-group",
             ])
             .output()
             .unwrap();
@@ -1930,7 +1930,7 @@ mod online {
                 &team_key,
                 "-p",
                 "4",
-                "--parent",
+                "--parent-label-group",
                 &parent_id,
             ])
             .output()
@@ -2145,7 +2145,7 @@ mod online {
                 &team_key,
                 "-p",
                 "4",
-                "--parent",
+                "--parent-label-group",
                 &parent_id,
             ])
             .output()
@@ -2168,7 +2168,7 @@ mod online {
                 "issues",
                 "update",
                 &child_id,
-                "--clear-parent",
+                "--clear-parent-label-group",
             ])
             .output()
             .unwrap();

@@ -58,11 +58,13 @@ lineark projects create <NAME> --team KEY        Create a project
 lineark labels list [--team KEY]                 List labels (group, team, parent)
 lineark labels create <NAME>                     Create a label
   [--team KEY] [--color HEX]                     Team, color
-  [--description TEXT] [--parent ID]             Description, parent (must be group)
+  [--description TEXT]                           Description
+  [--parent-label-group ID]                      Nest under a group label
   [--make-label-group]                           Create as a group label
 lineark labels update <ID>                       Update a label
   [--name TEXT] [--color HEX]                    Name, color
-  [--clear-parent]                               Remove parent label
+  [--parent-label-group ID]                      Nest under a group label
+  [--clear-parent-label-group]                   Remove parent group
   [--make-label-group] [--clear-label-group]     Promote/demote group
 lineark labels delete <ID>                       Delete a label
 lineark cycles list [-l N] [--team KEY]          List cycles
