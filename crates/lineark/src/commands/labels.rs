@@ -68,6 +68,9 @@ pub enum LabelsAction {
         /// New parent label UUID.
         #[arg(long)]
         parent: Option<String>,
+        /// Remove the parent label relationship.
+        #[arg(long, default_value = "false", conflicts_with = "parent")]
+        clear_parent: bool,
     },
     /// Delete an issue label.
     ///
@@ -79,7 +82,7 @@ pub enum LabelsAction {
     },
 }
 
-/// Lean label type that includes the parent team.
+/// Lean label type that includes team and parent.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
 #[graphql(full_type = IssueLabel)]
 #[serde(rename_all = "camelCase", default)]
@@ -89,6 +92,8 @@ struct LabelSummary {
     pub color: Option<String>,
     #[graphql(nested)]
     pub team: Option<LabelTeamRef>,
+    #[graphql(nested)]
+    pub parent: Option<Box<LabelParentRef>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
@@ -98,12 +103,20 @@ struct LabelTeamRef {
     pub key: Option<String>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = IssueLabel)]
+#[serde(rename_all = "camelCase", default)]
+struct LabelParentRef {
+    pub name: Option<String>,
+}
+
 #[derive(Debug, Serialize, Tabled)]
 pub struct LabelRow {
     pub id: String,
     pub name: String,
     pub color: String,
     pub team: String,
+    pub parent: String,
 }
 
 /// Lean result type for label mutations.
@@ -144,6 +157,11 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                         .as_ref()
                         .and_then(|t| t.key.clone())
                         .unwrap_or_default(),
+                    parent: l
+                        .parent
+                        .as_ref()
+                        .and_then(|p| p.name.clone())
+                        .unwrap_or_default(),
                 })
                 .collect();
 
@@ -160,6 +178,19 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 Some(ref t) => Some(resolve_team_id(client, t).await?),
                 None => None,
             };
+
+            // If --parent is set, ensure the parent label is marked as a group
+            // (Linear requires this before a label can have children).
+            if let Some(ref pid) = parent {
+                let group_input = IssueLabelUpdateInput {
+                    is_group: Some(true),
+                    ..Default::default()
+                };
+                client
+                    .issue_label_update::<LabelRef>(None, group_input, pid.clone())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+            }
 
             let input = IssueLabelCreateInput {
                 name: Some(name),
@@ -183,11 +214,29 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             color,
             description,
             parent,
+            clear_parent,
         } => {
-            if name.is_none() && color.is_none() && description.is_none() && parent.is_none() {
+            if name.is_none()
+                && color.is_none()
+                && description.is_none()
+                && parent.is_none()
+                && !clear_parent
+            {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --name, --color, --description, or --parent."
+                    "No update fields provided. Use --name, --color, --description, --parent, or --clear-parent."
                 ));
+            }
+
+            // If --parent is set, ensure the parent label is marked as a group.
+            if let Some(ref pid) = parent {
+                let group_input = IssueLabelUpdateInput {
+                    is_group: Some(true),
+                    ..Default::default()
+                };
+                client
+                    .issue_label_update::<LabelRef>(None, group_input, pid.clone())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
 
             let input = IssueLabelUpdateInput {
@@ -198,10 +247,32 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 ..Default::default()
             };
 
-            let label = client
-                .issue_label_update::<LabelRef>(None, input, id)
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            // When --clear-parent is used, send `parentId: null` to the API.
+            // The generated input uses skip_serializing_if so None omits the field.
+            let label = if clear_parent {
+                let mut input_val = serde_json::to_value(&input)?;
+                input_val
+                    .as_object_mut()
+                    .unwrap()
+                    .insert("parentId".to_string(), serde_json::Value::Null);
+                let variables = serde_json::json!({ "input": input_val, "id": id });
+                let sel = <LabelRef as GraphQLFields>::selection();
+                let query = format!(
+                    "mutation($input: IssueLabelUpdateInput!, $id: String!) {{ issueLabelUpdate(input: $input, id: $id) {{ success issueLabel {{ {sel} }} }} }}"
+                );
+                let payload: serde_json::Value = client
+                    .execute(&query, variables, "issueLabelUpdate")
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                serde_json::from_value::<LabelRef>(
+                    payload.get("issueLabel").cloned().unwrap_or_default(),
+                )?
+            } else {
+                client
+                    .issue_label_update::<LabelRef>(None, input, id)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?
+            };
 
             output::print_one(&label, format);
         }

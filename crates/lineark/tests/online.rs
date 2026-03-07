@@ -370,6 +370,137 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn labels_parent_set_list_and_clear() {
+        let token = api_token();
+        let uid = &uuid::Uuid::new_v4().to_string()[..8];
+
+        // Create a parent label.
+        let parent_name = format!("[test] Parent {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &parent_name,
+                "--color",
+                "#000000",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "parent create failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let parent: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let parent_id = parent["id"].as_str().unwrap().to_string();
+        let _parent_guard = LabelGuard {
+            token: token.clone(),
+            id: parent_id.clone(),
+        };
+
+        // Create a child label with --parent.
+        let child_name = format!("[test] Child {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &child_name,
+                "--color",
+                "#ffffff",
+                "--parent",
+                &parent_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "child create failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let child: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let child_id = child["id"].as_str().unwrap().to_string();
+        let _child_guard = LabelGuard {
+            token: token.clone(),
+            id: child_id.clone(),
+        };
+
+        // List labels and verify the child shows the parent name.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "labels", "list"])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+        let child_row = labels
+            .iter()
+            .find(|l| l["id"].as_str() == Some(&child_id))
+            .expect("child label should appear in list");
+        assert_eq!(
+            child_row["parent"].as_str(),
+            Some(parent_name.as_str()),
+            "child should show parent name in list"
+        );
+
+        // Clear the parent with --clear-parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &child_id,
+                "--clear-parent",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "clear-parent failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // List again and verify parent is now empty.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "labels", "list"])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+        let child_row = labels
+            .iter()
+            .find(|l| l["id"].as_str() == Some(&child_id))
+            .expect("child label should appear in list after clear-parent");
+        assert_eq!(
+            child_row["parent"].as_str(),
+            Some(""),
+            "parent should be empty after --clear-parent"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_spaced_label_and_read_back() {
         let token = api_token();
         let (_team_key, team_id, _team_guard) = create_test_team();
