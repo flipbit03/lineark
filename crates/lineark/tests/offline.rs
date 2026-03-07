@@ -810,62 +810,33 @@ fn usage_includes_teams_create() {
         .stdout(predicate::str::contains("teams members remove"));
 }
 
-// ── Batch update ─────────────────────────────────────────────────────────────
+// ── Issues find-branch ───────────────────────────────────────────────────────
 
 #[test]
-fn issues_batch_update_help_shows_flags() {
+fn issues_find_branch_help_shows_description() {
     lineark()
-        .args(["issues", "batch-update", "--help"])
+        .args(["issues", "find-branch", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("--status"))
-        .stdout(predicate::str::contains("--priority"))
-        .stdout(predicate::str::contains("--labels"))
-        .stdout(predicate::str::contains("--assignee"))
-        .stdout(predicate::str::contains("--project"))
-        .stdout(predicate::str::contains("--cycle"));
+        .stdout(predicate::str::contains("Git branch name"));
 }
 
 #[test]
-fn issues_batch_update_requires_identifiers() {
-    lineark()
-        .args(["--api-token", "fake-token", "issues", "batch-update"])
-        .assert()
-        .failure();
-}
-
-#[test]
-fn issues_batch_update_no_flags_prints_error() {
-    lineark()
-        .args([
-            "--api-token",
-            "fake-token",
-            "issues",
-            "batch-update",
-            "ENG-1",
-            "ENG-2",
-        ])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("No update fields provided"));
-}
-
-#[test]
-fn issues_help_shows_batch_update() {
+fn issues_help_shows_find_branch_subcommand() {
     lineark()
         .args(["issues", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("batch-update"));
+        .stdout(predicate::str::contains("find-branch"));
 }
 
 #[test]
-fn usage_includes_batch_update() {
+fn usage_includes_find_branch() {
     lineark()
         .arg("usage")
         .assert()
         .success()
-        .stdout(predicate::str::contains("batch-update"));
+        .stdout(predicate::str::contains("issues find-branch"));
 }
 
 // ── Self command ─────────────────────────────────────────────────────────────
@@ -944,4 +915,55 @@ fn usage_includes_comments_delete() {
         .assert()
         .success()
         .stdout(predicate::str::contains("comments delete"));
+}
+
+// ── Issues list --project filter ────────────────────────────────────────────
+
+#[test]
+fn issues_list_help_shows_project_flag() {
+    lineark()
+        .args(["issues", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"));
+}
+
+#[test]
+fn usage_includes_issues_list_project_filter() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--project"));
+}
+
+// ── Estimate flag ───────────────────────────────────────────────────────────
+
+#[test]
+fn issues_create_help_shows_estimate() {
+    lineark()
+        .args(["issues", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--estimate"))
+        .stdout(predicate::str::contains("-e"));
+}
+
+#[test]
+fn issues_update_help_shows_estimate() {
+    lineark()
+        .args(["issues", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--estimate"))
+        .stdout(predicate::str::contains("-e"));
+}
+
+#[test]
+fn issues_update_no_flags_error_mentions_estimate() {
+    lineark()
+        .args(["--api-token", "fake-token", "issues", "update", "ENG-123"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--estimate"));
 }

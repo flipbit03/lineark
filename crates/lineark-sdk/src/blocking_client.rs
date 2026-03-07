@@ -498,6 +498,34 @@ impl Client {
         )
     }
 
+    /// Create a team (blocking).
+    pub fn team_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Team>>(
+        &self,
+        copy_settings_from_team_id: Option<String>,
+        input: TeamCreateInput,
+    ) -> Result<T, LinearError> {
+        self.rt.block_on(
+            self.inner
+                .team_create::<T>(copy_settings_from_team_id, input),
+        )
+    }
+
+    /// Update a team (blocking).
+    pub fn team_update<T: DeserializeOwned + crate::GraphQLFields<FullType = Team>>(
+        &self,
+        mapping: Option<InheritanceEntityMapping>,
+        input: TeamUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        self.rt
+            .block_on(self.inner.team_update::<T>(mapping, input, id))
+    }
+
+    /// Delete a team (blocking).
+    pub fn team_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        self.rt.block_on(self.inner.team_delete(id))
+    }
+
     /// Create a document (blocking).
     pub fn document_create<T: DeserializeOwned + crate::GraphQLFields<FullType = Document>>(
         &self,
