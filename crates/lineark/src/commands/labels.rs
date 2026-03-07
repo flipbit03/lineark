@@ -31,7 +31,7 @@ pub enum LabelsAction {
     /// Examples:
     ///   lineark labels create "Bug" --color "#eb5757"
     ///   lineark labels create "Feature" --team ENG --color "#4ea7fc" --description "Feature requests"
-    ///   lineark labels create "Category" --group --color "#000000"
+    ///   lineark labels create "Category" --make-label-group --color "#000000"
     ///   lineark labels create "Sub-label" --parent PARENT-UUID --color "#ffffff"
     Create {
         /// Label name.
@@ -50,15 +50,15 @@ pub enum LabelsAction {
         parent: Option<String>,
         /// Create as a group label (required before other labels can use it as --parent).
         #[arg(long, default_value = "false")]
-        group: bool,
+        make_label_group: bool,
     },
     /// Update an existing issue label.
     ///
     /// Examples:
     ///   lineark labels update LABEL-UUID --name "Renamed"
     ///   lineark labels update LABEL-UUID --color "#00ff00" --description "Updated"
-    ///   lineark labels update LABEL-UUID --group          # promote to group
-    ///   lineark labels update LABEL-UUID --no-group       # demote (must have no children)
+    ///   lineark labels update LABEL-UUID --make-label-group   # promote to group
+    ///   lineark labels update LABEL-UUID --clear-label-group # demote (must have no children)
     Update {
         /// Label UUID.
         id: String,
@@ -77,10 +77,12 @@ pub enum LabelsAction {
         /// Remove the parent label relationship.
         #[arg(long, default_value = "false", conflicts_with = "parent")]
         clear_parent: bool,
-        /// Promote to group (--group) or demote to plain label (--no-group).
-        /// Demoting fails if the label still has children.
-        #[arg(long, action = clap::ArgAction::Set, default_missing_value = "true", num_args = 0..=1)]
-        group: Option<bool>,
+        /// Promote this label to a group (required before other labels can use it as --parent).
+        #[arg(long, default_value = "false", conflicts_with = "clear_label_group")]
+        make_label_group: bool,
+        /// Demote this group back to a plain label (fails if it still has children).
+        #[arg(long, default_value = "false")]
+        clear_label_group: bool,
     },
     /// Delete an issue label.
     ///
@@ -236,7 +238,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             color,
             description,
             parent,
-            group,
+            make_label_group,
         } => {
             let team_id = match team {
                 Some(ref t) => Some(resolve_team_id(client, t).await?),
@@ -249,7 +251,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 description,
                 parent_id: parent,
                 team_id,
-                is_group: if group { Some(true) } else { None },
+                is_group: if make_label_group { Some(true) } else { None },
                 ..Default::default()
             };
 
@@ -267,26 +269,36 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             description,
             parent,
             clear_parent,
-            group,
+            make_label_group,
+            clear_label_group,
         } => {
             if name.is_none()
                 && color.is_none()
                 && description.is_none()
                 && parent.is_none()
                 && !clear_parent
-                && group.is_none()
+                && !make_label_group
+                && !clear_label_group
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --name, --color, --description, --parent, --clear-parent, --group, or --no-group."
+                    "No update fields provided. Use --name, --color, --description, --parent, --clear-parent, --make-label-group, or --clear-label-group."
                 ));
             }
+
+            let is_group = if make_label_group {
+                Some(true)
+            } else if clear_label_group {
+                Some(false)
+            } else {
+                None
+            };
 
             let input = IssueLabelUpdateInput {
                 name,
                 color,
                 description,
                 parent_id: parent,
-                is_group: group,
+                is_group,
                 ..Default::default()
             };
 

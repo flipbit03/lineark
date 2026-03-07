@@ -387,7 +387,7 @@ mod online {
                 &group_name,
                 "--color",
                 "#000000",
-                "--group",
+                "--make-label-group",
             ])
             .output()
             .unwrap();
@@ -499,8 +499,7 @@ mod online {
                 "labels",
                 "update",
                 &group_id,
-                "--group",
-                "false",
+                "--clear-label-group",
             ])
             .output()
             .unwrap();
