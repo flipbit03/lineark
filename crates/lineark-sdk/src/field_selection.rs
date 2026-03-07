@@ -55,6 +55,16 @@ impl<T: GraphQLFields> GraphQLFields for Option<T> {
     }
 }
 
+// Batch mutations: Vec<T> delegates to T's selection.
+// This allows mutations returning lists (e.g. `issueBatchUpdate`) to use
+// `execute_mutation::<Vec<T>>()` — the selection set is the same as for T.
+impl<T: GraphQLFields> GraphQLFields for Vec<T> {
+    type FullType = T::FullType;
+    fn selection() -> String {
+        T::selection()
+    }
+}
+
 /// Marker trait for compile-time field type compatibility.
 ///
 /// Validates that a full type's field type `Self` is compatible with a custom
@@ -102,11 +112,20 @@ mod tests {
     }
 
     #[test]
+    fn vec_delegates_selection_to_inner_type() {
+        assert_eq!(
+            <Vec<FakeIssue> as GraphQLFields>::selection(),
+            "id title url"
+        );
+    }
+
+    #[test]
     fn option_preserves_full_type() {
-        // Compile-time proof: Option<FakeIssue>::FullType == FakeFullType
+        // Compile-time proof: Option/Vec<FakeIssue>::FullType == FakeFullType
         fn assert_full_type<T: GraphQLFields<FullType = FakeFullType>>() {}
         assert_full_type::<FakeIssue>();
         assert_full_type::<Option<FakeIssue>>();
+        assert_full_type::<Vec<FakeIssue>>();
     }
 
     #[test]
