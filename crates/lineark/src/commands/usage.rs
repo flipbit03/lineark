@@ -58,7 +58,6 @@ COMMANDS:
     [--name TEXT] [--color HEX]                    Name, color
     [--description TEXT]                           Description
     [--parent-label-group ID]                      Nest under a group label
-    [--parent-label-group ID]                      Nest under a group label
     [--clear-parent-label-group]                   Remove parent group
     [--make-label-group] [--clear-label-group]     Promote/demote group
   lineark labels delete <ID>                       Delete a label
