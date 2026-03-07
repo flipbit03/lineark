@@ -5,7 +5,7 @@
 //! When the token file is missing, online tests are automatically skipped.
 
 use lineark_sdk::blocking_client::Client;
-use lineark_sdk::generated::types::{Document, Issue};
+use lineark_sdk::generated::types::{Document, Issue, Team};
 
 fn no_online_test_token() -> Option<String> {
     let path = home::home_dir()?.join(".linear_api_token_test");
@@ -60,6 +60,38 @@ impl Drop for DocumentGuard {
     }
 }
 
+/// RAII guard — permanently deletes a team on drop.
+struct TeamGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for TeamGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let _ = client.team_delete(self.id.clone());
+    }
+}
+
+/// Helper: create a fresh test team and return its ID + RAII guard.
+fn create_test_team(client: &Client) -> (String, TeamGuard) {
+    use lineark_sdk::generated::inputs::TeamCreateInput;
+    let unique = format!("[test] blocking {}", &uuid::Uuid::new_v4().to_string()[..8]);
+    let input = TeamCreateInput {
+        name: Some(unique),
+        ..Default::default()
+    };
+    let team = client.team_create::<Team>(None, input).unwrap();
+    let team_id = team.id.clone().unwrap();
+    let guard = TeamGuard {
+        token: test_token(),
+        id: team_id.clone(),
+    };
+    (team_id, guard)
+}
+
 test_with::runner!(blocking_online);
 
 #[test_with::module]
@@ -79,6 +111,7 @@ mod blocking_online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_teams_list() {
         let client = test_client();
+        let (_team_id, _team_guard) = create_test_team(&client);
         let conn = client.teams().first(10).send().unwrap();
         assert!(
             !conn.nodes.is_empty(),
@@ -92,8 +125,7 @@ mod blocking_online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_team_by_id() {
         let client = test_client();
-        let conn = client.teams().first(1).send().unwrap();
-        let team_id = conn.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client);
         let team = client.team(team_id.clone()).unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -116,9 +148,8 @@ mod blocking_online {
 
         let client = test_client();
 
-        // Get a team (documents require at least one parent).
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        // Create a team (documents require at least one parent).
+        let (team_id, _team_guard) = create_test_team(&client);
 
         // Create.
         let input = DocumentCreateInput {
@@ -171,8 +202,7 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client);
 
         let input = IssueCreateInput {
             title: Some("[test] blocking issue_create".to_string()),
@@ -197,8 +227,7 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let teams = client.teams().first(1).send().unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
+        let (team_id, _team_guard) = create_test_team(&client);
 
         let input = IssueCreateInput {
             title: Some("[test] blocking archive/unarchive".to_string()),
