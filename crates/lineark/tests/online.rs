@@ -3355,17 +3355,16 @@ mod online {
     fn comments_update_resolve_unresolve_lifecycle() {
         let token = api_token();
         let client = Client::from_token(token.clone()).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
 
         // Create an issue via SDK (more reliable than CLI for setup).
-        let teams = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
             client
                 .issue_create::<Issue>(lineark_sdk::generated::inputs::IssueCreateInput {
-                    title: Some("[test] CLI comments_lifecycle".to_string()),
+                    title: Some(format!(
+                        "[test] CLI comments_lifecycle {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
                     team_id: Some(team_id),
                     priority: Some(4),
                     ..Default::default()
@@ -3512,17 +3511,16 @@ mod online {
 
         let token = api_token();
         let client = Client::from_token(token.clone()).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
 
         // Create an issue via SDK.
-        let teams = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.teams::<Team>().first(1).send().await.unwrap() });
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
             client
                 .issue_create::<Issue>(IssueCreateInput {
-                    title: Some("[test] CLI comments_resolve_with_resolving_comment".to_string()),
+                    title: Some(format!(
+                        "[test] CLI comments_resolve_with_resolving_comment {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
                     team_id: Some(team_id),
                     priority: Some(4),
                     ..Default::default()
@@ -3614,13 +3612,11 @@ mod online {
 
         let token = api_token();
         let client = Client::from_token(&token).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
 
         // Create an issue via SDK to get the branch name.
         let rt = tokio::runtime::Runtime::new().unwrap();
         let (issue_id, branch_name) = rt.block_on(async {
-            let teams = client.teams::<Team>().first(1).send().await.unwrap();
-            let team_id = teams.nodes[0].id.clone().unwrap();
-
             let input = IssueCreateInput {
                 title: Some(format!(
                     "[test] CLI find-branch {}",

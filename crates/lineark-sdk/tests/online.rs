@@ -1077,13 +1077,14 @@ mod online {
         };
 
         let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue to comment on.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let issue_input = IssueCreateInput {
-            title: Some("[test] SDK comment_update_changes_body".to_string()),
+            title: Some(format!(
+                "[test] SDK comment_update_changes_body {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            )),
             team_id: Some(team_id),
             priority: Some(4),
             ..Default::default()
@@ -1131,13 +1132,14 @@ mod online {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 
         let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue to comment on.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let issue_input = IssueCreateInput {
-            title: Some("[test] SDK comment_resolve_and_unresolve".to_string()),
+            title: Some(format!(
+                "[test] SDK comment_resolve_and_unresolve {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            )),
             team_id: Some(team_id),
             priority: Some(4),
             ..Default::default()
@@ -1199,11 +1201,9 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue so we can look up its branchName.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
         let input = IssueCreateInput {
             title: Some(format!("[test] SDK branch search {uid}")),
