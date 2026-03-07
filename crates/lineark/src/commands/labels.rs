@@ -123,6 +123,7 @@ struct LabelParentRef {
 
 #[derive(Debug, Serialize, Tabled)]
 pub struct LabelRow {
+    pub id: String,
     pub name: String,
     pub color: String,
     pub is_label_group: String,
@@ -142,6 +143,7 @@ struct LabelRef {
 
 fn label_to_row(l: &LabelSummary) -> LabelRow {
     LabelRow {
+        id: l.id.clone().unwrap_or_default(),
         name: l.name.clone().unwrap_or_default(),
         color: l.color.clone().unwrap_or_default(),
         is_label_group: if l.is_group.unwrap_or(false) {
