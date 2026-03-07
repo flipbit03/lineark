@@ -436,12 +436,25 @@ pub struct TeamRef {
     pub key: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+/// Wrapper around IssueLabelConnection that serializes as a flat list of names:
+/// `["Bug", "Feature"]` instead of `{ "nodes": [{ "name": "Bug" }, ...] }`.
+#[derive(Debug, Clone, Deserialize, Default, GraphQLFields)]
 #[graphql(full_type = IssueLabelConnection)]
 #[serde(rename_all = "camelCase", default)]
 pub struct LabelConnection {
     #[graphql(nested)]
     pub nodes: Vec<LabelNameRef>,
+}
+
+impl Serialize for LabelConnection {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let names: Vec<&str> = self
+            .nodes
+            .iter()
+            .filter_map(|l| l.name.as_deref())
+            .collect();
+        names.serialize(serializer)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]

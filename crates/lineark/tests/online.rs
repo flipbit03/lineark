@@ -630,10 +630,10 @@ mod online {
             "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
         let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        let labels = detail["labels"]["nodes"]
+        let labels = detail["labels"]
             .as_array()
-            .expect("labels.nodes should be an array");
-        let label_names: Vec<&str> = labels.iter().filter_map(|l| l["name"].as_str()).collect();
+            .expect("labels should be a flat array of names");
+        let label_names: Vec<&str> = labels.iter().filter_map(|l| l.as_str()).collect();
         assert!(
             label_names.contains(&label_name.as_str()),
             "issue should have the spaced label '{label_name}', got: {label_names:?}"
