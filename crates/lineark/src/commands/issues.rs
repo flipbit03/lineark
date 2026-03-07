@@ -3,8 +3,8 @@ use lineark_sdk::generated::inputs::{
     IssueCreateInput, IssueFilter, IssueUpdateInput, WorkflowStateFilter,
 };
 use lineark_sdk::generated::types::{
-    Comment, CommentConnection, Issue, IssueConnection, IssueRelation, IssueRelationConnection,
-    IssueSearchResult, User, WorkflowState,
+    Comment, CommentConnection, Issue, IssueConnection, IssueLabel, IssueLabelConnection,
+    IssueRelation, IssueRelationConnection, IssueSearchResult, User, WorkflowState,
 };
 use lineark_sdk::{Client, GraphQLFields};
 use serde::{Deserialize, Serialize};
@@ -84,7 +84,7 @@ pub enum IssuesAction {
         /// Assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
-        /// Comma-separated label names or UUIDs.
+        /// Comma-separated label names.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
@@ -158,7 +158,7 @@ pub enum IssuesAction {
         /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
         #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
         priority: Option<i64>,
-        /// Comma-separated label names or UUIDs. Behavior depends on --label-by.
+        /// Comma-separated label names. Behavior depends on --label-by.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
         /// How to apply --labels: "replacing" (default), "adding", or "removing".
@@ -195,7 +195,7 @@ pub enum IssuesAction {
         /// Estimate points (valid values depend on the team's estimation scale).
         #[arg(short = 'e', long)]
         estimate: Option<i64>,
-        /// Comma-separated label names or UUIDs. Behavior depends on --label-by.
+        /// Comma-separated label names. Behavior depends on --label-by.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
         /// How to apply --labels: "replacing" (default), "adding", or "removing".
@@ -253,8 +253,22 @@ struct IssueRow {
     assignee: String,
     team: String,
     estimate: String,
+    labels: String,
     #[tabled(skip)]
     url: String,
+}
+
+fn format_labels(labels: &Option<LabelConnection>) -> String {
+    labels
+        .as_ref()
+        .map(|lc| {
+            lc.nodes
+                .iter()
+                .filter_map(|l| l.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default()
 }
 
 impl From<&IssueSummary> for IssueRow {
@@ -279,6 +293,7 @@ impl From<&IssueSummary> for IssueRow {
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
             estimate: format_estimate(i.estimate),
+            labels: format_labels(&i.labels),
             url: i.url.clone().unwrap_or_default(),
         }
     }
@@ -306,6 +321,7 @@ impl From<&SearchSummary> for IssueRow {
                 .and_then(|t| t.key.clone())
                 .unwrap_or_default(),
             estimate: format_estimate(i.estimate),
+            labels: format_labels(&i.labels),
             url: i.url.clone().unwrap_or_default(),
         }
     }
@@ -331,6 +347,8 @@ pub struct IssueSummary {
     pub assignee: Option<UserRef>,
     #[graphql(nested)]
     pub team: Option<TeamRef>,
+    #[graphql(nested)]
+    pub labels: Option<LabelConnection>,
 }
 
 /// Lean search result type for `issues search` with nested fields.
@@ -351,6 +369,8 @@ pub struct SearchSummary {
     pub assignee: Option<UserRef>,
     #[graphql(nested)]
     pub team: Option<TeamRef>,
+    #[graphql(nested)]
+    pub labels: Option<LabelConnection>,
 }
 
 // ── IssueDetail — custom type for `issues read` with nested data ─────────
@@ -378,6 +398,8 @@ pub struct IssueDetail {
     pub assignee: Option<UserRef>,
     #[graphql(nested)]
     pub team: Option<TeamRef>,
+    #[graphql(nested)]
+    pub labels: Option<LabelConnection>,
     #[graphql(nested)]
     pub relations: Option<RelationConnection>,
     #[graphql(nested)]
@@ -412,6 +434,34 @@ pub struct TeamRef {
     pub id: Option<String>,
     pub name: Option<String>,
     pub key: Option<String>,
+}
+
+/// Wrapper around IssueLabelConnection that serializes as a flat list of names:
+/// `["Bug", "Feature"]` instead of `{ "nodes": [{ "name": "Bug" }, ...] }`.
+#[derive(Debug, Clone, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = IssueLabelConnection)]
+#[serde(rename_all = "camelCase", default)]
+pub struct LabelConnection {
+    #[graphql(nested)]
+    pub nodes: Vec<LabelNameRef>,
+}
+
+impl Serialize for LabelConnection {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let names: Vec<&str> = self
+            .nodes
+            .iter()
+            .filter_map(|l| l.name.as_deref())
+            .collect();
+        names.serialize(serializer)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = IssueLabel)]
+#[serde(rename_all = "camelCase", default)]
+pub struct LabelNameRef {
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
