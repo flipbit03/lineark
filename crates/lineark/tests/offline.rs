@@ -810,6 +810,35 @@ fn usage_includes_teams_create() {
         .stdout(predicate::str::contains("teams members remove"));
 }
 
+// ── Issues find-branch ───────────────────────────────────────────────────────
+
+#[test]
+fn issues_find_branch_help_shows_description() {
+    lineark()
+        .args(["issues", "find-branch", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Git branch name"));
+}
+
+#[test]
+fn issues_help_shows_find_branch_subcommand() {
+    lineark()
+        .args(["issues", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("find-branch"));
+}
+
+#[test]
+fn usage_includes_find_branch() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("issues find-branch"));
+}
+
 // ── Self command ─────────────────────────────────────────────────────────────
 
 #[test]
