@@ -138,65 +138,43 @@ fn emit_mutation(
         let doc = quote! { #doc #[doc = ""] #[doc = #type_hint] };
         let entity_field_lit = entity_field_name.as_str();
 
-        if is_list {
-            // ── Batch mutation: returns Vec<T> ──
-            let query_prefix = format!(
-                "mutation {}({}) {{ {}({}) {{ success {} {{ ",
-                operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
-            );
-            let query_suffix = " } } }";
+        let query_prefix = format!(
+            "mutation {}({}) {{ {}({}) {{ success {} {{ ",
+            operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
+        );
+        let query_suffix = " } } }";
 
-            let standalone_fn = quote! {
-                #doc
-                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                    client: &Client, #(#params),*
-                ) -> Result<Vec<T>, LinearError> {
-                    let variables = serde_json::json!({ #(#variables_json),* });
-                    let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
-                    client.execute_batch_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
-                }
-            };
-
-            let client_method = quote! {
-                #doc
-                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                    &self, #(#params),*
-                ) -> Result<Vec<T>, LinearError> {
-                    crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
-                }
-            };
-
-            Some((standalone_fn, client_method))
+        // List entity fields (e.g. `issues: [Issue!]!`) use Vec<T>;
+        // singular entity fields (e.g. `issue: Issue!`) use T.
+        // Both go through execute_mutation — Vec<T> implements GraphQLFields
+        // via blanket impl, and serde handles JSON array deserialization.
+        let (return_type, execute_type) = if is_list {
+            (quote! { Vec<T> }, quote! { Vec<T> })
         } else {
-            // ── Generic mutation: returns T, SDK handles success + extraction ──
-            let query_prefix = format!(
-                "mutation {}({}) {{ {}({}) {{ success {} {{ ",
-                operation_name, graphql_params, mutation_name, graphql_args, entity_field_name,
-            );
-            let query_suffix = " } } }";
+            (quote! { T }, quote! { T })
+        };
 
-            let standalone_fn = quote! {
-                #doc
-                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                    client: &Client, #(#params),*
-                ) -> Result<T, LinearError> {
-                    let variables = serde_json::json!({ #(#variables_json),* });
-                    let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
-                    client.execute_mutation::<T>(&query, variables, #data_path, #entity_field_lit).await
-                }
-            };
+        let standalone_fn = quote! {
+            #doc
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                client: &Client, #(#params),*
+            ) -> Result<#return_type, LinearError> {
+                let variables = serde_json::json!({ #(#variables_json),* });
+                let query = String::from(#query_prefix) + &T::selection() + #query_suffix;
+                client.execute_mutation::<#execute_type>(&query, variables, #data_path, #entity_field_lit).await
+            }
+        };
 
-            let client_method = quote! {
-                #doc
-                pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
-                    &self, #(#params),*
-                ) -> Result<T, LinearError> {
-                    crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
-                }
-            };
+        let client_method = quote! {
+            #doc
+            pub async fn #method_name<T: serde::de::DeserializeOwned + crate::field_selection::GraphQLFields<FullType = super::types::#entity_type_ident>>(
+                &self, #(#params),*
+            ) -> Result<#return_type, LinearError> {
+                crate::generated::mutations::#method_name::<T>(self, #(#call_args),*).await
+            }
+        };
 
-            Some((standalone_fn, client_method))
-        }
+        Some((standalone_fn, client_method))
     } else {
         // ── Non-entity mutation (e.g. file_upload): keep Value return ──
         let mut entity_selection_exprs: Vec<TokenStream> = Vec::new();

@@ -341,7 +341,7 @@ pub async fn issue_batch_update<
         "mutation IssueBatchUpdate($input: IssueUpdateInput!, $ids: [UUID!]!) { issueBatchUpdate(input: $input, ids: $ids) { success issues { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_batch_mutation::<T>(&query, variables, "issueBatchUpdate", "issues")
+        .execute_mutation::<Vec<T>>(&query, variables, "issueBatchUpdate", "issues")
         .await
 }
 /// Archives an issue.
