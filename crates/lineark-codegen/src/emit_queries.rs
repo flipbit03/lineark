@@ -138,12 +138,16 @@ fn emit_query(
     let is_connection =
         return_type_name.ends_with("Connection") || return_type_name.ends_with("Payload");
 
+    // Nullable return type: schema has `Type` (nullable) vs `Type!` (non-null).
+    let is_nullable = !is_connection && !matches!(field.ty, GqlType::NonNull(_));
+
     if has_optional {
         emit_builder_query(
             field,
             rename,
             &args,
             is_connection,
+            is_nullable,
             object_map,
             type_kind_map,
         )
@@ -153,6 +157,7 @@ fn emit_query(
             rename,
             &args,
             is_connection,
+            is_nullable,
             object_map,
             type_kind_map,
         )
@@ -166,6 +171,7 @@ fn emit_direct_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
+    is_nullable: bool,
     object_map: &HashMap<&str, &ObjectDef>,
     _type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
@@ -278,18 +284,30 @@ fn emit_direct_query(
             }
         };
 
+        let (return_type, execute_call) = if is_nullable {
+            (
+                quote! { Option<T> },
+                quote! { client.execute::<Option<T>>(&query, variables, #data_path).await },
+            )
+        } else {
+            (
+                quote! { T },
+                quote! { client.execute::<T>(&query, variables, #data_path).await },
+            )
+        };
+
         let standalone_fn = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(client: &Client, #(#params),*) -> Result<T, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(client: &Client, #(#params),*) -> Result<#return_type, LinearError> {
                 let variables = serde_json::json!({ #(#variables_json),* });
                 #query_build
-                client.execute::<T>(&query, variables, #data_path).await
+                #execute_call
             }
         };
 
         let client_method = quote! {
             #doc
-            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(&self, #(#params),*) -> Result<T, LinearError> {
+            pub async fn #method_name<T: DeserializeOwned + GraphQLFields<FullType = super::types::#node_type_ident>>(&self, #(#params),*) -> Result<#return_type, LinearError> {
                 crate::generated::queries::#method_name::<T>(self, #(#call_args),*).await
             }
         };
@@ -309,6 +327,7 @@ fn emit_builder_query(
     rename: Option<&str>,
     args: &[ArgInfo],
     is_connection: bool,
+    is_nullable: bool,
     object_map: &HashMap<&str, &ObjectDef>,
     _type_kind_map: &HashMap<String, TypeKind>,
 ) -> QueryResult {
@@ -456,12 +475,24 @@ fn emit_builder_query(
             }
         };
 
+        let (return_type, execute_call) = if is_nullable {
+            (
+                quote! { Option<T> },
+                quote! { self.client.execute::<Option<T>>(&query, variables, #data_path).await },
+            )
+        } else {
+            (
+                quote! { T },
+                quote! { self.client.execute::<T>(&query, variables, #data_path).await },
+            )
+        };
+
         (
-            quote! { T },
+            return_type,
             quote! {
                 #build_variables
                 #query_build
-                self.client.execute::<T>(&query, variables, #data_path).await
+                #execute_call
             },
         )
     };

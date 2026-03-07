@@ -62,28 +62,38 @@ COMMANDS:
     [--around-active N]                            Active ± N neighbors
   lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
+    [--project NAME-OR-ID]                         Filter by project
     [--mine]                                       Only issues assigned to me
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
+  lineark issues find-branch <BRANCH>              Find issue by Git branch name
   lineark issues search <QUERY> [-l N]             Full-text search
     [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
     [--status NAME,...] [--show-done]              Comma-separated status names
   lineark issues create <TITLE> --team KEY         Create an issue
-    [-p 0-4] [--assignee NAME-OR-ID|me]            0=none 1=urgent 2=high 3=medium 4=low
+    [-p 0-4] [-e N] [--assignee NAME-OR-ID|me]     0=none 1=urgent 2=high 3=medium 4=low
     [--labels NAME,...] [-d TEXT] [-s NAME]        Label names (team-scoped), status name
     [--parent ID] [--project NAME-OR-ID]           Parent issue, project, cycle
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
-    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
+    [-s NAME] [-p 0-4] [-e N]                      Status, priority, estimate
+    [--assignee NAME-OR-ID|me]                     Assignee
     [--labels NAME,...] [--label-by adding|replacing|removing]
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                 Set or remove parent
     [--project NAME-OR-ID] [--cycle NAME-OR-ID]    Project, cycle
+  lineark issues batch-update ID [ID ...]          Batch update multiple issues
+    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me] Status, priority, assignee
   lineark issues archive <IDENTIFIER>              Archive an issue
   lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
   lineark issues delete <IDENTIFIER>               Delete (trash) an issue
     [--permanently]                                Permanently delete instead of trashing
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+  lineark comments update <COMMENT-UUID>           Update a comment
+    --body TEXT                                    New body in markdown
+  lineark comments resolve <COMMENT-UUID>          Resolve a comment thread
+    [--resolving-comment UUID]                     Reply that resolves thread
+  lineark comments unresolve <COMMENT-UUID>        Unresolve a comment thread
   lineark comments delete <COMMENT-UUID>           Delete a comment
   lineark relations create <ISSUE>                 Create an issue relation
     --blocks <ISSUE>                               Source blocks target

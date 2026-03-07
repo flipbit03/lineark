@@ -5,7 +5,7 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Issue, IssueRelation, Project};
+use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project, Team};
 use lineark_sdk::Client;
 use predicates::prelude::*;
 
@@ -148,6 +148,29 @@ impl Drop for LabelGuard {
             .unwrap()
             .block_on(async { client.issue_label_delete(id).await });
     }
+}
+
+/// Helper: create a fresh test team via the SDK and return (key, id, guard).
+fn create_test_team() -> (String, String, TeamGuard) {
+    use lineark_sdk::generated::inputs::TeamCreateInput;
+    let token = api_token();
+    let client = Client::from_token(token.clone()).unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let team: Team = rt.block_on(async {
+        let unique = format!("[test] cli {}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let input = TeamCreateInput {
+            name: Some(unique),
+            ..Default::default()
+        };
+        client.team_create::<Team>(None, input).await.unwrap()
+    });
+    let team_id = team.id.clone().unwrap();
+    let team_key = team.key.clone().unwrap();
+    let guard = TeamGuard {
+        token,
+        id: team_id.clone(),
+    };
+    (team_key, team_id, guard)
 }
 
 test_with::runner!(online);
@@ -548,14 +571,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_update_and_archive() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI create+update {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get the first team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .expect("failed to execute lineark");
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue.
         let output = lineark()
@@ -566,7 +587,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI create+update",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -604,7 +625,7 @@ mod online {
                 "--priority",
                 "2",
                 "--title",
-                "[test] CLI create+update — updated",
+                &format!("{unique_name} — updated"),
             ])
             .output()
             .expect("failed to execute lineark");
@@ -632,14 +653,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_archive_and_unarchive_cycle() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI archive/unarchive {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue.
         let output = lineark()
@@ -650,7 +669,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI archive/unarchive",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -784,14 +803,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_unarchive_by_human_identifier() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] unarchive by identifier {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue.
         let output = lineark()
@@ -802,7 +819,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] unarchive by identifier",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -880,14 +897,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_permanently() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI issues delete {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue to delete.
         let output = lineark()
@@ -898,7 +913,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI issues delete",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -948,14 +963,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_trash_and_verify() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI issues trash {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue.
         let output = lineark()
@@ -966,7 +979,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI issues trash",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -1039,15 +1052,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn documents_create_read_update_and_delete() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let issue_name = format!("[test] doc parent issue {suffix}");
+        let doc_name = format!("[test] CLI documents CRUD {suffix}");
 
-        // Get a team key first (documents require a parent like project/issue/team).
-        // Create an issue to associate the document with.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        // Create a team + issue to associate the document with.
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         let output = lineark()
             .args([
@@ -1057,7 +1067,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] doc parent issue",
+                &issue_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -1083,7 +1093,7 @@ mod online {
                 "documents",
                 "create",
                 "--title",
-                "[test] CLI documents CRUD",
+                &doc_name,
                 "--content",
                 "Automated CLI test document.",
                 "--issue",
@@ -1122,10 +1132,7 @@ mod online {
             "documents read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
         );
         let read_doc: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert_eq!(
-            read_doc["title"].as_str(),
-            Some("[test] CLI documents CRUD")
-        );
+        assert_eq!(read_doc["title"].as_str(), Some(doc_name.as_str()));
 
         // Update the document.
         let output = lineark()
@@ -1138,7 +1145,7 @@ mod online {
                 "update",
                 doc_id,
                 "--title",
-                "[test] CLI documents CRUD — updated",
+                &format!("{doc_name} — updated"),
             ])
             .output()
             .expect("failed to execute lineark");
@@ -1235,13 +1242,7 @@ mod online {
     fn cycles_list_with_team_filter() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         let output = lineark()
             .args([
@@ -1270,13 +1271,7 @@ mod online {
     fn cycles_list_around_active() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         let output = lineark()
             .args([
@@ -1515,14 +1510,9 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_relations() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create two issues.
         let output = lineark()
@@ -1533,7 +1523,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation parent",
+                &format!("[test] relation parent {suffix}"),
                 "--team",
                 &team_key,
                 "--priority",
@@ -1557,7 +1547,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation child",
+                &format!("[test] relation child {suffix}"),
                 "--team",
                 &team_key,
                 "--priority",
@@ -1646,14 +1636,9 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_children_and_comments() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create a parent issue.
         let output = lineark()
@@ -1664,7 +1649,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] parent with children",
+                &format!("[test] parent with children {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1692,7 +1677,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] child issue",
+                &format!("[test] child issue {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1788,13 +1773,7 @@ mod online {
     fn issues_search_with_team_filter() {
         let token = api_token();
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Search with --team filter.
         let output = lineark()
@@ -1875,14 +1854,9 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_parent_and_clear_parent() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create parent.
         let output = lineark()
@@ -1893,7 +1867,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] clear-parent parent",
+                &format!("[test] clear-parent parent {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1918,7 +1892,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] clear-parent child",
+                &format!("[test] clear-parent child {suffix}"),
                 "--team",
                 &team_key,
                 "-p",
@@ -1988,21 +1962,20 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn project_milestones_full_crud() {
         let token = api_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let project_label = format!("[test] milestones CRUD project {suffix}");
+        let milestone_name = format!("[test] Beta Release {suffix}");
+        let milestone_updated = format!("[test] GA Release {suffix}");
 
-        // Get a team ID (projectCreate requires teamIds).
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_id = teams[0]["id"].as_str().unwrap().to_string();
+        // Create a team (projectCreate requires teamIds).
+        let (_team_key, team_id, _team_guard) = create_test_team();
 
         // Create a test project via the SDK.
         let client = Client::from_token(api_token()).unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let project: Project = rt.block_on(async {
             let input = ProjectCreateInput {
-                name: Some("[test] milestones CRUD project".to_string()),
+                name: Some(project_label.clone()),
                 team_ids: Some(vec![team_id]),
                 ..Default::default()
             };
@@ -2023,7 +1996,7 @@ mod online {
                 "json",
                 "project-milestones",
                 "create",
-                "[test] Beta Release",
+                &milestone_name,
                 "--project",
                 &project_id,
                 "--target-date",
@@ -2090,7 +2063,7 @@ mod online {
                     "json",
                     "project-milestones",
                     "read",
-                    "[test] Beta Release",
+                    &milestone_name,
                     "--project",
                     &project_id,
                 ])
@@ -2120,7 +2093,7 @@ mod online {
                 "update",
                 &milestone_id,
                 "--name",
-                "[test] GA Release",
+                &milestone_updated,
                 "--target-date",
                 "2027-03-15",
             ])
@@ -2135,7 +2108,7 @@ mod online {
         let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(
             updated["name"].as_str(),
-            Some("[test] GA Release"),
+            Some(milestone_updated.as_str()),
             "updated name should match"
         );
 
@@ -2170,14 +2143,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_and_delete() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI projects create {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create a project via CLI.
         let output = lineark()
@@ -2188,7 +2159,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI projects create",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--description",
@@ -2325,14 +2296,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_read_by_id_and_name() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI projects read {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create a project with --lead me.
         let output = lineark()
@@ -2343,7 +2312,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI projects read",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--lead",
@@ -2387,7 +2356,7 @@ mod online {
         );
         let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(detail["id"].as_str(), Some(project_id.as_str()));
-        assert_eq!(detail["name"].as_str(), Some("[test] CLI projects read"));
+        assert_eq!(detail["name"].as_str(), Some(unique_name.as_str()));
         assert!(
             detail.get("lead").is_some() && !detail["lead"].is_null(),
             "read output should have a lead (set to me)"
@@ -2415,7 +2384,7 @@ mod online {
                     "json",
                     "projects",
                     "read",
-                    "[test] CLI projects read",
+                    &unique_name,
                 ])
                 .output()
                 .expect("failed to execute lineark");
@@ -2447,14 +2416,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_with_members_and_read_back() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI members test {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key and find two users.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create a project with --lead me --members me.
         let output = lineark()
@@ -2465,7 +2432,7 @@ mod online {
                 "json",
                 "projects",
                 "create",
-                "[test] CLI members test",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--lead",
@@ -2547,14 +2514,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_assignee_me() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI assignee me {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Get my user ID.
         let output = lineark()
@@ -2573,7 +2538,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI assignee me",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--assignee",
@@ -2625,14 +2590,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_update_with_assignee_me() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI update assignee me {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Get my user ID.
         let output = lineark()
@@ -2651,7 +2614,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI update assignee me",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -2728,14 +2691,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_on_issue() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI comments_create {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -2746,7 +2707,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI comments_create",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -2798,14 +2759,12 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_and_delete() {
         let token = api_token();
+        let unique_name = format!(
+            "[test] CLI comments_delete {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
 
-        // Get a team key.
-        let output = lineark()
-            .args(["--api-token", &token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        let team_key = teams[0]["key"].as_str().unwrap().to_string();
+        let (team_key, _team_id, _team_guard) = create_test_team();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -2816,7 +2775,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] CLI comments_delete",
+                &unique_name,
                 "--team",
                 &team_key,
                 "--priority",
@@ -3250,6 +3209,7 @@ mod online {
         token: &str,
         team_key: &str,
     ) -> ((String, IssueGuard), (String, IssueGuard)) {
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let out1 = lineark()
             .args([
                 "--api-token",
@@ -3258,7 +3218,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation issue A",
+                &format!("[test] relation issue A {suffix}"),
                 "--team",
                 team_key,
                 "--priority",
@@ -3282,7 +3242,7 @@ mod online {
                 "json",
                 "issues",
                 "create",
-                "[test] relation issue B",
+                &format!("[test] relation issue B {suffix}"),
                 "--team",
                 team_key,
                 "--priority",
@@ -3301,20 +3261,10 @@ mod online {
         ((a_id, a_guard), (b_id, b_guard))
     }
 
-    /// Helper: get the first team key.
-    fn first_team_key(token: &str) -> String {
-        let output = lineark()
-            .args(["--api-token", token, "--format", "json", "teams", "list"])
-            .output()
-            .unwrap();
-        let teams: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-        teams[0]["key"].as_str().unwrap().to_string()
-    }
-
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocks() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3345,7 +3295,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocked_by() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // "A --blocked-by B" means B blocks A.
@@ -3377,7 +3327,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_related() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3408,7 +3358,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_duplicate() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3439,7 +3389,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_similar() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3470,7 +3420,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_and_delete() {
         let token = api_token();
-        let team_key = first_team_key(&token);
+        let (team_key, _team_id, _team_guard) = create_test_team();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // Create a relation.
@@ -3521,5 +3471,847 @@ mod online {
         );
         let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
         assert_eq!(result["success"].as_bool(), Some(true));
+    }
+
+    // ── Comments update/resolve/unresolve ──────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn comments_update_resolve_unresolve_lifecycle() {
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create an issue via SDK (more reliable than CLI for setup).
+        let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .issue_create::<Issue>(lineark_sdk::generated::inputs::IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI comments_lifecycle {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let issue_id = issue.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Create a comment (retry to allow issue propagation).
+        let comment_id = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "comments",
+                    "create",
+                    &issue_id,
+                    "--body",
+                    "Original body",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let comment: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            Ok(comment["id"].as_str().unwrap().to_string())
+        })
+        .expect("comment create should succeed (after retries)");
+
+        // Update the comment body.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "update",
+                &comment_id,
+                "--body",
+                "Updated body",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            updated["body"].as_str(),
+            Some("Updated body"),
+            "body should be updated"
+        );
+
+        // Resolve the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "resolve",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment resolve should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let resolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            resolved["resolvedAt"].as_str().is_some(),
+            "resolvedAt should be set after resolve"
+        );
+
+        // Unresolve the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "unresolve",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment unresolve should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let unresolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            unresolved["resolvedAt"].is_null(),
+            "resolvedAt should be null after unresolve"
+        );
+
+        // Delete the comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "delete",
+                &comment_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Clean up: permanently delete the issue.
+        delete_issue(&issue_id);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn comments_resolve_with_resolving_comment() {
+        use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
+
+        let token = api_token();
+        let client = Client::from_token(token.clone()).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create an issue via SDK.
+        let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI comments_resolve_with_resolving_comment {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let issue_id = issue.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Create a parent comment via CLI (retry to allow issue propagation).
+        let parent_id = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "comments",
+                    "create",
+                    &issue_id,
+                    "--body",
+                    "Parent comment thread",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err(String::from_utf8_lossy(&output.stderr).to_string());
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let parent: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+            Ok(parent["id"].as_str().unwrap().to_string())
+        })
+        .expect("parent comment create should succeed (after retries)");
+
+        // Create a reply comment via SDK (using parent_id).
+        let reply = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            client
+                .comment_create::<Comment>(CommentCreateInput {
+                    body: Some("Reply that resolves thread".to_string()),
+                    issue_id: Some(issue_id.clone()),
+                    parent_id: Some(parent_id.clone()),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let reply_id = reply.id.clone().unwrap();
+
+        // Resolve parent with --resolving-comment.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "resolve",
+                &parent_id,
+                "--resolving-comment",
+                &reply_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "comment resolve with resolving-comment should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let resolved: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            resolved["resolvedAt"].as_str().is_some(),
+            "resolvedAt should be set after resolve with resolving-comment"
+        );
+
+        // Clean up: permanently delete the issue.
+        delete_issue(&issue_id);
+    }
+
+    // ── Issues find-branch ──────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_find_branch_returns_issue() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create an issue via SDK to get the branch name.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (issue_id, branch_name) = rt.block_on(async {
+            let input = IssueCreateInput {
+                title: Some(format!(
+                    "[test] CLI find-branch {}",
+                    &uuid::Uuid::new_v4().to_string()[..8]
+                )),
+                team_id: Some(team_id),
+                priority: Some(4),
+                ..Default::default()
+            };
+            let entity = client.issue_create::<Issue>(input).await.unwrap();
+            let issue_id = entity.id.clone().unwrap();
+            let branch_name = entity
+                .branch_name
+                .clone()
+                .expect("created issue should have a branchName");
+            (issue_id, branch_name)
+        });
+
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Run the CLI find-branch command.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "find-branch",
+                &branch_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues find-branch should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert!(
+            json.get("identifier").is_some(),
+            "find-branch JSON should contain identifier"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_find_branch_no_match_exits_nonzero() {
+        let token = api_token();
+        lineark()
+            .args([
+                "--api-token",
+                &token,
+                "issues",
+                "find-branch",
+                "nonexistent-branch-abc-xyz-987654321",
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("No issue found"));
+    }
+
+    // ── Issues list with --project filter ───────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_with_project_filter() {
+        let token = api_token();
+
+        let (team_key, _team_id, _team_guard) = create_test_team();
+
+        // Create a project for the test (unique name to avoid conflicts).
+        let project_label = format!(
+            "[test] CLI project filter {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "create",
+                &project_label,
+                "--team",
+                &team_key,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created_project: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created_project["id"]
+            .as_str()
+            .expect("created project should have id")
+            .to_string();
+        let project_name = created_project["name"]
+            .as_str()
+            .expect("created project should have name")
+            .to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id,
+        };
+
+        // Create an issue inside that project.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                &format!(
+                    "[test] project filter issue {}",
+                    &uuid::Uuid::new_v4().to_string()[..8]
+                ),
+                "--team",
+                &team_key,
+                "--project",
+                &project_name,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created_issue: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created_issue["id"]
+            .as_str()
+            .expect("created issue should have id")
+            .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id,
+        };
+
+        // List issues with --project filter (retry for eventual consistency).
+        retry_with_backoff(5, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "list",
+                    "--project",
+                    &project_name,
+                    "--limit",
+                    "5",
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err(format!(
+                    "issues list --project failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let json: serde_json::Value =
+                serde_json::from_str(&stdout).map_err(|e| format!("invalid JSON: {e}"))?;
+            let arr = json
+                .as_array()
+                .ok_or_else(|| "expected array".to_string())?;
+            if arr.is_empty() {
+                return Err("no issues returned yet".to_string());
+            }
+            for issue in arr {
+                assert!(
+                    issue.get("identifier").is_some(),
+                    "each issue should have an identifier"
+                );
+            }
+            Ok(())
+        })
+        .expect("issues list --project should return at least one issue");
+    }
+
+    // ── Issues create with --estimate ───────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_estimate() {
+        let token = api_token();
+        let unique_name = format!(
+            "[test] CLI estimate flag {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+
+        let (team_key, _team_id, _team_guard) = create_test_team();
+
+        // Create an issue with --estimate.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                &unique_name,
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+                "--estimate",
+                "3",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create --estimate should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id")
+            .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Update the issue with a different estimate.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &issue_id,
+                "--estimate",
+                "5",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update --estimate should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
+
+    // ── Issues list includes estimate field ─────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_list_json_includes_estimate_field() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "list",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues list should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("estimate").is_some(),
+                "each issue in list output should have an 'estimate' field"
+            );
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_search_json_includes_estimate_field() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "search",
+                "test",
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(output.status.success(), "issues search should succeed");
+        let json: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("output should be valid JSON");
+        let arr = json.as_array().expect("should be an array");
+        if let Some(issue) = arr.first() {
+            assert!(
+                issue.get("estimate").is_some(),
+                "each issue in search output should have an 'estimate' field"
+            );
+        }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_read_json_includes_estimate_field() {
+        let token = api_token();
+        let unique_name = format!(
+            "[test] CLI estimate read {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+
+        let (team_key, _team_id, _team_guard) = create_test_team();
+
+        // Create an issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                &unique_name,
+                "--team",
+                &team_key,
+                "--priority",
+                "4",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id")
+            .to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Read the issue.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value =
+            serde_json::from_str(&stdout).expect("output should be valid JSON");
+        assert!(
+            detail.get("estimate").is_some(),
+            "issues read output should have an 'estimate' field"
+        );
+    }
+
+    // ── Batch update ─────────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_changes_priority() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create two issues via SDK.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let issue_a = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI batch-update A {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id.clone()),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_a = issue_a.id.clone().unwrap();
+        let _guard_a = IssueGuard {
+            token: token.clone(),
+            id: id_a.clone(),
+        };
+
+        let issue_b = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI batch-update B {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_b = issue_b.id.clone().unwrap();
+        let _guard_b = IssueGuard {
+            token: token.clone(),
+            id: id_b.clone(),
+        };
+
+        // Run batch-update via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                &id_a,
+                &id_b,
+                "--priority",
+                "1",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "batch-update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = result.as_array().expect("should be an array");
+        assert_eq!(arr.len(), 2, "should return 2 updated issues");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_changes_status() {
+        use lineark_sdk::generated::inputs::IssueCreateInput;
+
+        let token = api_token();
+        let client = Client::from_token(&token).unwrap();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create two issues.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let issue_a = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI batch-update status A {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id.clone()),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_a = issue_a.id.clone().unwrap();
+        let _guard_a = IssueGuard {
+            token: token.clone(),
+            id: id_a.clone(),
+        };
+
+        let issue_b = rt.block_on(async {
+            client
+                .issue_create::<Issue>(IssueCreateInput {
+                    title: Some(format!(
+                        "[test] CLI batch-update status B {}",
+                        &uuid::Uuid::new_v4().to_string()[..8]
+                    )),
+                    team_id: Some(team_id),
+                    priority: Some(4),
+                    ..Default::default()
+                })
+                .await
+                .unwrap()
+        });
+        let id_b = issue_b.id.clone().unwrap();
+        let _guard_b = IssueGuard {
+            token: token.clone(),
+            id: id_b.clone(),
+        };
+
+        // Run batch-update with --status "Done".
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                &id_a,
+                &id_b,
+                "--status",
+                "Done",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "batch-update --status should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let result: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let arr = result.as_array().expect("should be an array");
+        assert_eq!(arr.len(), 2, "should return 2 updated issues");
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_batch_update_invalid_id_fails() {
+        let token = api_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                "FAKE-99999",
+                "--priority",
+                "2",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "batch-update with invalid ID should fail"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("not found") || stderr.contains("Error"),
+            "stderr should contain an error message, got: {stderr}"
+        );
     }
 }

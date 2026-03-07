@@ -101,6 +101,17 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::issue::<T>(self, id).await
     }
+    /// Find issue based on the VCS branch name.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
+    pub async fn issue_vcs_branch_search<
+        T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>,
+    >(
+        &self,
+        branch_name: String,
+    ) -> Result<Option<T>, LinearError> {
+        crate::generated::queries::issue_vcs_branch_search::<T>(self, branch_name).await
+    }
     /// All issue relationships.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
@@ -205,9 +216,48 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::comment_create::<T>(self, input).await
     }
+    /// Updates a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        skip_edited_at: Option<bool>,
+        input: CommentUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
+    }
     /// Deletes a comment.
     pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::comment_delete(self, id).await
+    }
+    /// Resolves a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_resolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        resolving_comment_id: Option<String>,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
+    }
+    /// Unresolves a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_unresolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_unresolve::<T>(self, id).await
     }
     /// Creates a new project.
     ///
@@ -354,6 +404,19 @@ impl Client {
         id: String,
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_update::<T>(self, input, id).await
+    }
+    /// Updates multiple issues at once.
+    ///
+    /// Full type: [`Issue`](super::types::Issue)
+    pub async fn issue_batch_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Issue>,
+    >(
+        &self,
+        input: IssueUpdateInput,
+        ids: Vec<String>,
+    ) -> Result<Vec<T>, LinearError> {
+        crate::generated::mutations::issue_batch_update::<T>(self, input, ids).await
     }
     /// Archives an issue.
     ///

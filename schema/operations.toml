@@ -13,6 +13,7 @@ cycle = true
 issueLabel = true
 issueLabels = true
 searchIssues = true
+issueVcsBranchSearch = true
 workflowStates = true
 
 # Phase 3 — Rich features
@@ -28,7 +29,13 @@ projectMilestone = true
 issueCreate = true
 issueUpdate = true
 commentCreate = true
+commentUpdate = true
 commentDelete = true
+commentResolve = true
+commentUnresolve = true
+
+# Phase 3 — Batch operations
+issueBatchUpdate = true
 
 # Phase 3 — Issue lifecycle
 issueArchive = true
