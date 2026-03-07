@@ -51,7 +51,8 @@ fn delete_issue(issue_id: &str) {
         .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
 }
 
-/// Retry a closure up to `max_attempts` times with backoff.
+/// Retry a closure up to `max_attempts` times with exponential backoff.
+/// Delays: 0s, 1s, 2s, 4s, 8s, 10s, 10s, ... (capped at 10s).
 /// Returns `Ok(T)` on the first successful attempt, or `Err(last_error_message)`.
 fn retry_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
 where
@@ -61,10 +62,8 @@ where
     for attempt in 0..max_attempts {
         let delay = if attempt == 0 {
             0
-        } else if attempt < 3 {
-            1
         } else {
-            3
+            std::cmp::min(1u64 << (attempt - 1), 10)
         };
         if delay > 0 {
             std::thread::sleep(std::time::Duration::from_secs(delay));
@@ -75,6 +74,39 @@ where
         }
     }
     Err(last_err)
+}
+
+/// Wait for the Linear API to propagate recently created resources.
+/// Linear is eventually consistent — created resources may not be queryable immediately.
+fn settle() {
+    std::thread::sleep(std::time::Duration::from_secs(2));
+}
+
+/// Run a lineark CLI command with retry logic.
+/// Retries up to 3 times with backoff for transient API errors (e.g., "conflict on insert").
+fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
+    for attempt in 0..3u32 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(1u64 << attempt));
+        }
+        let output = lineark()
+            .args(args)
+            .output()
+            .expect("failed to execute lineark");
+        if output.status.success() {
+            return output;
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Only retry on transient "conflict on insert" errors from the Linear API.
+        if !stderr.contains("conflict on insert") {
+            return output;
+        }
+    }
+    // Final attempt without retry.
+    lineark()
+        .args(args)
+        .output()
+        .expect("failed to execute lineark")
 }
 
 /// RAII guard — permanently deletes a team on drop.
@@ -170,6 +202,8 @@ fn create_test_team() -> (String, String, TeamGuard) {
         token,
         id: team_id.clone(),
     };
+    // Wait for the team to propagate through Linear's eventually-consistent backend.
+    settle();
     (team_key, team_id, guard)
 }
 
@@ -1102,13 +1136,16 @@ mod online {
             .unwrap();
         assert!(output.status.success(), "archive should succeed");
 
+        // Wait for the archive to propagate before searching.
+        settle();
+
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
         // for resolve_issue_id to find archived issues.
         //
         // Linear's search index is async — the newly created+archived issue may
-        // not be searchable immediately. Retry with backoff to avoid flakiness.
-        let stdout = retry_with_backoff(8, || {
+        // not be searchable immediately. Retry with generous backoff to avoid flakiness.
+        let stdout = retry_with_backoff(10, || {
             let output = lineark()
                 .args([
                     "--api-token",
@@ -1930,7 +1967,7 @@ mod online {
                 &team_key,
                 "-p",
                 "4",
-                "--parent-label-group",
+                "--parent",
                 &parent_id,
             ])
             .output()
@@ -2145,7 +2182,7 @@ mod online {
                 &team_key,
                 "-p",
                 "4",
-                "--parent-label-group",
+                "--parent",
                 &parent_id,
             ])
             .output()
@@ -2168,7 +2205,7 @@ mod online {
                 "issues",
                 "update",
                 &child_id,
-                "--clear-parent-label-group",
+                "--clear-parent",
             ])
             .output()
             .unwrap();
@@ -2398,25 +2435,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project via CLI.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--description",
-                "Automated CLI test project — will be deleted.",
-                "--priority",
-                "3",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project via CLI (with retry for transient "conflict on insert" errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--description",
+            "Automated CLI test project — will be deleted.",
+            "--priority",
+            "3",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -2551,25 +2585,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project with --lead me.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--lead",
-                "me",
-                "--description",
-                "Test project for read command.",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project with --lead me (with retry for transient API errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--lead",
+            "me",
+            "--description",
+            "Test project for read command.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -2671,25 +2702,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project with --lead me --members me.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--lead",
-                "me",
-                "--members",
-                "me",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project with --lead me --members me (with retry for transient API errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--lead",
+            "me",
+            "--members",
+            "me",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -4067,20 +4095,17 @@ mod online {
             "[test] CLI project filter {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &project_label,
-                "--team",
-                &team_key,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &project_label,
+            "--team",
+            &team_key,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
