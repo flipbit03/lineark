@@ -26,14 +26,6 @@ pub enum LabelsAction {
         #[arg(long)]
         team: Option<String>,
     },
-    /// Show full details for a single label.
-    ///
-    /// Examples:
-    ///   lineark labels read LABEL-UUID
-    Read {
-        /// Label UUID.
-        id: String,
-    },
     /// Create a new issue label.
     ///
     /// Examples:
@@ -114,32 +106,6 @@ pub struct LabelRow {
     pub team: String,
 }
 
-/// Full label detail for `labels read`.
-#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
-#[graphql(full_type = IssueLabel)]
-#[serde(rename_all = "camelCase", default)]
-struct LabelDetail {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub color: Option<String>,
-    pub is_group: Option<bool>,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
-    #[graphql(nested)]
-    pub team: Option<LabelTeamRef>,
-    #[graphql(nested)]
-    pub parent: Option<LabelParentRef>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
-#[graphql(full_type = IssueLabel)]
-#[serde(rename_all = "camelCase", default)]
-struct LabelParentRef {
-    pub id: Option<String>,
-    pub name: Option<String>,
-}
-
 /// Lean result type for label mutations.
 #[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
 #[graphql(full_type = IssueLabel)]
@@ -182,13 +148,6 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 .collect();
 
             output::print_table(&rows, format);
-        }
-        LabelsAction::Read { id } => {
-            let label = client
-                .issue_label::<LabelDetail>(id)
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
-            output::print_one(&label, format);
         }
         LabelsAction::Create {
             name,

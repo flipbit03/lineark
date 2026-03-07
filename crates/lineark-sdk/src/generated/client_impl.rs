@@ -135,17 +135,6 @@ impl Client {
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
-    /// One specific label.
-    ///
-    /// Full type: [`IssueLabel`](super::types::IssueLabel)
-    pub async fn issue_label<
-        T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>,
-    >(
-        &self,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::queries::issue_label::<T>(self, id).await
-    }
     /// All documents in the workspace.
     ///
     /// Full type: [`Document`](super::types::Document)

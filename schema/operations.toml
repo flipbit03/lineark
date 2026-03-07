@@ -10,7 +10,6 @@ projects = true
 project = true
 cycles = true
 cycle = true
-issueLabel = true
 issueLabels = true
 searchIssues = true
 issueVcsBranchSearch = true

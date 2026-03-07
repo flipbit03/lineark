@@ -49,7 +49,6 @@ COMMANDS:
     [-p 0-4] [--content TEXT]                      Priority, markdown content
     [--icon ICON] [--color COLOR]                  Icon, color
   lineark labels list [--team KEY]                 List issue labels (includes team key)
-  lineark labels read <ID>                         Full label detail
   lineark labels create <NAME>                     Create a label (workspace-wide if no --team)
     [--team KEY] [--color HEX]                     Team, color
     [--description TEXT] [--parent ID]             Description, parent label

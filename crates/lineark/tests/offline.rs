@@ -331,7 +331,6 @@ fn labels_help_shows_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("list"))
-        .stdout(predicate::str::contains("read"))
         .stdout(predicate::str::contains("create"))
         .stdout(predicate::str::contains("update"))
         .stdout(predicate::str::contains("delete"));
@@ -385,7 +384,7 @@ fn usage_includes_labels_crud() {
         .arg("usage")
         .assert()
         .success()
-        .stdout(predicate::str::contains("labels read"))
+        .stdout(predicate::str::contains("labels list"))
         .stdout(predicate::str::contains("labels create"))
         .stdout(predicate::str::contains("labels update"))
         .stdout(predicate::str::contains("labels delete"));
