@@ -45,6 +45,16 @@ pub trait GraphQLFields {
     fn selection() -> String;
 }
 
+// Nullable queries: Option<T> delegates to T's selection.
+// This allows `client.some_nullable_query::<Option<MyType>>()` to work
+// when the GraphQL schema returns a nullable type (e.g. `Issue` vs `Issue!`).
+impl<T: GraphQLFields> GraphQLFields for Option<T> {
+    type FullType = T::FullType;
+    fn selection() -> String {
+        T::selection()
+    }
+}
+
 /// Marker trait for compile-time field type compatibility.
 ///
 /// Validates that a full type's field type `Self` is compatible with a custom
@@ -68,3 +78,62 @@ impl<T> FieldCompatible<Option<T>> for Option<Box<T>> {}
 impl FieldCompatible<String> for chrono::DateTime<chrono::Utc> {}
 impl FieldCompatible<Option<String>> for Option<chrono::DateTime<chrono::Utc>> {}
 impl FieldCompatible<String> for Option<chrono::DateTime<chrono::Utc>> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FakeFullType;
+
+    struct FakeIssue;
+    impl GraphQLFields for FakeIssue {
+        type FullType = FakeFullType;
+        fn selection() -> String {
+            "id title url".to_string()
+        }
+    }
+
+    #[test]
+    fn option_delegates_selection_to_inner_type() {
+        assert_eq!(
+            <Option<FakeIssue> as GraphQLFields>::selection(),
+            "id title url"
+        );
+    }
+
+    #[test]
+    fn option_preserves_full_type() {
+        // Compile-time proof: Option<FakeIssue>::FullType == FakeFullType
+        fn assert_full_type<T: GraphQLFields<FullType = FakeFullType>>() {}
+        assert_full_type::<FakeIssue>();
+        assert_full_type::<Option<FakeIssue>>();
+    }
+
+    #[test]
+    fn option_nullable_query_deserialization() {
+        // Proves the full chain: Option<T> with GraphQLFields + serde handles null
+        #[derive(serde::Deserialize)]
+        struct MyIssue {
+            id: String,
+        }
+        impl GraphQLFields for MyIssue {
+            type FullType = FakeFullType;
+            fn selection() -> String {
+                "id".to_string()
+            }
+        }
+
+        // Null → None
+        let null_val = serde_json::Value::Null;
+        let result: Option<MyIssue> = serde_json::from_value(null_val).unwrap();
+        assert!(result.is_none());
+
+        // Object → Some
+        let obj_val = serde_json::json!({"id": "abc-123"});
+        let result: Option<MyIssue> = serde_json::from_value(obj_val).unwrap();
+        assert_eq!(result.unwrap().id, "abc-123");
+
+        // Selection works through Option
+        assert_eq!(<Option<MyIssue> as GraphQLFields>::selection(), "id");
+    }
+}

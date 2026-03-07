@@ -30,22 +30,18 @@ docs/
 
 ```bash
 rustup update stable                     # sync local toolchain with CI (do this before developing)
-cargo build --workspace                  # build everything
-cargo test --workspace                   # run all tests
 cargo run -p lineark-codegen             # regenerate SDK types from schema
 cargo run -p lineark -- <args>           # run the CLI
-cargo clippy --workspace -- -D warnings  # lint
-cargo fmt --check                        # format check
 make check                               # lint + doc + build (no tests)
-make test                                # run tests only
+make test                                # offline tests (unit + integration, fast, no API token)
+make test-online                         # online tests (live API, serial, needs token)
 ```
 
-**Online tests must run serially.** They hit the live Linear API, which has plan-level limits (e.g. max teams). Running them in parallel causes spurious failures from resource exhaustion. Always use `-- --test-threads=1` when running online tests locally:
+`make check && make test` is the canonical local pre-push check. Add `make test-online` when you have a test API token and need full coverage.
 
-```bash
-cargo test -p lineark-sdk --test online -- --test-threads=1
-cargo test -p lineark --test online -- --test-threads=1
-```
+**Online tests must run serially.** They hit the live Linear API, which has plan-level limits (e.g. max teams). Running them in parallel causes spurious failures from resource exhaustion. `make test-online` handles this automatically.
+
+**Online tests must be self-contained.** Never assume resources (projects, issues, teams, etc.) already exist in the test workspace. Each test must create the resources it needs and clean them up afterwards using RAII guards (`TeamGuard`, `IssueGuard`, `ProjectGuard`). These guards auto-delete the resource on drop, ensuring cleanup even when the test panics. Use unique names for created resources (e.g. `format!("[test] my thing {}", &uuid::Uuid::new_v4().to_string()[..8])`) to avoid conflicts from zombie resources left by previously-failed runs. Use `retry_with_backoff` when querying recently-created resources, since the Linear API is eventually consistent. Always check `output.status.success()` and include stdout/stderr in assertion messages before parsing JSON output — a bare `.unwrap()` on JSON parsing hides the real error (e.g. auth failures).
 
 ## Updating the schema
 
@@ -93,20 +89,15 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 
 ## PR guidelines
 
-Every PR must pass CI before merge. The checks are:
-1. `cargo fmt --check` — formatting
-2. `cargo clippy --workspace -- -D warnings` — linting
-3. `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps` — doc lints
-4. `cargo build --workspace` — compilation
-5. `cargo test --workspace` — tests
-
-Locally: `make check && make test` runs all of the above.
+Every PR must pass CI before merge. Locally: `make check && make test` covers lint, doc, build, and offline tests. Add `make test-online` for full coverage (requires `~/.linear_api_token_test`).
 
 These run on five targets: `x86_64-unknown-linux-gnu`, `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-gnu`, `aarch64-unknown-linux-musl`, `aarch64-apple-darwin`.
 
 When opening a PR, include a summary of changes and a test plan. If codegen was modified, verify with `cargo run -p lineark-codegen` that the generated output is clean (codegen runs `cargo fmt` as a post-step).
 
 Before merging, run `/update-docs` to review and update all documentation (top-level README, CLI README, SDK README) so they reflect the current codebase. Documentation must stay in sync with code.
+
+**Working on contributor fork branches:** When a contributor grants push access to their fork, use `git merge origin/main` (not rebase) to bring their branch up to date. Rebasing rewrites their commit history and requires force-pushing to their branch, which is inconsiderate if they're working concurrently.
 
 ## Commit style
 

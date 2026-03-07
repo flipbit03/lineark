@@ -12,6 +12,7 @@ cycles = true
 cycle = true
 issueLabels = true
 searchIssues = true
+issueVcsBranchSearch = true
 workflowStates = true
 
 # Phase 3 — Rich features
