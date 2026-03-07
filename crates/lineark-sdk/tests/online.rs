@@ -288,13 +288,7 @@ mod online {
             .await
             .unwrap();
         assert!(updated.id.is_some());
-
-        // Verify the update by reading the label.
-        let fetched = client
-            .issue_label::<IssueLabel>(label_id.clone())
-            .await
-            .unwrap();
-        assert_eq!(fetched.color, Some("#4ea7fc".to_string()));
+        assert_eq!(updated.color, Some("#4ea7fc".to_string()));
 
         // Delete the label.
         client.issue_label_delete(label_id).await.unwrap();

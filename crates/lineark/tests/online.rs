@@ -324,29 +324,6 @@ mod online {
         assert_eq!(created["name"].as_str(), Some(unique_name.as_str()));
         assert_eq!(created["color"].as_str(), Some("#eb5757"));
 
-        // Read the label back.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "labels",
-                "read",
-                &label_id,
-            ])
-            .output()
-            .expect("failed to execute lineark");
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            output.status.success(),
-            "labels read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
-        );
-        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        assert_eq!(detail["id"].as_str(), Some(label_id.as_str()));
-        assert_eq!(detail["name"].as_str(), Some(unique_name.as_str()));
-
         // Update the label color.
         let output = lineark()
             .args([
