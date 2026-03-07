@@ -48,14 +48,14 @@ COMMANDS:
     [--start-date DATE] [--target-date DATE]       Dates (YYYY-MM-DD)
     [-p 0-4] [--content TEXT]                      Priority, markdown content
     [--icon ICON] [--color COLOR]                  Icon, color
-  lineark labels list [--team KEY]                 List labels (team, parent, color)
+  lineark labels list [--team KEY]                 List labels (group, team, parent, color)
   lineark labels create <NAME>                     Create a label (workspace-wide if no --team)
-    [--team KEY] [--color HEX]                     Team, color
-    [--description TEXT] [--parent ID]             Description, parent label
+    [--team KEY] [--color HEX] [--group]           Team, color, group flag
+    [--description TEXT] [--parent ID]             Description, parent (must be group)
   lineark labels update <ID>                       Update a label
     [--name TEXT] [--color HEX]                    Name, color
-    [--description TEXT] [--parent ID]             Description, parent label
-    [--clear-parent]                               Remove parent label
+    [--description TEXT] [--parent ID]             Description, parent (must be group)
+    [--clear-parent] [--group] [--no-group]        Clear parent, promote/demote group
   lineark labels delete <ID>                       Delete a label
   lineark cycles list [-l N] [--team KEY]          List cycles
     [--active]                                     Only the active cycle

@@ -31,7 +31,8 @@ pub enum LabelsAction {
     /// Examples:
     ///   lineark labels create "Bug" --color "#eb5757"
     ///   lineark labels create "Feature" --team ENG --color "#4ea7fc" --description "Feature requests"
-    ///   lineark labels create "Sub-label" --parent PARENT-UUID --color "#000000"
+    ///   lineark labels create "Category" --group --color "#000000"
+    ///   lineark labels create "Sub-label" --parent PARENT-UUID --color "#ffffff"
     Create {
         /// Label name.
         name: String,
@@ -44,15 +45,20 @@ pub enum LabelsAction {
         /// Label description.
         #[arg(long)]
         description: Option<String>,
-        /// Parent label UUID (makes this a sub-label).
+        /// Parent label UUID (makes this a sub-label; parent must be a group).
         #[arg(long)]
         parent: Option<String>,
+        /// Create as a group label (required before other labels can use it as --parent).
+        #[arg(long, default_value = "false")]
+        group: bool,
     },
     /// Update an existing issue label.
     ///
     /// Examples:
     ///   lineark labels update LABEL-UUID --name "Renamed"
     ///   lineark labels update LABEL-UUID --color "#00ff00" --description "Updated"
+    ///   lineark labels update LABEL-UUID --group          # promote to group
+    ///   lineark labels update LABEL-UUID --no-group       # demote (must have no children)
     Update {
         /// Label UUID.
         id: String,
@@ -65,12 +71,16 @@ pub enum LabelsAction {
         /// New label description.
         #[arg(long)]
         description: Option<String>,
-        /// New parent label UUID.
+        /// New parent label UUID (parent must be a group).
         #[arg(long)]
         parent: Option<String>,
         /// Remove the parent label relationship.
         #[arg(long, default_value = "false", conflicts_with = "parent")]
         clear_parent: bool,
+        /// Promote to group (--group) or demote to plain label (--no-group).
+        /// Demoting fails if the label still has children.
+        #[arg(long, action = clap::ArgAction::Set, default_missing_value = "true", num_args = 0..=1)]
+        group: Option<bool>,
     },
     /// Delete an issue label.
     ///
@@ -82,7 +92,7 @@ pub enum LabelsAction {
     },
 }
 
-/// Lean label type that includes team and parent.
+/// Lean label type that includes team, parent, and group status.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
 #[graphql(full_type = IssueLabel)]
 #[serde(rename_all = "camelCase", default)]
@@ -90,6 +100,7 @@ struct LabelSummary {
     pub id: Option<String>,
     pub name: Option<String>,
     pub color: Option<String>,
+    pub is_group: Option<bool>,
     #[graphql(nested)]
     pub team: Option<LabelTeamRef>,
     #[graphql(nested)]
@@ -115,6 +126,7 @@ pub struct LabelRow {
     pub id: String,
     pub name: String,
     pub color: String,
+    pub group: String,
     pub team: String,
     pub parent: String,
 }
@@ -152,6 +164,11 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                     id: l.id.clone().unwrap_or_default(),
                     name: l.name.clone().unwrap_or_default(),
                     color: l.color.clone().unwrap_or_default(),
+                    group: if l.is_group.unwrap_or(false) {
+                        "yes".to_string()
+                    } else {
+                        String::new()
+                    },
                     team: l
                         .team
                         .as_ref()
@@ -173,24 +190,12 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             color,
             description,
             parent,
+            group,
         } => {
             let team_id = match team {
                 Some(ref t) => Some(resolve_team_id(client, t).await?),
                 None => None,
             };
-
-            // If --parent is set, ensure the parent label is marked as a group
-            // (Linear requires this before a label can have children).
-            if let Some(ref pid) = parent {
-                let group_input = IssueLabelUpdateInput {
-                    is_group: Some(true),
-                    ..Default::default()
-                };
-                client
-                    .issue_label_update::<LabelRef>(None, group_input, pid.clone())
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-            }
 
             let input = IssueLabelCreateInput {
                 name: Some(name),
@@ -198,6 +203,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 description,
                 parent_id: parent,
                 team_id,
+                is_group: if group { Some(true) } else { None },
                 ..Default::default()
             };
 
@@ -215,28 +221,18 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             description,
             parent,
             clear_parent,
+            group,
         } => {
             if name.is_none()
                 && color.is_none()
                 && description.is_none()
                 && parent.is_none()
                 && !clear_parent
+                && group.is_none()
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --name, --color, --description, --parent, or --clear-parent."
+                    "No update fields provided. Use --name, --color, --description, --parent, --clear-parent, --group, or --no-group."
                 ));
-            }
-
-            // If --parent is set, ensure the parent label is marked as a group.
-            if let Some(ref pid) = parent {
-                let group_input = IssueLabelUpdateInput {
-                    is_group: Some(true),
-                    ..Default::default()
-                };
-                client
-                    .issue_label_update::<LabelRef>(None, group_input, pid.clone())
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
 
             let input = IssueLabelUpdateInput {
@@ -244,6 +240,7 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
                 color,
                 description,
                 parent_id: parent,
+                is_group: group,
                 ..Default::default()
             };
 

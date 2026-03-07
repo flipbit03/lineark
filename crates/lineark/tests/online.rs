@@ -370,12 +370,12 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
-    fn labels_parent_set_list_and_clear() {
+    fn labels_group_lifecycle() {
         let token = api_token();
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
 
-        // Create a parent label.
-        let parent_name = format!("[test] Parent {uid}");
+        // 1. Create a group label with --group.
+        let group_name = format!("[test] Group {uid}");
         let output = lineark()
             .args([
                 "--api-token",
@@ -384,9 +384,10 @@ mod online {
                 "json",
                 "labels",
                 "create",
-                &parent_name,
+                &group_name,
                 "--color",
                 "#000000",
+                "--group",
             ])
             .output()
             .unwrap();
@@ -394,16 +395,16 @@ mod online {
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             output.status.success(),
-            "parent create failed.\nstdout: {stdout}\nstderr: {stderr}"
+            "group create failed.\nstdout: {stdout}\nstderr: {stderr}"
         );
-        let parent: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-        let parent_id = parent["id"].as_str().unwrap().to_string();
-        let _parent_guard = LabelGuard {
+        let group: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let group_id = group["id"].as_str().unwrap().to_string();
+        let _group_guard = LabelGuard {
             token: token.clone(),
-            id: parent_id.clone(),
+            id: group_id.clone(),
         };
 
-        // Create a child label with --parent.
+        // 2. Create a child label under the group.
         let child_name = format!("[test] Child {uid}");
         let output = lineark()
             .args([
@@ -417,7 +418,7 @@ mod online {
                 "--color",
                 "#ffffff",
                 "--parent",
-                &parent_id,
+                &group_id,
             ])
             .output()
             .unwrap();
@@ -434,7 +435,7 @@ mod online {
             id: child_id.clone(),
         };
 
-        // List labels and verify the child shows the parent name.
+        // 3. List labels — child should show parent name, group should show "yes".
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "labels", "list"])
             .output()
@@ -446,17 +447,28 @@ mod online {
             "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
         );
         let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+
+        let group_row = labels
+            .iter()
+            .find(|l| l["id"].as_str() == Some(&group_id))
+            .expect("group should appear in list");
+        assert_eq!(
+            group_row["group"].as_str(),
+            Some("yes"),
+            "group label should show 'yes' in group column"
+        );
+
         let child_row = labels
             .iter()
             .find(|l| l["id"].as_str() == Some(&child_id))
-            .expect("child label should appear in list");
+            .expect("child should appear in list");
         assert_eq!(
             child_row["parent"].as_str(),
-            Some(parent_name.as_str()),
+            Some(group_name.as_str()),
             "child should show parent name in list"
         );
 
-        // Clear the parent with --clear-parent.
+        // 4. Clear the child's parent with --clear-parent.
         let output = lineark()
             .args([
                 "--api-token",
@@ -477,7 +489,29 @@ mod online {
             "clear-parent failed.\nstdout: {stdout}\nstderr: {stderr}"
         );
 
-        // List again and verify parent is now empty.
+        // 5. Demote the group back to a plain label with --no-group.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &group_id,
+                "--group",
+                "false",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "demote group failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // 6. List again — group column should be empty, parent should be empty.
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "labels", "list"])
             .output()
@@ -489,10 +523,21 @@ mod online {
             "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
         );
         let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+
+        let group_row = labels
+            .iter()
+            .find(|l| l["id"].as_str() == Some(&group_id))
+            .expect("group should still appear in list");
+        assert_eq!(
+            group_row["group"].as_str(),
+            Some(""),
+            "group column should be empty after --no-group"
+        );
+
         let child_row = labels
             .iter()
             .find(|l| l["id"].as_str() == Some(&child_id))
-            .expect("child label should appear in list after clear-parent");
+            .expect("child should appear in list");
         assert_eq!(
             child_row["parent"].as_str(),
             Some(""),
