@@ -369,6 +369,102 @@ mod online {
         );
     }
 
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_spaced_label_and_read_back() {
+        let token = api_token();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create a label with a space in the name.
+        let uid = &uuid::Uuid::new_v4().to_string()[..8];
+        let label_name = format!("[test] Tech Debt {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &label_name,
+                "--color",
+                "#eb5757",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let label_id = created["id"].as_str().unwrap().to_string();
+        let _label_guard = LabelGuard {
+            token: token.clone(),
+            id: label_id,
+        };
+
+        // Create an issue with the spaced label.
+        let issue_title = format!("[test] spaced label {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                &issue_title,
+                "--team",
+                &team_id,
+                "--labels",
+                &label_name,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create with spaced label should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let issue: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = issue["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Read the issue back and verify label appears by name.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let labels = detail["labels"]["nodes"]
+            .as_array()
+            .expect("labels.nodes should be an array");
+        let label_names: Vec<&str> = labels.iter().filter_map(|l| l["name"].as_str()).collect();
+        assert!(
+            label_names.contains(&label_name.as_str()),
+            "issue should have the spaced label '{label_name}', got: {label_names:?}"
+        );
+    }
+
     // ── Issues ────────────────────────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
