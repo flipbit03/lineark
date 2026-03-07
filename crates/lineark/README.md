@@ -55,26 +55,41 @@ lineark projects create <NAME> --team KEY        Create a project
   [--members NAME,...|me]                        Project members (comma-separated)
   [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
   [-p 0-4] [--content TEXT] ...                  See --help for all options
-lineark labels list [--team KEY]                 List issue labels
+lineark labels list [--team KEY]                 List labels (group, team, parent)
+lineark labels create <NAME>                     Create a label
+  [--team KEY] [--color HEX] [--group]           Team, color, group flag
+  [--description TEXT] [--parent ID]             Description, parent (must be group)
+lineark labels update <ID>                       Update a label
+  [--name TEXT] [--color HEX]                    Name, color
+  [--clear-parent] [--group] [--no-group]        Clear parent, promote/demote group
+lineark labels delete <ID>                       Delete a label
 lineark cycles list [-l N] [--team KEY]          List cycles
   [--active] [--around-active N]                 Active cycle / ± N neighbors
 lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, number)
 lineark issues list [-l N] [--team KEY]          Active issues, newest first
   [--mine] [--show-done]                         Filter by assignee / state
 lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues & comments
+lineark issues find-branch <BRANCH>              Find issue by Git branch name
 lineark issues search <QUERY> [-l N]             Full-text search
   [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
   [--status NAME,...] [--show-done]
 lineark issues create <TITLE> --team KEY         Create an issue
-  [-p 0-4] [--assignee NAME-OR-ID|me]            Priority, assignee, labels, status
-  [--labels NAME,...] [-s NAME] ...              Project, cycle — see --help
+  [-p 0-4] [-e N] [--assignee NAME-OR-ID|me]     Priority, estimate, assignee
+  [--labels NAME,...] [-s NAME] ...              Labels, status — see --help
 lineark issues update <IDENTIFIER>               Update an issue
-  [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
+  [-s NAME] [-p 0-4] [-e N]                      Status, priority, estimate
+  [--assignee NAME-OR-ID|me]                     Assignee
   [--clear-parent] [--project NAME-OR-ID] ...    See --help for all options
+lineark issues batch-update ID [ID ...]          Batch update multiple issues
+  [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
 lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
+lineark comments update <COMMENT-UUID>           Update a comment
+  --body TEXT                                    New body in markdown
+lineark comments resolve <COMMENT-UUID>          Resolve a comment thread
+lineark comments unresolve <COMMENT-UUID>        Unresolve a comment thread
 lineark comments delete <ID>                     Delete a comment
 lineark relations create <ISSUE>                 Create an issue relation
   --blocks <ISSUE>                               Source blocks target
