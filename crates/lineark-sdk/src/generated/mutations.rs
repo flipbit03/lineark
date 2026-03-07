@@ -67,6 +67,28 @@ pub async fn comment_create<
         .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
         .await
 }
+/// Updates a comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+>(
+    client: &Client,
+    skip_edited_at: Option<bool>,
+    input: CommentUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "skipEditedAt" : skip_edited_at, "input" : input, "id" : id }
+    );
+    let query = String::from(
+        "mutation CommentUpdate($skipEditedAt: Boolean, $input: CommentUpdateInput!, $id: String!) { commentUpdate(skipEditedAt: $skipEditedAt, input: $input, id: $id) { success comment { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentUpdate", "comment")
+        .await
+}
 /// Deletes a comment.
 pub async fn comment_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "id" : id });
@@ -76,6 +98,46 @@ pub async fn comment_delete(client: &Client, id: String) -> Result<serde_json::V
         + " } }";
     client
         .execute::<serde_json::Value>(&query, variables, "commentDelete")
+        .await
+}
+/// Resolves a comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_resolve<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+>(
+    client: &Client,
+    resolving_comment_id: Option<String>,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "resolvingCommentId" : resolving_comment_id, "id" : id }
+    );
+    let query = String::from(
+        "mutation CommentResolve($resolvingCommentId: String, $id: String!) { commentResolve(resolvingCommentId: $resolvingCommentId, id: $id) { success comment { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentResolve", "comment")
+        .await
+}
+/// Unresolves a comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_unresolve<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation CommentUnresolve($id: String!) { commentUnresolve(id: $id) { success comment { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentUnresolve", "comment")
         .await
 }
 /// Creates a new project.

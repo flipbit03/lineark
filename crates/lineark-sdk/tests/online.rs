@@ -1126,6 +1126,132 @@ mod online {
         client.team_delete(team_id).await.unwrap();
     }
 
+    // ── Comment Update ────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn comment_update_changes_body() {
+        use lineark_sdk::generated::inputs::{
+            CommentCreateInput, CommentUpdateInput, IssueCreateInput,
+        };
+
+        let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
+
+        // Create an issue to comment on.
+        let issue_input = IssueCreateInput {
+            title: Some(format!(
+                "[test] SDK comment_update_changes_body {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            )),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_id = issue_entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
+
+        // Create a comment with the original body.
+        let comment_input = CommentCreateInput {
+            body: Some("Original body".to_string()),
+            issue_id: Some(issue_id.clone()),
+            ..Default::default()
+        };
+        let comment_entity = client
+            .comment_create::<Comment>(comment_input)
+            .await
+            .unwrap();
+        let comment_id = comment_entity.id.clone().unwrap();
+        assert_eq!(comment_entity.body.as_deref(), Some("Original body"));
+
+        // Update the comment body.
+        let update_input = CommentUpdateInput {
+            body: Some("Updated body".to_string()),
+            ..Default::default()
+        };
+        let updated = client
+            .comment_update::<Comment>(None, update_input, comment_id)
+            .await
+            .unwrap();
+        assert_eq!(updated.body.as_deref(), Some("Updated body"));
+
+        // Clean up: permanently delete the issue (cascades the comment).
+        client
+            .issue_delete::<Issue>(Some(true), issue_id)
+            .await
+            .unwrap();
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    async fn comment_resolve_and_unresolve() {
+        use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
+
+        let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
+
+        // Create an issue to comment on.
+        let issue_input = IssueCreateInput {
+            title: Some(format!(
+                "[test] SDK comment_resolve_and_unresolve {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            )),
+            team_id: Some(team_id),
+            priority: Some(4),
+            ..Default::default()
+        };
+        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_id = issue_entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
+
+        // Create a comment.
+        let comment_input = CommentCreateInput {
+            body: Some("Thread to resolve".to_string()),
+            issue_id: Some(issue_id.clone()),
+            ..Default::default()
+        };
+        let comment_entity = client
+            .comment_create::<Comment>(comment_input)
+            .await
+            .unwrap();
+        let comment_id = comment_entity.id.clone().unwrap();
+        assert!(
+            comment_entity.resolved_at.is_none(),
+            "new comment should not be resolved"
+        );
+
+        // Resolve the comment thread.
+        let resolved = client
+            .comment_resolve::<Comment>(None, comment_id.clone())
+            .await
+            .unwrap();
+        assert!(
+            resolved.resolved_at.is_some(),
+            "comment should have resolvedAt after resolve"
+        );
+
+        // Unresolve the comment thread.
+        let unresolved = client
+            .comment_unresolve::<Comment>(comment_id)
+            .await
+            .unwrap();
+        assert!(
+            unresolved.resolved_at.is_none(),
+            "comment should not have resolvedAt after unresolve"
+        );
+
+        // Clean up: permanently delete the issue.
+        client
+            .issue_delete::<Issue>(Some(true), issue_id)
+            .await
+            .unwrap();
+    }
+
     // ── Issue VCS Branch Search ─────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
@@ -1133,11 +1259,9 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
+        let (team_id, _team_guard) = create_test_team(&client).await;
 
         // Create an issue so we can look up its branchName.
-        let teams = client.teams::<Team>().first(1).send().await.unwrap();
-        let team_id = teams.nodes[0].id.clone().unwrap();
-
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
         let input = IssueCreateInput {
             title: Some(format!("[test] SDK branch search {uid}")),
