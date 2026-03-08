@@ -1,3 +1,4 @@
+use crate::profile;
 use crate::version_check;
 
 /// Print a compact LLM-friendly command reference (<1000 tokens).
@@ -15,28 +16,18 @@ pub async fn run(active_profile: Option<&str>) {
         Some("default") | None => "default",
         Some(p) => p,
     };
-    let token_file_display = if active_name == "default" {
-        "~/.linear_api_token".to_string()
-    } else {
-        format!("~/.linear_api_token_{active_name}")
-    };
+    let token_file_display = profile::display_path(active_name);
 
     let (file_hint, profile_extra_lines) = match &home {
         Some(h) => {
-            let active_path = if active_name == "default" {
-                h.join(".linear_api_token")
-            } else {
-                h.join(format!(".linear_api_token_{active_name}"))
-            };
-            let found = active_path.exists();
+            let found = profile::token_path(h, active_name).exists();
 
             // Discover other profiles (excluding the active one).
             let mut others: Vec<String> = Vec::new();
-            let default_exists = h.join(".linear_api_token").exists();
-            if default_exists && active_name != "default" {
+            if h.join(".linear_api_token").exists() && active_name != "default" {
                 others.push("\"default\"".to_string());
             }
-            for p in crate::discover_profiles(h) {
+            for p in profile::discover(h) {
                 if p != active_name {
                     others.push(format!("\"{p}\""));
                 }

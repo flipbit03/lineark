@@ -169,12 +169,12 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `issue_delete(permanently, id)` | Delete an issue |
 | `issue_vcs_branch_search(branch)` | Find issue by Git branch name |
 | `comment_create(input)` | Create a comment |
-| `comment_update(input, id)` | Update a comment |
-| `comment_resolve(input, id)` | Resolve a comment thread |
+| `comment_update(skip_edited_at, input, id)` | Update a comment |
+| `comment_resolve(resolving_comment_id, id)` | Resolve a comment thread |
 | `comment_unresolve(id)` | Unresolve a comment thread |
 | `comment_delete(id)` | Delete a comment |
-| `issue_label_create(input)` | Create an issue label |
-| `issue_label_update(input, id)` | Update an issue label |
+| `issue_label_create(replace_team_labels, input)` | Create an issue label |
+| `issue_label_update(replace_team_labels, input, id)` | Update an issue label |
 | `issue_label_delete(id)` | Delete an issue label |
 | `issue_relation_create(override_created_at, input)` | Create an issue relation |
 | `issue_relation_delete(id)` | Delete an issue relation |

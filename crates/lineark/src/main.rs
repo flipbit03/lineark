@@ -1,5 +1,6 @@
 mod commands;
 mod output;
+pub mod profile;
 mod version_check;
 
 use clap::{Parser, Subcommand};
@@ -89,54 +90,6 @@ fn home_dir() -> PathBuf {
     })
 }
 
-/// Discover available profiles by globbing `~/.linear_api_token_*`.
-/// Returns profile names (the suffix after `_`), excluding "test".
-pub fn discover_profiles(home: &std::path::Path) -> Vec<String> {
-    let prefix = ".linear_api_token_";
-    let Ok(entries) = std::fs::read_dir(home) else {
-        return Vec::new();
-    };
-    let mut profiles: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            let suffix = name.strip_prefix(prefix)?;
-            if suffix.is_empty() || suffix == "test" {
-                return None;
-            }
-            Some(suffix.to_string())
-        })
-        .collect();
-    profiles.sort();
-    profiles
-}
-
-/// Format the error message when a profile file is not found.
-fn profile_not_found_error(profile: &str, home: &std::path::Path) -> String {
-    let profiles = discover_profiles(home);
-    let default_exists = home.join(".linear_api_token").exists();
-
-    let mut available: Vec<String> = Vec::new();
-    if default_exists {
-        available.push("\"default\"".to_string());
-    }
-    for p in &profiles {
-        available.push(format!("\"{}\"", p));
-    }
-
-    let mut msg = format!("Profile \"{}\" not found.", profile);
-    if available.is_empty() {
-        msg.push_str(" No profiles found.");
-    } else {
-        msg.push_str(&format!(" Available profiles: {}.", available.join(", ")));
-    }
-    msg.push_str(&format!(
-        "\nCreate it with:\n  echo \"lin_api_...\" > ~/.linear_api_token_{}",
-        profile
-    ));
-    msg
-}
-
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
@@ -163,19 +116,14 @@ async fn main() {
     let client = match (&cli.api_token, &cli.profile) {
         (Some(_), Some(_)) => unreachable!(), // clap conflicts_with prevents this
         (Some(token), None) => Client::from_token(token),
-        (None, Some(profile)) => {
-            let path = if profile == "default" {
-                home.join(".linear_api_token")
-            } else {
-                home.join(format!(".linear_api_token_{profile}"))
-            };
+        (None, Some(name)) => {
+            let path = profile::token_path(&home, name);
             Client::from_token_file(&path).map_err(|_| {
-                lineark_sdk::LinearError::AuthConfig(profile_not_found_error(profile, &home))
+                lineark_sdk::LinearError::AuthConfig(profile::not_found_error(name, &home))
             })
         }
-        (None, None) => {
-            Client::from_env().or_else(|_| Client::from_token_file(&home.join(".linear_api_token")))
-        }
+        (None, None) => Client::from_env()
+            .or_else(|_| Client::from_token_file(&profile::token_path(&home, "default"))),
     };
     let client = match client {
         Ok(c) => c,
