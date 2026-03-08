@@ -409,3 +409,40 @@ pub async fn resolve_cycle_id(
         available.join(", ")
     ))
 }
+
+/// Parse a priority value from either a number (0-4) or a name.
+///
+/// Mapping defined by the Linear GraphQL schema on `IssueCreateInput.priority` and
+/// `IssueUpdateInput.priority` (see `schema/schema.graphql`):
+///
+/// | Value | Schema label | `priorityLabel` from API |
+/// |-------|-------------|--------------------------|
+/// | 0     | No priority | No priority              |
+/// | 1     | Urgent      | Urgent                   |
+/// | 2     | High        | High                     |
+/// | 3     | Normal      | Medium                   |
+/// | 4     | Low         | Low                      |
+///
+/// Note: the schema says "Normal" but the API's `priorityLabel` field returns "Medium"
+/// for priority 3. We accept both `"medium"` and `"normal"` as input.
+pub fn parse_priority(s: &str) -> Result<i64, String> {
+    let s = s.trim();
+    if let Ok(n) = s.parse::<i64>() {
+        if (0..=4).contains(&n) {
+            return Ok(n);
+        }
+        return Err(format!(
+            "invalid priority '{n}': valid values are 0-4 or none, urgent, high, medium, low"
+        ));
+    }
+    match s.to_ascii_lowercase().as_str() {
+        "none" => Ok(0),
+        "urgent" => Ok(1),
+        "high" => Ok(2),
+        "medium" | "normal" => Ok(3),
+        "low" => Ok(4),
+        _ => Err(format!(
+            "invalid priority '{s}': valid values are 0-4 or none, urgent, high, medium, low"
+        )),
+    }
+}

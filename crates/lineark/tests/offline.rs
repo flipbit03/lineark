@@ -124,6 +124,32 @@ fn issues_create_help_shows_flags() {
 }
 
 #[test]
+fn issues_create_rejects_invalid_priority_name() {
+    lineark()
+        .args([
+            "issues",
+            "create",
+            "test",
+            "--team",
+            "FAKE",
+            "--priority",
+            "bogus",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid priority"));
+}
+
+#[test]
+fn issues_create_accepts_textual_priority_in_help() {
+    lineark()
+        .args(["issues", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("none, urgent, high, medium, low"));
+}
+
+#[test]
 fn issues_update_help_shows_flags() {
     lineark()
         .args(["issues", "update", "--help"])

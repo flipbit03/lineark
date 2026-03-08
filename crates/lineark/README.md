@@ -72,7 +72,7 @@ lineark projects create <NAME> --team KEY        Create a project
   [--description TEXT] [--lead NAME-OR-ID|me]    Description, lead, dates
   [--members NAME,...|me]                        Project members (comma-separated)
   [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
-  [-p 0-4] [--content TEXT] ...                  See --help for all options
+  [-p PRIORITY] [--content TEXT] ...             See --help for all options
 lineark labels list [--team KEY]                 List labels (group, team, parent)
 lineark labels create <NAME>                     Create a label
   [--team KEY] [--color HEX]                     Team, color
@@ -96,14 +96,14 @@ lineark issues search <QUERY> [-l N]             Full-text search
   [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
   [--status NAME,...] [--show-done]
 lineark issues create <TITLE> --team KEY         Create an issue
-  [-p 0-4] [-e N] [--assignee NAME-OR-ID|me]     Priority, estimate, assignee
+  [-p PRIORITY] [-e N] [--assignee NAME-OR-ID|me] Priority (0-4 or name), estimate
   [--labels NAME,...] [-s NAME] ...              Labels, status — see --help
 lineark issues update <IDENTIFIER>               Update an issue
-  [-s NAME] [-p 0-4] [-e N]                      Status, priority, estimate
+  [-s NAME] [-p PRIORITY] [-e N]                 Status, priority, estimate
   [--assignee NAME-OR-ID|me]                     Assignee
   [--clear-parent] [--project NAME-OR-ID] ...    See --help for all options
 lineark issues batch-update ID [ID ...]          Batch update multiple issues
-  [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me]  Status, priority, assignee
+  [-s NAME] [-p PRIORITY] [--assignee ...]       Status, priority, assignee
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
