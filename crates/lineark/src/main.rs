@@ -1,17 +1,23 @@
 mod commands;
 mod output;
+pub mod profile;
 mod version_check;
 
 use clap::{Parser, Subcommand};
 use lineark_sdk::Client;
+use std::path::PathBuf;
 
 /// lineark — Linear CLI for humans and LLMs
 #[derive(Debug, Parser)]
 #[command(name = "lineark", version, about, after_help = update_hint_blocking())]
 struct Cli {
     /// API token (overrides $LINEAR_API_TOKEN and ~/.linear_api_token).
-    #[arg(long, global = true)]
+    #[arg(long, global = true, conflicts_with = "profile")]
     api_token: Option<String>,
+
+    /// Use API token from ~/.linear_api_token_{name}.
+    #[arg(long, global = true, conflicts_with = "api_token")]
+    profile: Option<String>,
 
     /// Output format. Auto-detected if not specified (human for terminal, json for pipe).
     #[arg(long, global = true)]
@@ -76,6 +82,14 @@ pub fn format_update_hint(latest: Option<&str>) -> String {
     }
 }
 
+/// Resolve the home directory or exit with error.
+fn home_dir() -> PathBuf {
+    home::home_dir().unwrap_or_else(|| {
+        eprintln!("Error: could not determine home directory");
+        std::process::exit(1);
+    })
+}
+
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
@@ -84,7 +98,7 @@ async fn main() {
     // Handle commands that don't need auth.
     match cli.command {
         Command::Usage => {
-            commands::usage::run().await;
+            commands::usage::run(cli.profile.as_deref()).await;
             return;
         }
         Command::SelfCmd(cmd) => {
@@ -98,9 +112,18 @@ async fn main() {
     }
 
     // Resolve client.
-    let client = match &cli.api_token {
-        Some(token) => Client::from_token(token),
-        None => Client::auto(),
+    let home = home_dir();
+    let client = match (&cli.api_token, &cli.profile) {
+        (Some(_), Some(_)) => unreachable!(), // clap conflicts_with prevents this
+        (Some(token), None) => Client::from_token(token),
+        (None, Some(name)) => {
+            let path = profile::token_path(&home, name);
+            Client::from_token_file(&path).map_err(|_| {
+                lineark_sdk::LinearError::AuthConfig(profile::not_found_error(name, &home))
+            })
+        }
+        (None, None) => Client::from_env()
+            .or_else(|_| Client::from_token_file(&profile::token_path(&home, "default"))),
     };
     let client = match client {
         Ok(c) => c,

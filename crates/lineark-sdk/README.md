@@ -18,7 +18,7 @@ use lineark_sdk::generated::types::{User, Team};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::auto()?;
+    let client = Client::from_env()?;
 
     let me = client.whoami::<User>().await?;
     println!("Logged in as: {}", me.name.as_deref().unwrap_or("?"));
@@ -43,8 +43,7 @@ Create a [Linear API token](https://linear.app/settings/account/security) and pr
 |--------|---------|
 | Direct | `Client::from_token("lin_api_...")` |
 | Env var | `export LINEAR_API_TOKEN="lin_api_..."` then `Client::from_env()` |
-| File | `echo "lin_api_..." > ~/.linear_api_token` then `Client::from_file()` |
-| Auto | `Client::auto()` — tries env var, then file |
+| File | `Client::from_token_file(Path::new("/path/to/token"))` |
 
 ## Queries
 
@@ -113,7 +112,7 @@ struct LeanIssue {
     title: Option<String>,
 }
 
-let client = Client::auto()?;
+let client = Client::from_env()?;
 let issues = client.issues::<LeanIssue>().first(10).send().await?;
 for issue in &issues.nodes {
     println!("{}", issue.title.as_deref().unwrap_or("?"));
@@ -170,12 +169,12 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `issue_delete(permanently, id)` | Delete an issue |
 | `issue_vcs_branch_search(branch)` | Find issue by Git branch name |
 | `comment_create(input)` | Create a comment |
-| `comment_update(input, id)` | Update a comment |
-| `comment_resolve(input, id)` | Resolve a comment thread |
+| `comment_update(skip_edited_at, input, id)` | Update a comment |
+| `comment_resolve(resolving_comment_id, id)` | Resolve a comment thread |
 | `comment_unresolve(id)` | Unresolve a comment thread |
 | `comment_delete(id)` | Delete a comment |
-| `issue_label_create(input)` | Create an issue label |
-| `issue_label_update(input, id)` | Update an issue label |
+| `issue_label_create(replace_team_labels, input)` | Create an issue label |
+| `issue_label_update(replace_team_labels, input, id)` | Update an issue label |
 | `issue_label_delete(id)` | Delete an issue label |
 | `issue_relation_create(override_created_at, input)` | Create an issue relation |
 | `issue_relation_delete(id)` | Delete an issue relation |

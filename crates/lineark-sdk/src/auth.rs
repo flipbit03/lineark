@@ -1,24 +1,28 @@
 //! API token resolution.
 //!
 //! Supports three sources (in precedence order): explicit token, the
-//! `LINEAR_API_TOKEN` environment variable, and `~/.linear_api_token` file.
+//! `LINEAR_API_TOKEN` environment variable, and a token file at any path.
 
 use crate::error::LinearError;
-use std::path::PathBuf;
+use std::path::Path;
 
-/// Resolve a Linear API token from the filesystem.
-/// Reads `~/.linear_api_token`.
-pub fn token_from_file() -> Result<String, LinearError> {
-    let path = token_file_path()?;
-    std::fs::read_to_string(&path)
-        .map(|s| s.trim().to_string())
-        .map_err(|e| {
-            LinearError::AuthConfig(format!(
-                "Could not read token file {}: {}",
-                path.display(),
-                e
-            ))
-        })
+/// Resolve a Linear API token from a file at the given path.
+pub fn token_from_file(path: &Path) -> Result<String, LinearError> {
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        LinearError::AuthConfig(format!(
+            "Could not read token file {}: {}",
+            path.display(),
+            e
+        ))
+    })?;
+    let token = content.trim().to_string();
+    if token.is_empty() {
+        return Err(LinearError::AuthConfig(format!(
+            "Token file {} is empty",
+            path.display()
+        )));
+    }
+    Ok(token)
 }
 
 /// Resolve a Linear API token from the environment variable `LINEAR_API_TOKEN`.
@@ -29,18 +33,6 @@ pub fn token_from_env() -> Result<String, LinearError> {
             "LINEAR_API_TOKEN environment variable not set".to_string(),
         )),
     }
-}
-
-/// Resolve a Linear API token with precedence: env var -> file.
-/// (CLI flag takes highest precedence but is handled at the CLI layer.)
-pub fn auto_token() -> Result<String, LinearError> {
-    token_from_env().or_else(|_| token_from_file())
-}
-
-fn token_file_path() -> Result<PathBuf, LinearError> {
-    let home = home::home_dir()
-        .ok_or_else(|| LinearError::AuthConfig("Could not determine home directory".to_string()))?;
-    Ok(home.join(".linear_api_token"))
 }
 
 #[cfg(test)]
@@ -89,13 +81,6 @@ mod tests {
     }
 
     #[test]
-    fn auto_token_prefers_env() {
-        with_env_token(Some("env-token-auto"), || {
-            assert_eq!(auto_token().unwrap(), "env-token-auto");
-        });
-    }
-
-    #[test]
     fn token_from_env_empty_string_is_treated_as_absent() {
         with_env_token(Some(""), || {
             assert!(token_from_env().is_err());
@@ -117,9 +102,26 @@ mod tests {
     }
 
     #[test]
-    fn token_file_path_is_home_based() {
-        let path = token_file_path().unwrap();
-        assert!(path.to_str().unwrap().contains(".linear_api_token"));
-        assert!(path.to_str().unwrap().starts_with("/"));
+    fn token_from_file_reads_and_trims() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".linear_api_token");
+        std::fs::write(&path, "  my-token-123  \n").unwrap();
+        assert_eq!(token_from_file(&path).unwrap(), "my-token-123");
+    }
+
+    #[test]
+    fn token_from_file_missing_file() {
+        let path = std::path::PathBuf::from("/tmp/nonexistent_token_file_xyz");
+        let err = token_from_file(&path).unwrap_err();
+        assert!(err.to_string().contains("nonexistent_token_file_xyz"));
+    }
+
+    #[test]
+    fn token_from_file_empty_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".linear_api_token");
+        std::fs::write(&path, "  \n").unwrap();
+        let err = token_from_file(&path).unwrap_err();
+        assert!(err.to_string().contains("empty"));
     }
 }

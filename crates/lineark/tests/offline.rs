@@ -11,6 +11,27 @@ fn lineark() -> Command {
     Command::cargo_bin("lineark").unwrap()
 }
 
+// ── Profile test helper ─────────────────────────────────────────────────────
+
+/// Set up a temp HOME with profile token files and return a pre-configured command.
+/// Pass `("default", "tok")` for `~/.linear_api_token`, or `("work", "tok")` for
+/// `~/.linear_api_token_work`.
+fn lineark_with_profiles(profiles: &[(&str, &str)]) -> (tempfile::TempDir, Command) {
+    let tmpdir = tempfile::tempdir().unwrap();
+    for (name, token) in profiles {
+        let filename = if *name == "default" {
+            ".linear_api_token".to_string()
+        } else {
+            format!(".linear_api_token_{name}")
+        };
+        std::fs::write(tmpdir.path().join(filename), token).unwrap();
+    }
+    let mut cmd = lineark();
+    cmd.env("HOME", tmpdir.path());
+    cmd.env_remove("LINEAR_API_TOKEN");
+    (tmpdir, cmd)
+}
+
 // ── Usage command ───────────────────────────────────────────────────────────
 
 #[test]
@@ -34,6 +55,7 @@ fn usage_mentions_global_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--api-token"))
+        .stdout(predicate::str::contains("--profile"))
         .stdout(predicate::str::contains("--format"));
 }
 
@@ -1163,4 +1185,216 @@ fn issues_update_no_flags_error_mentions_estimate() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("--estimate"));
+}
+
+// ── Profile support ─────────────────────────────────────────────────────────
+
+#[test]
+fn profile_and_api_token_conflict() {
+    lineark()
+        .args(["--api-token", "fake", "--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn help_shows_profile_flag() {
+    lineark()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"));
+}
+
+#[test]
+fn usage_shows_profile_flag() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"));
+}
+
+#[test]
+fn profile_missing_file_shows_error_with_profile_name() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[]);
+    cmd.args(["--profile", "nonexistent", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not found"))
+        .stderr(predicate::str::contains("No profiles found"))
+        .stderr(predicate::str::contains("~/.linear_api_token_nonexistent"));
+}
+
+#[test]
+fn profile_missing_file_shows_available_profiles() {
+    let (_tmpdir, mut cmd) =
+        lineark_with_profiles(&[("default", "tok-default"), ("banana", "tok-banana")]);
+    cmd.args(["--profile", "nonexistent", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("\"default\""))
+        .stderr(predicate::str::contains("\"banana\""));
+}
+
+#[test]
+fn profile_reads_named_token_file() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("work", "fake-work-token")]);
+    // The token is fake, so the API call fails — but we verify it gets past auth resolution.
+    cmd.args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        // Should NOT be an auth config error — should be an API error.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn profile_skips_env_var() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("work", "profile-token")]);
+    // Even with LINEAR_API_TOKEN set, --profile should use the file.
+    cmd.env("LINEAR_API_TOKEN", "env-token-should-be-ignored")
+        .args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth — profile file exists.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn default_auth_uses_env_then_file() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "file-token")]);
+    // Without --profile or --api-token, should use file token (env not set).
+    cmd.args(["whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth.
+        .stderr(predicate::str::contains("token").not());
+}
+
+#[test]
+fn usage_discovers_profiles() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[
+        ("default", "tok"),
+        ("work", "tok"),
+        ("banana", "tok"),
+        ("test", "tok"), // _test should be filtered out
+    ]);
+    cmd.arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#"active profile: "default")"#))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "banana", "work"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"))
+        .stdout(predicate::str::contains("\"test\"").not());
+}
+
+#[test]
+fn profile_default_reads_default_token_file() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "fake-default-token")]);
+    // --profile default should use ~/.linear_api_token (not ~/.linear_api_token_default).
+    cmd.args(["--profile", "default", "whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth config.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn usage_default_active_no_others() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "tok")]);
+    cmd.arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"(found, active profile: "default")"#,
+        ))
+        .stdout(predicate::str::contains("other available").not());
+}
+
+#[test]
+fn usage_default_active_with_others() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "tok"), ("work", "tok")]);
+    cmd.arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"(found, active profile: "default")"#,
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "work"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"));
+}
+
+#[test]
+fn usage_with_named_profile_active() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "tok"), ("work", "tok")]);
+    cmd.args(["--profile", "work", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"~/.linear_api_token_work file (found, active profile: "work")"#,
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "default"."#,
+        ));
+}
+
+#[test]
+fn usage_with_missing_profile_shows_not_found() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("default", "tok")]);
+    cmd.args(["--profile", "missing", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "~/.linear_api_token_missing file (not found)",
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "default"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"));
+}
+
+#[test]
+fn usage_with_missing_profile_no_others() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[]);
+    cmd.args(["--profile", "missing", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "~/.linear_api_token_missing file (not found)",
+        ))
+        .stdout(predicate::str::contains("other available").not());
+}
+
+// ── Profile edge cases ──────────────────────────────────────────────────────
+
+#[test]
+fn profile_with_hyphenated_name() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("work-prod", "fake-token")]);
+    cmd.args(["--profile", "work-prod", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn profile_with_dotted_name() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("my.company", "fake-token")]);
+    cmd.args(["--profile", "my.company", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn profile_whitespace_only_token_file_shows_error() {
+    let (_tmpdir, mut cmd) = lineark_with_profiles(&[("bad", "   \n")]);
+    cmd.args(["--profile", "bad", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Error"));
 }

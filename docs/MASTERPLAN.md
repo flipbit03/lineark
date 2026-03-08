@@ -130,9 +130,7 @@ let client = Client::from_token("lin_api_...")?;
 // or
 let client = Client::from_env()?;      // LINEAR_API_TOKEN env var
 // or
-let client = Client::from_file()?;     // ~/.linear_api_token
-// or
-let client = Client::auto()?;          // tries env -> file (same precedence as CLI)
+let client = Client::from_token_file(Path::new("/path/to/token"))?;  // any file path
 
 let me = client.whoami().await?;
 let teams = client.teams().send().await?;

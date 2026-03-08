@@ -14,8 +14,6 @@ pub fn test_token() -> String {
     let path = home::home_dir()
         .expect("could not determine home directory")
         .join(".linear_api_token_test");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
-        .trim()
-        .to_string()
+    lineark_sdk::auth::token_from_file(&path)
+        .unwrap_or_else(|e| panic!("could not read test token: {}", e))
 }

@@ -32,6 +32,24 @@ echo "lin_api_..." > ~/.linear_api_token
 
 Or use an environment variable (`LINEAR_API_TOKEN`) or the `--api-token` flag.
 
+### Multiple profiles
+
+Store tokens for different workspaces in named files:
+
+```sh
+echo "lin_api_..." > ~/.linear_api_token            # "default" API token
+echo "lin_api_..." > ~/.linear_api_token_work       # "work" API token
+echo "lin_api_..." > ~/.linear_api_token_freelance  # "freelance" API token
+```
+
+Then switch with `--profile`:
+
+```sh
+lineark whoami                             # uses ~/.linear_api_token (default)
+lineark --profile work issues list --mine  # uses ~/.linear_api_token_work
+lineark --profile freelance whoami         # uses ~/.linear_api_token_freelance
+```
+
 ## Usage
 
 Most flags accept human-readable names or UUIDs — `--team` accepts key/name/UUID, `--assignee` accepts user name/display name, `--labels` accepts label names, `--project` and `--cycle` accept names. `me` is a special alias that resolves to the authenticated user on `--assignee`, `--lead`, and `--members`.

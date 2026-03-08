@@ -42,6 +42,13 @@ Create a [Linear Personal API key](https://linear.app/settings/account/security)
 echo "lin_api_..." > ~/.linear_api_token
 ```
 
+For multiple workspaces, use named profiles (`~/.linear_api_token_{name}`) and switch with `--profile`:
+
+```sh
+echo "lin_api_..." > ~/.linear_api_token_work
+lineark --profile work whoami
+```
+
 ### Use it
 
 ```sh
@@ -100,7 +107,7 @@ use lineark_sdk::generated::types::{User, Team, IssueSearchResult};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::auto()?;
+    let client = Client::from_env()?;
 
     let me = client.whoami::<User>().await?;
     println!("{:?}", me);
