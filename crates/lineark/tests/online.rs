@@ -194,7 +194,7 @@ fn create_test_team() -> (String, String, TeamGuard) {
         // Use a unique key so issue identifiers (e.g. T1A2B3C4-1) don't collide
         // across test runs. Linear's search index gets confused when many teams
         // reuse the same auto-generated key "TES".
-        let key = format!("T{}", &suffix[..7]).to_uppercase();
+        let key = format!("T{}", &suffix[..5]).to_uppercase();
         let input = TeamCreateInput {
             name: Some(unique),
             key: Some(key),
