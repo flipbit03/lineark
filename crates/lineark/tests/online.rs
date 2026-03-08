@@ -46,7 +46,7 @@ fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
 fn create_test_team() -> TestTeam {
     let client = Client::from_token(test_token()).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(create_test_team_async(&client))
+    rt.block_on(create_test_team(&client))
 }
 
 test_with::runner!(online);

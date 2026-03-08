@@ -1,7 +1,7 @@
 //! Shared test utilities for lineark online integration tests.
 //!
 //! Provides token loading, RAII guards for resource cleanup, retry helpers,
-//! and team creation helpers used by all three online test suites.
+//! and team creation helpers used by the online test suites.
 
 use lineark_sdk::generated::types::*;
 use lineark_sdk::Client;
@@ -33,22 +33,17 @@ pub fn test_token() -> String {
 
 // ── Settle ───────────────────────────────────────────────────────────────────
 
-/// Wait for the Linear API to propagate recently created resources (async).
+/// Wait for the Linear API to propagate recently created resources.
 /// Linear is eventually consistent — created resources may not be queryable immediately.
-pub async fn settle_async() {
+pub async fn settle() {
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-}
-
-/// Wait for the Linear API to propagate recently created resources (sync).
-pub fn settle() {
-    std::thread::sleep(std::time::Duration::from_secs(5));
 }
 
 // ── Retry helpers ────────────────────────────────────────────────────────────
 
-/// Retry an async create operation up to 3 times with backoff on transient errors.
+/// Retry a create operation up to 3 times with backoff on transient errors.
 /// Retries on "conflict on insert" or "already exists" errors from the Linear API.
-pub async fn retry_create_async<T, F, Fut>(mut f: F) -> T
+pub async fn retry_create<T, F, Fut>(mut f: F) -> T
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, lineark_sdk::LinearError>>,
@@ -58,35 +53,6 @@ where
             tokio::time::sleep(std::time::Duration::from_secs(1u64 << attempt)).await;
         }
         match f().await {
-            Ok(val) => return val,
-            Err(e) => {
-                let msg = e.to_string();
-                if !msg.contains("conflict on insert") && !msg.contains("already exists") {
-                    panic!("create failed with non-transient error: {msg}");
-                }
-                if attempt == 2 {
-                    panic!("create failed after 3 retries: {msg}");
-                }
-                eprintln!(
-                    "retry_create: attempt {attempt} failed with transient error, retrying: {msg}"
-                );
-            }
-        }
-    }
-    unreachable!()
-}
-
-/// Retry a blocking create operation up to 3 times with backoff on transient errors.
-/// Retries on "conflict on insert" or "already exists" errors from the Linear API.
-pub fn retry_create_sync<T, F>(mut f: F) -> T
-where
-    F: FnMut() -> Result<T, lineark_sdk::LinearError>,
-{
-    for attempt in 0..3u32 {
-        if attempt > 0 {
-            std::thread::sleep(std::time::Duration::from_secs(1u64 << attempt));
-        }
-        match f() {
             Ok(val) => return val,
             Err(e) => {
                 let msg = e.to_string();
@@ -327,9 +293,9 @@ pub struct TestTeam {
     pub guard: TeamGuard,
 }
 
-/// Create a fresh test team (async). Runs cleanup_zombies first, uses retry_create,
+/// Create a fresh test team. Runs cleanup_zombies first, uses retry_create,
 /// settles after creation. Returns full team info including key.
-pub async fn create_test_team_async(client: &Client) -> TestTeam {
+pub async fn create_test_team(client: &Client) -> TestTeam {
     use lineark_sdk::generated::inputs::TeamCreateInput;
     cleanup_zombies();
     let suffix = &uuid::Uuid::new_v4().to_string()[..8];
@@ -340,7 +306,7 @@ pub async fn create_test_team_async(client: &Client) -> TestTeam {
         key: Some(key),
         ..Default::default()
     };
-    let team = retry_create_async(|| {
+    let team = retry_create(|| {
         let input = input.clone();
         async { client.team_create::<Team>(None, input).await }
     })
@@ -351,35 +317,7 @@ pub async fn create_test_team_async(client: &Client) -> TestTeam {
         token: test_token(),
         id: team_id.clone(),
     };
-    settle_async().await;
-    TestTeam {
-        id: team_id,
-        key: team_key,
-        guard,
-    }
-}
-
-/// Create a fresh test team (blocking). Runs cleanup_zombies first, uses retry_create,
-/// settles after creation. Returns full team info including key.
-pub fn create_test_team_sync(client: &lineark_sdk::blocking_client::Client) -> TestTeam {
-    use lineark_sdk::generated::inputs::TeamCreateInput;
-    cleanup_zombies();
-    let suffix = &uuid::Uuid::new_v4().to_string()[..8];
-    let unique = format!("[test] blocking {suffix}");
-    let key = format!("T{}", &suffix[..5]).to_uppercase();
-    let input = TeamCreateInput {
-        name: Some(unique),
-        key: Some(key),
-        ..Default::default()
-    };
-    let team = retry_create_sync(|| client.team_create::<Team>(None, input.clone()));
-    let team_id = team.id.clone().unwrap();
-    let team_key = team.key.clone().unwrap();
-    let guard = TeamGuard {
-        token: test_token(),
-        id: team_id.clone(),
-    };
-    settle();
+    settle().await;
     TestTeam {
         id: team_id,
         key: team_key,

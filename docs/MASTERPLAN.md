@@ -29,7 +29,6 @@ lineark/
 │   │   └── src/
 │   │       ├── lib.rs            # Public API surface
 │   │       ├── client.rs         # LinearClient (async)
-│   │       ├── blocking_client.rs # Blocking (sync) client wrapper
 │   │       ├── error.rs          # Error types (mirroring Linear's error taxonomy)
 │   │       ├── field_selection.rs # GraphQLFields trait definition
 │   │       ├── pagination.rs     # Connection<T>, PageInfo, cursor helpers
@@ -116,15 +115,13 @@ lineark-derive = { path = "../lineark-derive" }
 
 [features]
 default = []
-blocking = []
 ```
 
-**Async by default, blocking opt-in:**
+**Async only:**
 - `lineark_sdk::Client` — async (requires tokio runtime)
-- `lineark_sdk::blocking_client::Client` — sync (behind `blocking` feature flag)
-- Both expose identical APIs, differing only in async/sync
+- Consumers who need sync access can wrap calls with `tokio::runtime::Runtime::block_on()`
 
-**Client API shape (async):**
+**Client API shape:**
 ```rust
 use lineark_sdk::Client;
 use lineark_sdk::generated::inputs::IssueCreateInput;
@@ -589,11 +586,6 @@ and ensure all tests pass."
 - [x] Implement `lineark documents update <ID> [--title TEXT] [--content TEXT]` (#25)
 - [x] Implement `lineark documents delete <ID>` (#25)
 
-**SDK blocking API (#26):**
-- [x] Implement `lineark_sdk::blocking_client::Client` behind `blocking` feature flag (#26)
-- [x] Mirror all async methods as blocking equivalents (#26)
-- [x] Test blocking API independently (#26)
-
 **Additional operations — as needed (#27):**
 - [x] Issue relations (blocking, related, duplicate) (#27)
 - [x] Issue attachments listing (#27)
@@ -607,7 +599,6 @@ and ensure all tests pass."
 - [x] Can download issue attachments to local files (#28)
 - [x] Can upload files and reference them in comments (#28)
 - [x] Full document CRUD works (#28)
-- [x] `lineark-sdk` usable with `features = ["blocking"]` for sync consumers (#28)
 - [x] Feature parity with target CLI feature set (#28)
 
 ---
@@ -651,7 +642,7 @@ and ensure all tests pass."
 
 5. **Zero config for existing Linear users.** If `~/.linear_api_token` exists, lineark works immediately.
 
-6. **Async-first, sync-optional.** The SDK defaults to async (tokio + reqwest). The `blocking` feature flag enables sync for consumers who need it. The CLI uses async internally.
+6. **Async only.** The SDK uses async (tokio + reqwest). Consumers who need sync access can wrap calls with `tokio::runtime::Runtime::block_on()`. The CLI uses async internally.
 
 ---
 

@@ -211,41 +211,6 @@ let result = client.download_url("https://uploads.linear.app/...").await?;
 std::fs::write("output.png", &result.bytes)?;
 ```
 
-## Blocking (synchronous) API
-
-For non-async contexts, enable the `blocking` feature:
-
-```toml
-[dependencies]
-lineark-sdk = { version = "...", features = ["blocking"] }
-```
-
-The blocking client mirrors the async API for all queries and most mutations:
-
-```rust
-use lineark_sdk::blocking_client::Client;
-use lineark_sdk::generated::types::Document;
-
-let client = Client::auto()?;
-
-let me = client.whoami()?;
-println!("Logged in as: {:?}", me.name);
-
-let teams = client.teams().first(10).send()?;
-for team in &teams.nodes {
-    println!("{}: {}",
-        team.key.as_deref().unwrap_or("?"),
-        team.name.as_deref().unwrap_or("?"),
-    );
-}
-
-// Mutations are generic — use turbofish or type inference
-let payload = client.document_create::<Document>(input)?;
-
-// File operations too
-let result = client.upload_file("file.txt", "text/plain", bytes, false)?;
-let downloaded = client.download_url(&result.asset_url)?;
-```
 
 ## Error handling
 

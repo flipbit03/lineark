@@ -31,11 +31,5 @@ lineark-test-utils = { path = "../lineark-test-utils" }
 name = "online"
 harness = false
 
-[[test]]
-name = "blocking_online"
-harness = false
-required-features = ["blocking"]
-
 [features]
 default = []
-blocking = []

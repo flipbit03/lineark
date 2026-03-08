@@ -25,4 +25,3 @@ test:
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
 test-online:
 	cargo test --workspace --test online -- --test-threads=1
-	cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1

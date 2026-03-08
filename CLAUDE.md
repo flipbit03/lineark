@@ -77,7 +77,7 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 - **Operations are incremental.** Types/enums/inputs are always fully generated. Query and mutation functions are gated by `schema/operations.toml`.
 - **Auth precedence:** `--api-token` flag > `$LINEAR_API_TOKEN` env var > `~/.linear_api_token` file.
 - **Output format:** auto-detect with `std::io::IsTerminal` — human tables when interactive, JSON when piped. Override with `--format human|json`.
-- **Async by default.** The SDK uses tokio + reqwest async. A `blocking` feature flag exposes a sync API via the `blocking_client` module.
+- **Async only.** The SDK uses tokio + reqwest async. Consumers who need sync access can wrap calls with `tokio::runtime::Runtime::block_on()`.
 - **Generic queries.** All query and mutation functions are generic over `T: DeserializeOwned + GraphQLFields`. Generated types have auto-generated `impl GraphQLFields` from codegen. Consumers can define custom lean types with `#[derive(GraphQLFields)]` to avoid overfetching.
 - **Minimal proc macros.** The only proc macro is `#[derive(GraphQLFields)]` in `lineark-derive` — it enables consumer-defined lean types for field selection. Codegen emits plain Rust structs and `impl GraphQLFields` blocks.
 
@@ -133,7 +133,7 @@ Issue tracking for lineark development happens in GitHub Issues, not in Linear. 
 
 | Purpose | Crate |
 |---|---|
-| HTTP client | `reqwest` (async + blocking feature) |
+| HTTP client | `reqwest` (async) |
 | Async runtime | `tokio` |
 | Serialization | `serde` + `serde_json` |
 | Date/time | `chrono` |
