@@ -10,6 +10,7 @@ use tabled::Tabled;
 use super::helpers::{
     resolve_project_id, resolve_team_ids, resolve_user_id_or_me, resolve_user_ids_or_me,
 };
+use super::issues::parse_priority;
 use crate::output::{self, Format};
 
 /// Manage projects.
@@ -68,8 +69,8 @@ pub enum ProjectsAction {
         /// Planned target/completion date (YYYY-MM-DD).
         #[arg(long)]
         target_date: Option<String>,
-        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        /// Priority: 0-4 or none, urgent, high, medium, low.
+        #[arg(short = 'p', long, value_parser = parse_priority)]
         priority: Option<i64>,
         /// Markdown content for the project.
         #[arg(long)]

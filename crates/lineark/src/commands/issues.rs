@@ -17,7 +17,8 @@ use super::helpers::{
 use crate::output::{self, Format};
 
 /// Parse a priority value from either a number (0-4) or a name (none, urgent, high, medium/normal, low).
-fn parse_priority(s: &str) -> Result<i64, String> {
+pub(crate) fn parse_priority(s: &str) -> Result<i64, String> {
+    let s = s.trim();
     // Try numeric first.
     if let Ok(n) = s.parse::<i64>() {
         if (0..=4).contains(&n) {
@@ -1174,6 +1175,13 @@ mod tests {
         assert_eq!(parse_priority("URGENT").unwrap(), 1);
         assert_eq!(parse_priority("High").unwrap(), 2);
         assert_eq!(parse_priority("LOW").unwrap(), 4);
+    }
+
+    #[test]
+    fn parse_priority_trims_whitespace() {
+        assert_eq!(parse_priority(" urgent ").unwrap(), 1);
+        assert_eq!(parse_priority(" 2 ").unwrap(), 2);
+        assert!(parse_priority("  ").is_err());
     }
 
     #[test]
