@@ -51,7 +51,8 @@ fn delete_issue(issue_id: &str) {
         .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
 }
 
-/// Retry a closure up to `max_attempts` times with backoff.
+/// Retry a closure up to `max_attempts` times with exponential backoff.
+/// Delays: 0s, 1s, 2s, 4s, 8s, 10s, 10s, ... (capped at 10s).
 /// Returns `Ok(T)` on the first successful attempt, or `Err(last_error_message)`.
 fn retry_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
 where
@@ -61,10 +62,8 @@ where
     for attempt in 0..max_attempts {
         let delay = if attempt == 0 {
             0
-        } else if attempt < 3 {
-            1
         } else {
-            3
+            std::cmp::min(1u64 << (attempt - 1), 10)
         };
         if delay > 0 {
             std::thread::sleep(std::time::Duration::from_secs(delay));
@@ -75,6 +74,39 @@ where
         }
     }
     Err(last_err)
+}
+
+/// Wait for the Linear API to propagate recently created resources.
+/// Linear is eventually consistent — created resources may not be queryable immediately.
+fn settle() {
+    std::thread::sleep(std::time::Duration::from_secs(2));
+}
+
+/// Run a lineark CLI command with retry logic.
+/// Retries up to 3 times with backoff for transient API errors (e.g., "conflict on insert").
+fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
+    for attempt in 0..3u32 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(1u64 << attempt));
+        }
+        let output = lineark()
+            .args(args)
+            .output()
+            .expect("failed to execute lineark");
+        if output.status.success() {
+            return output;
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Only retry on transient "conflict on insert" errors from the Linear API.
+        if !stderr.contains("conflict on insert") {
+            return output;
+        }
+    }
+    // Final attempt without retry.
+    lineark()
+        .args(args)
+        .output()
+        .expect("failed to execute lineark")
 }
 
 /// RAII guard — permanently deletes a team on drop.
@@ -132,6 +164,24 @@ impl Drop for ProjectGuard {
     }
 }
 
+/// RAII guard — deletes an issue label on drop.
+struct LabelGuard {
+    token: String,
+    id: String,
+}
+
+impl Drop for LabelGuard {
+    fn drop(&mut self) {
+        let Ok(client) = Client::from_token(self.token.clone()) else {
+            return;
+        };
+        let id = self.id.clone();
+        let _ = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { client.issue_label_delete(id).await });
+    }
+}
+
 /// Helper: create a fresh test team via the SDK and return (key, id, guard).
 fn create_test_team() -> (String, String, TeamGuard) {
     use lineark_sdk::generated::inputs::TeamCreateInput;
@@ -152,6 +202,8 @@ fn create_test_team() -> (String, String, TeamGuard) {
         token,
         id: team_id.clone(),
     };
+    // Wait for the team to propagate through Linear's eventually-consistent backend.
+    settle();
     (team_key, team_id, guard)
 }
 
@@ -266,6 +318,360 @@ mod online {
                 label["team"]
             );
         }
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn labels_create_update_and_delete() {
+        let token = api_token();
+
+        // Create a workspace-level label.
+        let unique_name = format!("[test] lbl-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &unique_name,
+                "--color",
+                "#eb5757",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let label_id = created["id"]
+            .as_str()
+            .expect("created label should have id")
+            .to_string();
+        let _label_guard = LabelGuard {
+            token: token.clone(),
+            id: label_id.clone(),
+        };
+        assert_eq!(created["name"].as_str(), Some(unique_name.as_str()));
+        assert_eq!(created["color"].as_str(), Some("#eb5757"));
+
+        // Update the label color.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &label_id,
+                "--color",
+                "#4ea7fc",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(updated["color"].as_str(), Some("#4ea7fc"));
+
+        // Delete the label via CLI.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "delete",
+                &label_id,
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels delete should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn labels_group_lifecycle() {
+        let token = api_token();
+        let uid = &uuid::Uuid::new_v4().to_string()[..8];
+
+        // 1. Create a group label with --group.
+        let group_name = format!("[test] Group {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &group_name,
+                "--color",
+                "#000000",
+                "--make-label-group",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "group create failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let group: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let group_id = group["id"].as_str().unwrap().to_string();
+        let _group_guard = LabelGuard {
+            token: token.clone(),
+            id: group_id.clone(),
+        };
+
+        // 2. Create a child label under the group.
+        let child_name = format!("[test] Child {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &child_name,
+                "--color",
+                "#ffffff",
+                "--parent-label-group",
+                &group_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "child create failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let child: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let child_id = child["id"].as_str().unwrap().to_string();
+        let _child_guard = LabelGuard {
+            token: token.clone(),
+            id: child_id.clone(),
+        };
+
+        // 3. List labels — child should show parent name, group should show "yes".
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "labels", "list"])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+
+        let group_row = labels
+            .iter()
+            .find(|l| l["name"].as_str() == Some(group_name.as_str()))
+            .expect("group should appear in list");
+        assert_eq!(
+            group_row["is_label_group"].as_str(),
+            Some("yes"),
+            "group label should show 'yes' in is_label_group column"
+        );
+
+        let child_row = labels
+            .iter()
+            .find(|l| l["name"].as_str() == Some(child_name.as_str()))
+            .expect("child should appear in list");
+        assert_eq!(
+            child_row["parent_label"].as_str(),
+            Some(group_name.as_str()),
+            "child should show parent_label name in list"
+        );
+
+        // 4. Clear the child's parent with --clear-parent.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &child_id,
+                "--clear-parent-label-group",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "clear-parent failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // 5. Demote the group back to a plain label with --no-group.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "update",
+                &group_id,
+                "--clear-label-group",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "demote group failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // 6. List again — group column should be empty, parent should be empty.
+        let output = lineark()
+            .args(["--api-token", &token, "--format", "json", "labels", "list"])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels list failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let labels: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+
+        let group_row = labels
+            .iter()
+            .find(|l| l["name"].as_str() == Some(group_name.as_str()))
+            .expect("group should still appear in list");
+        assert_eq!(
+            group_row["is_label_group"].as_str(),
+            Some(""),
+            "is_label_group should be empty after --no-group"
+        );
+
+        let child_row = labels
+            .iter()
+            .find(|l| l["name"].as_str() == Some(child_name.as_str()))
+            .expect("child should appear in list");
+        assert_eq!(
+            child_row["parent_label"].as_str(),
+            Some(""),
+            "parent_label should be empty after --clear-parent"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_spaced_label_and_read_back() {
+        let token = api_token();
+        let (_team_key, team_id, _team_guard) = create_test_team();
+
+        // Create a label with a space in the name.
+        let uid = &uuid::Uuid::new_v4().to_string()[..8];
+        let label_name = format!("[test] Tech Debt {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "labels",
+                "create",
+                &label_name,
+                "--color",
+                "#eb5757",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "labels create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let label_id = created["id"].as_str().unwrap().to_string();
+        let _label_guard = LabelGuard {
+            token: token.clone(),
+            id: label_id,
+        };
+
+        // Create an issue with the spaced label.
+        let issue_title = format!("[test] spaced label {uid}");
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "create",
+                &issue_title,
+                "--team",
+                &team_id,
+                "--labels",
+                &label_name,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create with spaced label should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let issue: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = issue["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Read the issue back and verify label appears by name.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues read should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let labels = detail["labels"]
+            .as_array()
+            .expect("labels should be a flat array of names");
+        let label_names: Vec<&str> = labels.iter().filter_map(|l| l.as_str()).collect();
+        assert!(
+            label_names.contains(&label_name.as_str()),
+            "issue should have the spaced label '{label_name}', got: {label_names:?}"
+        );
     }
 
     // ── Issues ────────────────────────────────────────────────────────────────
@@ -730,13 +1136,16 @@ mod online {
             .unwrap();
         assert!(output.status.success(), "archive should succeed");
 
+        // Wait for the archive to propagate before searching.
+        settle();
+
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
         // for resolve_issue_id to find archived issues.
         //
         // Linear's search index is async — the newly created+archived issue may
-        // not be searchable immediately. Retry with backoff to avoid flakiness.
-        let stdout = retry_with_backoff(8, || {
+        // not be searchable immediately. Retry with generous backoff to avoid flakiness.
+        let stdout = retry_with_backoff(10, || {
             let output = lineark()
                 .args([
                     "--api-token",
@@ -2026,25 +2435,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project via CLI.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--description",
-                "Automated CLI test project — will be deleted.",
-                "--priority",
-                "3",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project via CLI (with retry for transient "conflict on insert" errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--description",
+            "Automated CLI test project — will be deleted.",
+            "--priority",
+            "3",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -2179,25 +2585,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project with --lead me.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--lead",
-                "me",
-                "--description",
-                "Test project for read command.",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project with --lead me (with retry for transient API errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--lead",
+            "me",
+            "--description",
+            "Test project for read command.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -2299,25 +2702,22 @@ mod online {
 
         let (team_key, _team_id, _team_guard) = create_test_team();
 
-        // Create a project with --lead me --members me.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--lead",
-                "me",
-                "--members",
-                "me",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        // Create a project with --lead me --members me (with retry for transient API errors).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--lead",
+            "me",
+            "--members",
+            "me",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3695,20 +4095,17 @@ mod online {
             "[test] CLI project filter {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "projects",
-                "create",
-                &project_label,
-                "--team",
-                &team_key,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &project_label,
+            "--team",
+            &team_key,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(

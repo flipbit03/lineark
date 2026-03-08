@@ -240,22 +240,52 @@ pub async fn resolve_label_ids(
         return Ok(names_or_ids.to_vec());
     }
 
-    // Fetch labels, optionally filtered by team.
-    let mut builder = client.issue_labels::<IssueLabel>().first(250);
+    // Fetch labels. When a team is provided, fetch both team-scoped and
+    // workspace-wide labels so that workspace labels can be used on any team's issues.
+    let mut all_labels: Vec<IssueLabel> = Vec::new();
+
     if let Some(tid) = team_id {
+        // Team-scoped labels first.
         let filter: lineark_sdk::generated::inputs::IssueLabelFilter =
             serde_json::from_value(serde_json::json!({ "team": { "id": { "eq": tid } } }))
                 .expect("valid IssueLabelFilter");
-        builder = builder.filter(filter);
+        let conn = client
+            .issue_labels::<IssueLabel>()
+            .first(250)
+            .filter(filter)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        all_labels.extend(conn.nodes);
+
+        // Workspace-wide labels (no team).
+        let ws_filter: lineark_sdk::generated::inputs::IssueLabelFilter =
+            serde_json::from_value(serde_json::json!({ "team": { "null": true } }))
+                .expect("valid IssueLabelFilter");
+        let ws_conn = client
+            .issue_labels::<IssueLabel>()
+            .first(250)
+            .filter(ws_filter)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        all_labels.extend(ws_conn.nodes);
+    } else {
+        let conn = client
+            .issue_labels::<IssueLabel>()
+            .first(250)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        all_labels = conn.nodes;
     }
-    let conn = builder.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let mut resolved = Vec::with_capacity(names_or_ids.len());
     for item in names_or_ids {
         if uuid::Uuid::parse_str(item).is_ok() {
             resolved.push(item.clone());
         } else {
-            let found = conn.nodes.iter().find(|l| {
+            let found = all_labels.iter().find(|l| {
                 l.name
                     .as_deref()
                     .is_some_and(|n| n.eq_ignore_ascii_case(item))
@@ -264,7 +294,7 @@ pub async fn resolve_label_ids(
                 Some(label) => resolved.push(label.id.clone().unwrap_or_default()),
                 None => {
                     let available: Vec<String> =
-                        conn.nodes.iter().filter_map(|l| l.name.clone()).collect();
+                        all_labels.iter().filter_map(|l| l.name.clone()).collect();
                     return Err(anyhow::anyhow!(
                         "Label '{}' not found. Available: {}",
                         item,

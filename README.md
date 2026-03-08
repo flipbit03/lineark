@@ -70,15 +70,16 @@ That's it. Your agent discovers all commands at runtime by running `lineark usag
 
 | Area | Commands |
 |------|----------|
-| **Issues** | `list`, `read`, `search`, `create`, `update`, `archive`, `unarchive`, `delete` |
-| **Comments** | `create`, `delete` |
+| **Issues** | `list`, `read`, `search`, `find-branch`, `create`, `update`, `batch-update`, `archive`, `unarchive`, `delete` |
+| **Comments** | `create`, `update`, `resolve`, `unresolve`, `delete` |
 | **Relations** | `create` (blocks, blocked-by, related, duplicate, similar), `delete` |
+| **Labels** | `list`, `create`, `update`, `delete` (groups, parent labels, team-scoped) |
 | **Projects** | `list`, `read`, `create` |
 | **Milestones** | `list`, `read`, `create`, `update`, `delete` |
 | **Cycles** | `list`, `read` |
 | **Documents** | `list`, `read`, `create`, `update`, `delete` |
 | **Teams** | `list`, `read`, `create`, `update`, `delete`, `members add`, `members remove` |
-| **Users / Labels** | `list` |
+| **Users** | `list` |
 | **File embeds** | `upload`, `download` |
 
 Every command supports `--help` for full details. Most flags accept human-readable names — `--team ENG`, `--assignee "Jane Doe"`, `--labels "Bug,P0"` — no UUIDs required.

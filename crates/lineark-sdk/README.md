@@ -164,11 +164,21 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 |--------|-------------|
 | `issue_create(input)` | Create an issue |
 | `issue_update(input, id)` | Update an issue |
+| `issue_batch_update(input, ids)` | Batch update multiple issues |
 | `issue_archive(trash, id)` | Archive an issue |
 | `issue_unarchive(id)` | Unarchive a previously archived issue |
 | `issue_delete(permanently, id)` | Delete an issue |
+| `issue_vcs_branch_search(branch)` | Find issue by Git branch name |
 | `comment_create(input)` | Create a comment |
+| `comment_update(input, id)` | Update a comment |
+| `comment_resolve(input, id)` | Resolve a comment thread |
+| `comment_unresolve(id)` | Unresolve a comment thread |
 | `comment_delete(id)` | Delete a comment |
+| `issue_label_create(input)` | Create an issue label |
+| `issue_label_update(input, id)` | Update an issue label |
+| `issue_label_delete(id)` | Delete an issue label |
+| `issue_relation_create(override_created_at, input)` | Create an issue relation |
+| `issue_relation_delete(id)` | Delete an issue relation |
 | `document_create(input)` | Create a document |
 | `document_update(input, id)` | Update a document |
 | `document_delete(id)` | Delete a document |
@@ -183,8 +193,6 @@ let payload = client.issue_create::<Issue>(IssueCreateInput {
 | `team_delete(id)` | Delete a team |
 | `team_membership_create(input)` | Create a team membership |
 | `team_membership_delete(also_leave_parent_teams, id)` | Delete a team membership |
-| `issue_relation_create(override_created_at, input)` | Create an issue relation |
-| `issue_relation_delete(id)` | Delete an issue relation |
 | `file_upload(meta, public, size, type, name)` | Request a signed upload URL |
 | `image_upload_from_url(url)` | Upload image from URL |
 
