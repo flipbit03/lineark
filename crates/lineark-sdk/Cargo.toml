@@ -25,16 +25,11 @@ tempfile = "3"
 test-with = { version = "0.15", default-features = false, features = ["runtime"] }
 libtest-with = "0.8.1-13"
 uuid = { version = "1", features = ["v4"] }
+lineark-test-utils = { path = "../lineark-test-utils" }
 
 [[test]]
 name = "online"
 harness = false
 
-[[test]]
-name = "blocking_online"
-harness = false
-required-features = ["blocking"]
-
 [features]
 default = []
-blocking = []

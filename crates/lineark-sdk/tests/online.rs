@@ -7,130 +7,10 @@
 
 use lineark_sdk::generated::types::*;
 use lineark_sdk::Client;
-
-fn no_online_test_token() -> Option<String> {
-    let path = home::home_dir()?.join(".linear_api_token_test");
-    if path.exists() {
-        None
-    } else {
-        Some("~/.linear_api_token_test not found".to_string())
-    }
-}
-
-fn test_token() -> String {
-    let path = home::home_dir()
-        .expect("could not determine home directory")
-        .join(".linear_api_token_test");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
-        .trim()
-        .to_string()
-}
+use lineark_test_utils::*;
 
 fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create test client")
-}
-
-/// RAII guard — permanently deletes a team on drop.
-/// Uses a dedicated thread+runtime since Drop can't be async.
-struct TeamGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for TeamGuard {
-    fn drop(&mut self) {
-        let token = self.token.clone();
-        let id = self.id.clone();
-        let _ = std::thread::spawn(move || {
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                if let Ok(client) = Client::from_token(token) {
-                    let _ = client.team_delete(id).await;
-                }
-            });
-        })
-        .join();
-    }
-}
-
-/// RAII guard — permanently deletes an issue on drop.
-struct IssueGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for IssueGuard {
-    fn drop(&mut self) {
-        let token = self.token.clone();
-        let id = self.id.clone();
-        let _ = std::thread::spawn(move || {
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                if let Ok(client) = Client::from_token(token) {
-                    let _ = client.issue_delete::<Issue>(Some(true), id).await;
-                }
-            });
-        })
-        .join();
-    }
-}
-
-/// RAII guard — permanently deletes a document on drop.
-struct DocumentGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for DocumentGuard {
-    fn drop(&mut self) {
-        let token = self.token.clone();
-        let id = self.id.clone();
-        let _ = std::thread::spawn(move || {
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                if let Ok(client) = Client::from_token(token) {
-                    let _ = client.document_delete::<Document>(id).await;
-                }
-            });
-        })
-        .join();
-    }
-}
-
-/// RAII guard — deletes an issue label on drop.
-struct LabelGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for LabelGuard {
-    fn drop(&mut self) {
-        let token = self.token.clone();
-        let id = self.id.clone();
-        let _ = std::thread::spawn(move || {
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                if let Ok(client) = Client::from_token(token) {
-                    let _ = client.issue_label_delete(id).await;
-                }
-            });
-        })
-        .join();
-    }
-}
-
-/// Helper: create a fresh test team and return its ID + RAII guard.
-async fn create_test_team(client: &Client) -> (String, TeamGuard) {
-    use lineark_sdk::generated::inputs::TeamCreateInput;
-    let unique = format!("[test] sdk {}", &uuid::Uuid::new_v4().to_string()[..8]);
-    let input = TeamCreateInput {
-        name: Some(unique),
-        ..Default::default()
-    };
-    let team = client.team_create::<Team>(None, input).await.unwrap();
-    let team_id = team.id.clone().unwrap();
-    let guard = TeamGuard {
-        token: test_token(),
-        id: team_id.clone(),
-    };
-    (team_id, guard)
 }
 
 test_with::tokio_runner!(online);
@@ -164,7 +44,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn teams_returns_at_least_one_team() {
         let client = test_client();
-        let (_team_id, _team_guard) = create_test_team(&client).await;
+        let _team = create_test_team(&client).await;
         let conn = client.teams::<Team>().first(10).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
@@ -179,7 +59,8 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_by_id() {
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
         let team = client.team::<Team>(team_id.clone()).await.unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -187,7 +68,8 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_fields_deserialize_correctly() {
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
         let team = client.team::<Team>(team_id).await.unwrap();
         assert!(team.id.is_some());
         assert!(team.key.is_some());
@@ -265,10 +147,11 @@ mod online {
             color: Some("#eb5757".to_string()),
             ..Default::default()
         };
-        let label = client
-            .issue_label_create::<IssueLabel>(None, input)
-            .await
-            .unwrap();
+        let label = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_label_create::<IssueLabel>(None, input).await }
+        })
+        .await;
         let label_id = label.id.clone().unwrap();
         let _label_guard = LabelGuard {
             token: test_token(),
@@ -472,7 +355,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue with a unique title.
         let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
@@ -482,7 +366,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -490,28 +378,27 @@ mod online {
         };
 
         // Linear's search index is eventually consistent — retry with generous backoff.
-        // Issues in freshly-created teams may take longer to appear in search.
-        let mut matched = false;
-        for i in 0..12 {
-            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 2 } else { 5 })).await;
-            let found = match client
-                .search_issues::<IssueSearchResult>(&unique)
-                .first(5)
-                .send()
-                .await
-            {
-                Ok(v) => v,
-                Err(_) => continue, // rate-limited or transient error — retry
-            };
-            matched = found
-                .nodes
-                .iter()
-                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
-            if matched {
-                break;
-            }
-        }
-        assert!(matched, "search_issues(term) should find the created issue");
+        let search_unique = unique.clone();
+        let result = retry_search(
+            || {
+                client
+                    .search_issues::<IssueSearchResult>(&search_unique)
+                    .first(5)
+                    .send()
+            },
+            |conn| {
+                conn.nodes.iter().any(|n| {
+                    n.title
+                        .as_deref()
+                        .is_some_and(|t| t.contains(&search_unique))
+                })
+            },
+        )
+        .await;
+        assert!(
+            result.is_some(),
+            "search_issues(term) should find the created issue"
+        );
 
         // Search for nonsense — should NOT find it.
         let not_found = client
@@ -541,7 +428,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue with a unique title in the first team.
         let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
@@ -551,7 +439,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -559,28 +451,29 @@ mod online {
         };
 
         // Linear's search index is eventually consistent — retry with generous backoff.
-        let mut found = false;
-        for _ in 0..12 {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            let with_team = match client
-                .search_issues::<IssueSearchResult>(&unique)
-                .first(5)
-                .team_id(&team_id)
-                .send()
-                .await
-            {
-                Ok(v) => v,
-                Err(_) => continue, // rate-limited or transient error — retry
-            };
-            found = with_team
-                .nodes
-                .iter()
-                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
-            if found {
-                break;
-            }
-        }
-        assert!(found, "search with correct team_id should find the issue");
+        let search_unique = unique.clone();
+        let search_team_id = team_id.clone();
+        let result = retry_search(
+            || {
+                client
+                    .search_issues::<IssueSearchResult>(&search_unique)
+                    .first(5)
+                    .team_id(&search_team_id)
+                    .send()
+            },
+            |conn| {
+                conn.nodes.iter().any(|n| {
+                    n.title
+                        .as_deref()
+                        .is_some_and(|t| t.contains(&search_unique))
+                })
+            },
+        )
+        .await;
+        assert!(
+            result.is_some(),
+            "search with correct team_id should find the issue"
+        );
 
         // Search with a fake team_id — should NOT find it.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -652,7 +545,8 @@ mod online {
 
         let client = test_client();
 
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue.
         let input = IssueCreateInput {
@@ -662,7 +556,11 @@ mod online {
             priority: Some(4), // Low
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -684,7 +582,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to update.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_update".to_string()),
@@ -692,7 +591,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -726,7 +629,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to archive.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
@@ -734,7 +638,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -767,7 +675,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to comment on.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         let issue_input = IssueCreateInput {
             title: Some("[test] SDK comment_create".to_string()),
@@ -775,7 +684,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -788,10 +701,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         assert!(comment_entity.id.is_some());
 
         // Clean up: permanently delete the issue.
@@ -826,7 +740,8 @@ mod online {
         let client = test_client();
 
         // Create a team to associate the document with (Linear requires at least one parent).
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create a document.
         let input = DocumentCreateInput {
@@ -835,7 +750,11 @@ mod online {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let doc_entity = client.document_create::<Document>(input).await.unwrap();
+        let doc_entity = retry_create(|| {
+            let input = input.clone();
+            async { client.document_create::<Document>(input).await }
+        })
+        .await;
         let doc_id = doc_entity.id.clone().unwrap();
         let _doc_guard = DocumentGuard {
             token: test_token(),
@@ -890,7 +809,8 @@ mod online {
         let client = test_client();
 
         // Create a team for the test issues.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create two issues to relate.
         let input_a = IssueCreateInput {
@@ -899,7 +819,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let entity_a = retry_create(|| {
+            let input_a = input_a.clone();
+            async { client.issue_create::<Issue>(input_a).await }
+        })
+        .await;
         let issue_a_id = entity_a.id.clone().unwrap();
         let _issue_a_guard = IssueGuard {
             token: test_token(),
@@ -912,7 +836,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let entity_b = retry_create(|| {
+            let input_b = input_b.clone();
+            async { client.issue_create::<Issue>(input_b).await }
+        })
+        .await;
         let issue_b_id = entity_b.id.clone().unwrap();
         let _issue_b_guard = IssueGuard {
             token: test_token(),
@@ -926,10 +854,15 @@ mod online {
             r#type: Some(IssueRelationType::Blocks),
             ..Default::default()
         };
-        let relation_entity = client
-            .issue_relation_create::<IssueRelation>(None, relation_input)
-            .await
-            .unwrap();
+        let relation_entity = retry_create(|| {
+            let relation_input = relation_input.clone();
+            async {
+                client
+                    .issue_relation_create::<IssueRelation>(None, relation_input)
+                    .await
+            }
+        })
+        .await;
         assert!(relation_entity.id.is_some(), "relation should have an id");
 
         // Verify the relation is queryable.
@@ -1038,7 +971,8 @@ mod online {
         use lineark_sdk::generated::inputs::{IssueCreateInput, IssueUpdateInput};
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create two issues.
         let input_a = IssueCreateInput {
@@ -1050,7 +984,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let entity_a = retry_create(|| {
+            let input_a = input_a.clone();
+            async { client.issue_create::<Issue>(input_a).await }
+        })
+        .await;
         let id_a = entity_a.id.clone().unwrap();
         let _guard_a = IssueGuard {
             token: test_token(),
@@ -1066,7 +1004,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let entity_b = retry_create(|| {
+            let input_b = input_b.clone();
+            async { client.issue_create::<Issue>(input_b).await }
+        })
+        .await;
         let id_b = entity_b.id.clone().unwrap();
         let _guard_b = IssueGuard {
             token: test_token(),
@@ -1105,7 +1047,11 @@ mod online {
             name: Some(unique.clone()),
             ..Default::default()
         };
-        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team = retry_create(|| {
+            let input = input.clone();
+            async { client.team_create::<Team>(None, input).await }
+        })
+        .await;
         let team_id = team.id.clone().unwrap();
         let _team_guard = TeamGuard {
             token: test_token(),
@@ -1151,7 +1097,11 @@ mod online {
             name: Some(unique),
             ..Default::default()
         };
-        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team = retry_create(|| {
+            let input = input.clone();
+            async { client.team_create::<Team>(None, input).await }
+        })
+        .await;
         let team_id = team.id.clone().unwrap();
         let _team_guard = TeamGuard {
             token: test_token(),
@@ -1175,10 +1125,15 @@ mod online {
             user_id: Some(other_user_id),
             ..Default::default()
         };
-        let membership = client
-            .team_membership_create::<TeamMembership>(membership_input)
-            .await
-            .unwrap();
+        let membership = retry_create(|| {
+            let membership_input = membership_input.clone();
+            async {
+                client
+                    .team_membership_create::<TeamMembership>(membership_input)
+                    .await
+            }
+        })
+        .await;
         let membership_id = membership.id.clone().unwrap();
         assert!(!membership_id.is_empty());
 
@@ -1201,7 +1156,8 @@ mod online {
         };
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1213,7 +1169,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -1226,10 +1186,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         let comment_id = comment_entity.id.clone().unwrap();
         assert_eq!(comment_entity.body.as_deref(), Some("Original body"));
 
@@ -1256,7 +1217,8 @@ mod online {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1268,7 +1230,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -1281,10 +1247,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         let comment_id = comment_entity.id.clone().unwrap();
         assert!(
             comment_entity.resolved_at.is_none(),
@@ -1325,7 +1292,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team(&client).await;
+        let team_id = team.id.clone();
 
         // Create an issue so we can look up its branchName.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
@@ -1335,7 +1303,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),

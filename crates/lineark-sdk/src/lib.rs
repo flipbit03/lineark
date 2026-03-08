@@ -1,8 +1,6 @@
 #![recursion_limit = "256"]
 
 pub mod auth;
-#[cfg(feature = "blocking")]
-pub mod blocking_client;
 pub mod client;
 pub mod error;
 pub mod field_selection;

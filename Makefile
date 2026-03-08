@@ -16,6 +16,7 @@ check:
 	cargo clippy --workspace -- -D warnings
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 	cargo build --workspace
+	cargo test --workspace --no-run
 
 # Run offline tests (unit + integration). Safe, fast, no API token needed.
 test:
@@ -25,4 +26,3 @@ test:
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
 test-online:
 	cargo test --workspace --test online -- --test-threads=1
-	cargo test -p lineark-sdk --features blocking --test blocking_online -- --test-threads=1

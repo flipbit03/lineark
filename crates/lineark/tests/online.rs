@@ -5,81 +5,14 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project, Team};
+use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project};
 use lineark_sdk::Client;
+use lineark_test_utils::*;
 use predicates::prelude::*;
-
-fn no_online_test_token() -> Option<String> {
-    let path = home::home_dir()?.join(".linear_api_token_test");
-    if path.exists() {
-        None
-    } else {
-        Some("~/.linear_api_token_test not found".to_string())
-    }
-}
-
-fn api_token() -> String {
-    let path = home::home_dir()
-        .expect("could not determine home directory")
-        .join(".linear_api_token_test");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
-        .trim()
-        .to_string()
-}
 
 fn lineark() -> Command {
     #[allow(deprecated)]
     Command::cargo_bin("lineark").unwrap()
-}
-
-/// Delete a team by its UUID to keep the workspace clean.
-fn delete_team(team_id: &str) {
-    let client = Client::from_token(api_token()).unwrap();
-    let id = team_id.to_string();
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(async { client.team_delete(id).await.unwrap() });
-}
-
-/// Permanently delete an issue by its UUID to keep the workspace clean.
-fn delete_issue(issue_id: &str) {
-    let client = Client::from_token(api_token()).unwrap();
-    let id = issue_id.to_string();
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
-}
-
-/// Retry a closure up to `max_attempts` times with exponential backoff.
-/// Delays: 0s, 1s, 2s, 4s, 8s, 10s, 10s, ... (capped at 10s).
-/// Returns `Ok(T)` on the first successful attempt, or `Err(last_error_message)`.
-fn retry_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
-where
-    F: FnMut() -> Result<T, String>,
-{
-    let mut last_err = String::new();
-    for attempt in 0..max_attempts {
-        let delay = if attempt == 0 {
-            0
-        } else {
-            std::cmp::min(1u64 << (attempt - 1), 10)
-        };
-        if delay > 0 {
-            std::thread::sleep(std::time::Duration::from_secs(delay));
-        }
-        match f() {
-            Ok(val) => return Ok(val),
-            Err(e) => last_err = e,
-        }
-    }
-    Err(last_err)
-}
-
-/// Wait for the Linear API to propagate recently created resources.
-/// Linear is eventually consistent — created resources may not be queryable immediately.
-fn settle() {
-    std::thread::sleep(std::time::Duration::from_secs(5));
 }
 
 /// Run a lineark CLI command with retry logic.
@@ -109,108 +42,11 @@ fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
         .expect("failed to execute lineark")
 }
 
-/// RAII guard — permanently deletes a team on drop.
-/// Ensures cleanup even when the test panics mid-way.
-struct TeamGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for TeamGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.team_delete(id).await });
-    }
-}
-
-/// RAII guard — permanently deletes an issue on drop.
-struct IssueGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for IssueGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.issue_delete::<Issue>(Some(true), id).await });
-    }
-}
-
-/// RAII guard — permanently deletes a project on drop.
-struct ProjectGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for ProjectGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.project_delete::<Project>(id).await });
-    }
-}
-
-/// RAII guard — deletes an issue label on drop.
-struct LabelGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for LabelGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.issue_label_delete(id).await });
-    }
-}
-
-/// Helper: create a fresh test team via the SDK and return (key, id, guard).
-fn create_test_team() -> (String, String, TeamGuard) {
-    use lineark_sdk::generated::inputs::TeamCreateInput;
-    let token = api_token();
-    let client = Client::from_token(token.clone()).unwrap();
+/// Helper: create a fresh test team via the SDK.
+fn create_test_team() -> TestTeam {
+    let client = Client::from_token(test_token()).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let team: Team = rt.block_on(async {
-        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
-        let unique = format!("[test] cli {suffix}");
-        // Use a unique key so issue identifiers (e.g. T1A2B3C4-1) don't collide
-        // across test runs. Linear's search index gets confused when many teams
-        // reuse the same auto-generated key "TES".
-        let key = format!("T{}", &suffix[..5]).to_uppercase();
-        let input = TeamCreateInput {
-            name: Some(unique),
-            key: Some(key),
-            ..Default::default()
-        };
-        client.team_create::<Team>(None, input).await.unwrap()
-    });
-    let team_id = team.id.clone().unwrap();
-    let team_key = team.key.clone().unwrap();
-    let guard = TeamGuard {
-        token,
-        id: team_id.clone(),
-    };
-    // Wait for the team to propagate through Linear's eventually-consistent backend.
-    settle();
-    (team_key, team_id, guard)
+    rt.block_on(lineark_test_utils::create_test_team(&client))
 }
 
 test_with::runner!(online);
@@ -221,7 +57,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn whoami_json_returns_valid_json() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "whoami"])
             .output()
@@ -236,7 +72,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn whoami_human_shows_user_info() {
-        let token = api_token();
+        let token = test_token();
         lineark()
             .args(["--api-token", &token, "--format", "human", "whoami"])
             .assert()
@@ -248,7 +84,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "teams", "list"])
             .output()
@@ -261,7 +97,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_list_human_shows_table() {
-        let token = api_token();
+        let token = test_token();
         lineark()
             .args(["--api-token", &token, "--format", "human", "teams", "list"])
             .assert()
@@ -273,7 +109,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn users_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "users", "list"])
             .output()
@@ -288,7 +124,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn labels_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "labels", "list"])
             .output()
@@ -302,7 +138,7 @@ mod online {
     /// Regression: labels list must include team field (#65)
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn labels_list_json_includes_team_field() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "labels", "list"])
             .output()
@@ -328,7 +164,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn labels_create_update_and_delete() {
-        let token = api_token();
+        let token = test_token();
 
         // Create a workspace-level label.
         let unique_name = format!("[test] lbl-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
@@ -411,7 +247,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn labels_group_lifecycle() {
-        let token = api_token();
+        let token = test_token();
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
 
         // 1. Create a group label with --group.
@@ -586,8 +422,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_spaced_label_and_read_back() {
-        let token = api_token();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create a label with a space in the name.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
@@ -684,7 +521,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "issues", "list"])
             .output()
@@ -717,7 +554,7 @@ mod online {
     /// Regression: issues list JSON must be flat — no nested objects (#65)
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_list_json_is_flat() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -774,7 +611,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_search_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -814,7 +651,7 @@ mod online {
     /// Regression: issues search JSON must be flat — same as list (#65)
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_search_json_is_flat() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -858,13 +695,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_update_and_archive() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI create+update {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -940,13 +778,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_archive_and_unarchive_cycle() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI archive/unarchive {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -1090,13 +929,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_unarchive_by_human_identifier() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] unarchive by identifier {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -1143,7 +983,7 @@ mod online {
         assert!(output.status.success(), "archive should succeed");
 
         // Wait for the archive to propagate before searching.
-        settle();
+        std::thread::sleep(std::time::Duration::from_secs(5));
 
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
@@ -1187,13 +1027,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_permanently() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI issues delete {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue to delete.
         let output = lineark()
@@ -1253,13 +1094,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_delete_trash_and_verify() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI issues trash {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -1322,7 +1164,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn documents_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -1342,13 +1184,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn documents_create_read_update_and_delete() {
-        let token = api_token();
+        let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let issue_name = format!("[test] doc parent issue {suffix}");
         let doc_name = format!("[test] CLI documents CRUD {suffix}");
 
         // Create a team + issue to associate the document with.
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1482,7 +1325,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn cycles_list_json_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args(["--api-token", &token, "--format", "json", "cycles", "list"])
             .output()
@@ -1495,7 +1338,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn cycles_list_active_json() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -1531,9 +1374,10 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn cycles_list_with_team_filter() {
-        let token = api_token();
+        let token = test_token();
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1560,9 +1404,10 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn cycles_list_around_active() {
-        let token = api_token();
+        let token = test_token();
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1597,7 +1442,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn cycles_read_by_uuid() {
-        let token = api_token();
+        let token = test_token();
 
         // Get a cycle UUID from the list.
         let output = lineark()
@@ -1638,7 +1483,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn embeds_upload_and_download_round_trip() {
-        let token = api_token();
+        let token = test_token();
         let dir = tempfile::tempdir().unwrap();
 
         // Create a temp file to upload.
@@ -1708,7 +1553,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn embeds_download_overwrite_flag() {
-        let token = api_token();
+        let token = test_token();
         let dir = tempfile::tempdir().unwrap();
 
         // Create and upload a file.
@@ -1800,10 +1645,11 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_relations() {
-        let token = api_token();
+        let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create two issues.
         let output = lineark()
@@ -1858,7 +1704,7 @@ mod online {
         {
             use lineark_sdk::generated::enums::IssueRelationType;
             use lineark_sdk::generated::inputs::IssueRelationCreateInput;
-            let client = Client::from_token(api_token()).unwrap();
+            let client = Client::from_token(test_token()).unwrap();
             let input = IssueRelationCreateInput {
                 issue_id: Some(issue_a_id.clone()),
                 related_issue_id: Some(issue_b_id.clone()),
@@ -1926,10 +1772,11 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_shows_children_and_comments() {
-        let token = api_token();
+        let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create a parent issue.
         let output = lineark()
@@ -2062,9 +1909,10 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_search_with_team_filter() {
-        let token = api_token();
+        let token = test_token();
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Search with --team filter.
         let output = lineark()
@@ -2103,7 +1951,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_search_with_status_filter() {
-        let token = api_token();
+        let token = test_token();
 
         // Search with --status filter.
         let output = lineark()
@@ -2144,10 +1992,11 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_parent_and_clear_parent() {
-        let token = api_token();
+        let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create parent.
         let output = lineark()
@@ -2252,17 +2101,18 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn project_milestones_full_crud() {
-        let token = api_token();
+        let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let project_label = format!("[test] milestones CRUD project {suffix}");
         let milestone_name = format!("[test] Beta Release {suffix}");
         let milestone_updated = format!("[test] GA Release {suffix}");
 
         // Create a team (projectCreate requires teamIds).
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create a test project via the SDK.
-        let client = Client::from_token(api_token()).unwrap();
+        let client = Client::from_token(test_token()).unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let project: Project = rt.block_on(async {
             let input = ProjectCreateInput {
@@ -2433,13 +2283,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_and_delete() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI projects create {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create a project via CLI (with retry for transient "conflict on insert" errors).
         let output = run_lineark_with_retry(&[
@@ -2509,7 +2360,7 @@ mod online {
         .expect("projects list should include the created project (after retries)");
 
         // Clean up: delete the test project via SDK.
-        let client = Client::from_token(api_token()).unwrap();
+        let client = Client::from_token(test_token()).unwrap();
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             client.project_delete::<Project>(project_id).await.unwrap();
         });
@@ -2519,7 +2370,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_list_json_includes_lead_field() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -2553,7 +2404,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_list_led_by_me_returns_array() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -2583,13 +2434,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_read_by_id_and_name() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI projects read {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create a project with --lead me (with retry for transient API errors).
         let output = run_lineark_with_retry(&[
@@ -2690,7 +2542,7 @@ mod online {
         .expect("projects read by name should resolve correctly (after retries)");
 
         // Clean up.
-        let client = Client::from_token(api_token()).unwrap();
+        let client = Client::from_token(test_token()).unwrap();
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             client.project_delete::<Project>(project_id).await.unwrap();
         });
@@ -2700,13 +2552,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn projects_create_with_members_and_read_back() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI members test {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create a project with --lead me --members me (with retry for transient API errors).
         let output = run_lineark_with_retry(&[
@@ -2785,7 +2638,7 @@ mod online {
         );
 
         // Clean up.
-        let client = Client::from_token(api_token()).unwrap();
+        let client = Client::from_token(test_token()).unwrap();
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             client.project_delete::<Project>(project_id).await.unwrap();
         });
@@ -2795,13 +2648,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_assignee_me() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI assignee me {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Get my user ID.
         let output = lineark()
@@ -2871,13 +2725,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_update_with_assignee_me() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI update assignee me {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Get my user ID.
         let output = lineark()
@@ -2972,13 +2827,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_on_issue() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI comments_create {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -3040,13 +2896,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_create_and_delete() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI comments_delete {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -3175,7 +3032,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_create_and_delete() {
-        let token = api_token();
+        let token = test_token();
 
         // Create a team via CLI.
         let unique_name = format!(
@@ -3241,7 +3098,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_create_update_read_and_delete() {
-        let token = api_token();
+        let token = test_token();
 
         // Create a team.
         let unique_name = format!("[test] tm-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
@@ -3344,7 +3201,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_members_add_and_remove() {
-        let token = api_token();
+        let token = test_token();
 
         // Create a team (the authenticated user becomes creator + auto-member).
         let unique_name = format!(
@@ -3545,8 +3402,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocks() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3576,8 +3434,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_blocked_by() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // "A --blocked-by B" means B blocks A.
@@ -3608,8 +3467,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_related() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3639,8 +3499,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_duplicate() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3670,8 +3531,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_similar() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3701,8 +3563,9 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn relations_create_and_delete() {
-        let token = api_token();
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let token = test_token();
+        let team = create_test_team();
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // Create a relation.
@@ -3759,9 +3622,10 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn comments_update_resolve_unresolve_lifecycle() {
-        let token = api_token();
+        let token = test_token();
         let client = Client::from_token(token.clone()).unwrap();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create an issue via SDK (more reliable than CLI for setup).
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
@@ -3915,9 +3779,10 @@ mod online {
     fn comments_resolve_with_resolving_comment() {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 
-        let token = api_token();
+        let token = test_token();
         let client = Client::from_token(token.clone()).unwrap();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create an issue via SDK.
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
@@ -4016,9 +3881,10 @@ mod online {
     fn issues_find_branch_returns_issue() {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
-        let token = api_token();
+        let token = test_token();
         let client = Client::from_token(&token).unwrap();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create an issue via SDK to get the branch name.
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -4074,7 +3940,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_find_branch_no_match_exits_nonzero() {
-        let token = api_token();
+        let token = test_token();
         lineark()
             .args([
                 "--api-token",
@@ -4092,9 +3958,10 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_list_with_project_filter() {
-        let token = api_token();
+        let token = test_token();
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create a project for the test (unique name to avoid conflicts).
         let project_label = format!(
@@ -4215,13 +4082,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_create_with_estimate() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI estimate flag {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue with --estimate.
         let output = lineark()
@@ -4285,7 +4153,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_list_json_includes_estimate_field() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -4313,7 +4181,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_search_json_includes_estimate_field() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",
@@ -4342,13 +4210,14 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_read_json_includes_estimate_field() {
-        let token = api_token();
+        let token = test_token();
         let unique_name = format!(
             "[test] CLI estimate read {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
 
-        let (team_key, _team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -4416,9 +4285,10 @@ mod online {
     fn issues_batch_update_changes_priority() {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
-        let token = api_token();
+        let token = test_token();
         let client = Client::from_token(&token).unwrap();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create two issues via SDK.
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -4493,9 +4363,10 @@ mod online {
     fn issues_batch_update_changes_status() {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
-        let token = api_token();
+        let token = test_token();
         let client = Client::from_token(&token).unwrap();
-        let (_team_key, team_id, _team_guard) = create_test_team();
+        let team = create_test_team();
+        let team_id = team.id.clone();
 
         // Create two issues.
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -4568,7 +4439,7 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn issues_batch_update_invalid_id_fails() {
-        let token = api_token();
+        let token = test_token();
         let output = lineark()
             .args([
                 "--api-token",

@@ -854,6 +854,7 @@ dependencies = [
  "home",
  "libtest-with",
  "lineark-sdk",
+ "lineark-test-utils",
  "percent-encoding",
  "predicates",
  "reqwest",
@@ -907,6 +908,7 @@ dependencies = [
  "home",
  "libtest-with",
  "lineark-derive",
+ "lineark-test-utils",
  "reqwest",
  "serde",
  "serde_json",
@@ -916,6 +918,16 @@ dependencies = [
  "url",
  "uuid",
  "wiremock",
+]
+
+[[package]]
+name = "lineark-test-utils"
+version = "0.0.0"
+dependencies = [
+ "home",
+ "lineark-sdk",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
