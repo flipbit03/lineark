@@ -1137,7 +1137,8 @@ mod online {
         assert!(output.status.success(), "archive should succeed");
 
         // Wait for the archive to propagate before searching.
-        settle();
+        // Linear's search index is especially slow for archived issues on CI.
+        std::thread::sleep(std::time::Duration::from_secs(5));
 
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
@@ -1145,7 +1146,7 @@ mod online {
         //
         // Linear's search index is async — the newly created+archived issue may
         // not be searchable immediately. Retry with generous backoff to avoid flakiness.
-        let stdout = retry_with_backoff(10, || {
+        let stdout = retry_with_backoff(12, || {
             let output = lineark()
                 .args([
                     "--api-token",
