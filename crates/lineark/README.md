@@ -45,8 +45,9 @@ echo "lin_api_..." > ~/.linear_api_token_freelance  # "freelance" API token
 Then switch with `--profile`:
 
 ```sh
-lineark --profile work issues list --mine
-lineark --profile freelance whoami
+lineark whoami                             # uses ~/.linear_api_token (default)
+lineark --profile work issues list --mine  # uses ~/.linear_api_token_work
+lineark --profile freelance whoami         # uses ~/.linear_api_token_freelance
 ```
 
 ## Usage
