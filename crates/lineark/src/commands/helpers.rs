@@ -409,3 +409,27 @@ pub async fn resolve_cycle_id(
         available.join(", ")
     ))
 }
+
+/// Parse a priority value from either a number (0-4) or a name (none, urgent, high, medium/normal, low).
+pub fn parse_priority(s: &str) -> Result<i64, String> {
+    let s = s.trim();
+    // Try numeric first.
+    if let Ok(n) = s.parse::<i64>() {
+        if (0..=4).contains(&n) {
+            return Ok(n);
+        }
+        return Err(format!(
+            "invalid priority '{n}': valid values are 0-4 or none, urgent, high, medium, low"
+        ));
+    }
+    match s.to_ascii_lowercase().as_str() {
+        "none" => Ok(0),
+        "urgent" => Ok(1),
+        "high" => Ok(2),
+        "medium" | "normal" => Ok(3),
+        "low" => Ok(4),
+        _ => Err(format!(
+            "invalid priority '{s}': valid values are 0-4 or none, urgent, high, medium, low"
+        )),
+    }
+}

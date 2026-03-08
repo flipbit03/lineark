@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
 use super::helpers::{
-    resolve_project_id, resolve_team_ids, resolve_user_id_or_me, resolve_user_ids_or_me,
+    parse_priority, resolve_project_id, resolve_team_ids, resolve_user_id_or_me,
+    resolve_user_ids_or_me,
 };
-use super::issues::parse_priority;
 use crate::output::{self, Format};
 
 /// Manage projects.
