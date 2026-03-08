@@ -591,21 +591,22 @@ mod online {
                 "assignee should be a flat string, got: {}",
                 issue["assignee"]
             );
-            // id and priority (numeric) must be absent
+            // id must be absent
             assert!(
                 issue.get("id").is_none(),
                 "id (UUID) should not be in list output"
             );
+            // priority should be a text label, not numeric; priorityLabel should be gone
             assert!(
-                issue.get("priority").is_none(),
-                "priority (numeric) should not be in list output"
+                issue.get("priority").is_some_and(|v| v.is_string()),
+                "priority should be a text label in list output"
             );
-            // url and priorityLabel must be present
+            assert!(
+                issue.get("priorityLabel").is_none(),
+                "priorityLabel should not be in list output (renamed to priority)"
+            );
+            // url must be present
             assert!(issue.get("url").is_some(), "url should be in list output");
-            assert!(
-                issue.get("priorityLabel").is_some(),
-                "priorityLabel should be in list output"
-            );
         }
     }
 
@@ -685,8 +686,12 @@ mod online {
                 "id (UUID) should not be in search output"
             );
             assert!(
-                issue.get("priority").is_none(),
-                "priority (numeric) should not be in search output"
+                issue.get("priority").is_some_and(|v| v.is_string()),
+                "priority should be a text label in search output"
+            );
+            assert!(
+                issue.get("priorityLabel").is_none(),
+                "priorityLabel should not be in search output (renamed to priority)"
             );
         }
     }
@@ -771,6 +776,153 @@ mod online {
         );
 
         // Clean up: permanently delete the issue.
+        delete_issue(issue_id);
+    }
+
+    // ── Issues create/update with textual priority names ───────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_with_textual_priority_and_update() {
+        let token = test_token();
+        let unique_name = format!(
+            "[test] CLI textual priority {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+
+        let team = create_test_team();
+        let team_key = team.key.clone();
+
+        // Create with --priority urgent (textual).
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "urgent",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "create with --priority urgent should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let issue_id = created["id"]
+            .as_str()
+            .expect("created issue should have id");
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.to_string(),
+        };
+
+        // Read back and verify "priority": "Urgent".
+        let read_output = retry_with_backoff(5, || {
+            let out = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    issue_id,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            if !out.status.success() {
+                return Err(format!(
+                    "issues read failed: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                ));
+            }
+            let json: serde_json::Value =
+                serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())?;
+            let prio = json.get("priority").and_then(|v| v.as_str()).unwrap_or("");
+            if prio == "Urgent" {
+                Ok(out)
+            } else {
+                Err(format!("priority is '{prio}', expected 'Urgent'"))
+            }
+        })
+        .expect("reading issue with Urgent priority should succeed");
+        let read_json: serde_json::Value = serde_json::from_slice(&read_output.stdout).unwrap();
+        assert_eq!(
+            read_json.get("priority").and_then(|v| v.as_str()),
+            Some("Urgent"),
+            "read should show priority as 'Urgent'"
+        );
+        // priorityLabel should not be in output.
+        assert!(
+            read_json.get("priorityLabel").is_none(),
+            "priorityLabel should not appear in read output"
+        );
+
+        // Update with --priority low (textual).
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                issue_id,
+                "--priority",
+                "low",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "update with --priority low should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Read back and verify "priority": "Low".
+        let read_output = retry_with_backoff(5, || {
+            let out = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "read",
+                    issue_id,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            if !out.status.success() {
+                return Err(format!(
+                    "issues read failed: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                ));
+            }
+            let json: serde_json::Value =
+                serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())?;
+            let prio = json.get("priority").and_then(|v| v.as_str()).unwrap_or("");
+            if prio == "Low" {
+                Ok(out)
+            } else {
+                Err(format!("priority is '{prio}', expected 'Low'"))
+            }
+        })
+        .expect("reading issue with Low priority should succeed");
+        let read_json: serde_json::Value = serde_json::from_slice(&read_output.stdout).unwrap();
+        assert_eq!(
+            read_json.get("priority").and_then(|v| v.as_str()),
+            Some("Low"),
+            "read should show priority as 'Low' after update"
+        );
+
+        // Clean up.
         delete_issue(issue_id);
     }
 

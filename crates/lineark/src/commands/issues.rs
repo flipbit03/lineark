@@ -16,6 +16,29 @@ use super::helpers::{
 };
 use crate::output::{self, Format};
 
+/// Parse a priority value from either a number (0-4) or a name (none, urgent, high, medium/normal, low).
+fn parse_priority(s: &str) -> Result<i64, String> {
+    // Try numeric first.
+    if let Ok(n) = s.parse::<i64>() {
+        if (0..=4).contains(&n) {
+            return Ok(n);
+        }
+        return Err(format!(
+            "invalid priority '{n}': valid values are 0-4 or none, urgent, high, medium, low"
+        ));
+    }
+    match s.to_ascii_lowercase().as_str() {
+        "none" => Ok(0),
+        "urgent" => Ok(1),
+        "high" => Ok(2),
+        "medium" | "normal" => Ok(3),
+        "low" => Ok(4),
+        _ => Err(format!(
+            "invalid priority '{s}': valid values are 0-4 or none, urgent, high, medium, low"
+        )),
+    }
+}
+
 /// Manage issues.
 #[derive(Debug, Args)]
 pub struct IssuesCmd {
@@ -72,8 +95,8 @@ pub enum IssuesAction {
     ///
     /// Examples:
     ///   lineark issues create "Fix the bug" --team ENG
-    ///   lineark issues create "Add feature" --team ENG --priority 2 --description "Details here"
-    ///   lineark issues create "Urgent fix" --team ENG --priority 1 --labels Bug,Frontend
+    ///   lineark issues create "Add feature" --team ENG --priority high --description "Details here"
+    ///   lineark issues create "Urgent fix" --team ENG -p urgent --labels Bug,Frontend
     ///   lineark issues create "My task" --team ENG --assignee me
     Create {
         /// Issue title.
@@ -87,8 +110,8 @@ pub enum IssuesAction {
         /// Comma-separated label names.
         #[arg(long, value_delimiter = ',')]
         labels: Option<Vec<String>>,
-        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        /// Priority: 0-4 or none, urgent, high, medium, low.
+        #[arg(short = 'p', long, value_parser = parse_priority)]
         priority: Option<i64>,
         /// Estimate points (valid values depend on the team's estimation scale).
         #[arg(short = 'e', long)]
@@ -145,7 +168,7 @@ pub enum IssuesAction {
     /// Batch update multiple issues at once. Returns the updated issues.
     ///
     /// Examples:
-    ///   lineark issues batch-update ENG-1 ENG-2 --priority 2
+    ///   lineark issues batch-update ENG-1 ENG-2 --priority high
     ///   lineark issues batch-update ENG-1 ENG-2 ENG-3 --status "In Progress"
     ///   lineark issues batch-update ENG-1 ENG-2 --assignee me --labels Bug --label-by adding
     BatchUpdate {
@@ -155,8 +178,8 @@ pub enum IssuesAction {
         /// New status name (resolved against the first issue's team workflow states).
         #[arg(short = 's', long)]
         status: Option<String>,
-        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        /// Priority: 0-4 or none, urgent, high, medium, low.
+        #[arg(short = 'p', long, value_parser = parse_priority)]
         priority: Option<i64>,
         /// Comma-separated label names. Behavior depends on --label-by.
         #[arg(long, value_delimiter = ',')]
@@ -181,7 +204,7 @@ pub enum IssuesAction {
     ///
     /// Examples:
     ///   lineark issues update ENG-123 --status "In Progress"
-    ///   lineark issues update ENG-123 --priority 1 --assignee "John Doe"
+    ///   lineark issues update ENG-123 --priority urgent --assignee "John Doe"
     ///   lineark issues update ENG-123 --labels Bug,Frontend --label-by adding
     Update {
         /// Issue identifier (e.g., ENG-123) or UUID.
@@ -189,8 +212,8 @@ pub enum IssuesAction {
         /// New status name (resolved against the issue's team workflow states).
         #[arg(short = 's', long)]
         status: Option<String>,
-        /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low.
-        #[arg(short = 'p', long, value_parser = clap::value_parser!(i64).range(0..=4))]
+        /// Priority: 0-4 or none, urgent, high, medium, low.
+        #[arg(short = 'p', long, value_parser = parse_priority)]
         priority: Option<i64>,
         /// Estimate points (valid values depend on the team's estimation scale).
         #[arg(short = 'e', long)]
@@ -245,7 +268,7 @@ pub enum LabelMode {
 struct IssueRow {
     identifier: String,
     title: String,
-    #[serde(rename = "priorityLabel")]
+    #[serde(rename = "priority")]
     #[tabled(rename = "priority")]
     priority_label: String,
     #[tabled(rename = "status")]
@@ -337,7 +360,7 @@ pub struct IssueSummary {
     pub id: Option<String>,
     pub identifier: Option<String>,
     pub title: Option<String>,
-    pub priority: Option<f64>,
+    #[serde(rename(serialize = "priority"))]
     pub priority_label: Option<String>,
     pub estimate: Option<f64>,
     pub url: Option<String>,
@@ -359,7 +382,7 @@ pub struct SearchSummary {
     pub id: Option<String>,
     pub identifier: Option<String>,
     pub title: Option<String>,
-    pub priority: Option<f64>,
+    #[serde(rename(serialize = "priority"))]
     pub priority_label: Option<String>,
     pub estimate: Option<f64>,
     pub url: Option<String>,
@@ -385,7 +408,7 @@ pub struct IssueDetail {
     pub identifier: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
-    pub priority: Option<f64>,
+    #[serde(rename(serialize = "priority"))]
     pub priority_label: Option<String>,
     pub estimate: Option<f64>,
     pub url: Option<String>,
@@ -1128,6 +1151,37 @@ async fn resolve_state_id(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_priority_numeric_values() {
+        assert_eq!(parse_priority("0").unwrap(), 0);
+        assert_eq!(parse_priority("1").unwrap(), 1);
+        assert_eq!(parse_priority("4").unwrap(), 4);
+    }
+
+    #[test]
+    fn parse_priority_textual_values() {
+        assert_eq!(parse_priority("none").unwrap(), 0);
+        assert_eq!(parse_priority("urgent").unwrap(), 1);
+        assert_eq!(parse_priority("high").unwrap(), 2);
+        assert_eq!(parse_priority("medium").unwrap(), 3);
+        assert_eq!(parse_priority("normal").unwrap(), 3);
+        assert_eq!(parse_priority("low").unwrap(), 4);
+    }
+
+    #[test]
+    fn parse_priority_case_insensitive() {
+        assert_eq!(parse_priority("URGENT").unwrap(), 1);
+        assert_eq!(parse_priority("High").unwrap(), 2);
+        assert_eq!(parse_priority("LOW").unwrap(), 4);
+    }
+
+    #[test]
+    fn parse_priority_rejects_invalid() {
+        assert!(parse_priority("bogus").is_err());
+        assert!(parse_priority("5").is_err());
+        assert!(parse_priority("-1").is_err());
+    }
 
     #[test]
     fn format_estimate_none_returns_empty() {
