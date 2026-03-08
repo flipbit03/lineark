@@ -79,7 +79,7 @@ where
 /// Wait for the Linear API to propagate recently created resources.
 /// Linear is eventually consistent — created resources may not be queryable immediately.
 fn settle() {
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    std::thread::sleep(std::time::Duration::from_secs(5));
 }
 
 /// Run a lineark CLI command with retry logic.
@@ -1137,8 +1137,7 @@ mod online {
         assert!(output.status.success(), "archive should succeed");
 
         // Wait for the archive to propagate before searching.
-        // Linear's search index is especially slow for archived issues on CI.
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        settle();
 
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
