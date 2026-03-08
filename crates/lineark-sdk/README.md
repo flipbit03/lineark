@@ -1,6 +1,6 @@
 # lineark-sdk
 
-Typed, async-first Rust SDK for the [Linear](https://linear.app) GraphQL API.
+Typed, async Rust SDK for the [Linear](https://linear.app) GraphQL API.
 
 Part of the [lineark](https://github.com/flipbit03/lineark) project — an unofficial Linear ecosystem for Rust.
 
@@ -210,7 +210,6 @@ println!("Asset URL: {}", result.asset_url);
 let result = client.download_url("https://uploads.linear.app/...").await?;
 std::fs::write("output.png", &result.bytes)?;
 ```
-
 
 ## Error handling
 
