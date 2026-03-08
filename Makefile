@@ -16,6 +16,7 @@ check:
 	cargo clippy --workspace -- -D warnings
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 	cargo build --workspace
+	cargo test --workspace --no-run
 
 # Run offline tests (unit + integration). Safe, fast, no API token needed.
 test:
