@@ -46,6 +46,7 @@ Then switch with `--profile`:
 ```sh
 lineark --profile work issues list --mine
 lineark --profile personal whoami
+lineark --profile default whoami          # explicitly use ~/.linear_api_token
 ```
 
 ## Usage
