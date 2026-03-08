@@ -5,169 +5,16 @@
 //! When the token file is missing, online tests are automatically skipped.
 
 use lineark_sdk::blocking_client::Client;
-use lineark_sdk::generated::types::{Document, Issue, Team};
-
-fn no_online_test_token() -> Option<String> {
-    let path = home::home_dir()?.join(".linear_api_token_test");
-    if path.exists() {
-        None
-    } else {
-        Some("~/.linear_api_token_test not found".to_string())
-    }
-}
-
-fn test_token() -> String {
-    let path = home::home_dir()
-        .expect("could not determine home directory")
-        .join(".linear_api_token_test");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
-        .trim()
-        .to_string()
-}
+use lineark_sdk::generated::types::{Document, Issue};
+use lineark_test_utils::*;
 
 fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create blocking test client")
 }
 
-/// Wait for the Linear API to propagate recently created resources.
-/// Linear is eventually consistent — created resources may not be queryable immediately.
-fn settle() {
-    std::thread::sleep(std::time::Duration::from_secs(5));
-}
-
-/// Retry a blocking create operation up to 3 times with backoff on transient errors.
-/// Retries on "conflict on insert" or "already exists" errors from the Linear API.
-fn retry_create<T, F>(mut f: F) -> T
-where
-    F: FnMut() -> Result<T, lineark_sdk::LinearError>,
-{
-    for attempt in 0..3u32 {
-        if attempt > 0 {
-            std::thread::sleep(std::time::Duration::from_secs(1u64 << attempt));
-        }
-        match f() {
-            Ok(val) => return val,
-            Err(e) => {
-                let msg = e.to_string();
-                if !msg.contains("conflict on insert") && !msg.contains("already exists") {
-                    panic!("create failed with non-transient error: {msg}");
-                }
-                if attempt == 2 {
-                    panic!("create failed after 3 retries: {msg}");
-                }
-                eprintln!(
-                    "retry_create: attempt {attempt} failed with transient error, retrying: {msg}"
-                );
-            }
-        }
-    }
-    unreachable!()
-}
-
-/// Delete leftover `[test]`-prefixed resources from previous test runs.
-/// Runs once at the start of the test suite via `std::sync::Once`.
-/// Best-effort: logs what it cleans up, tolerates failures.
-fn cleanup_zombies() {
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| {
-        let Ok(client) = Client::from_token(test_token()) else {
-            return;
-        };
-
-        // Clean up zombie teams.
-        if let Ok(conn) = client.teams().first(250).send() {
-            for team in &conn.nodes {
-                if let (Some(id), Some(name)) = (&team.id, &team.name) {
-                    if name.starts_with("[test]") {
-                        eprintln!("cleanup_zombies: deleting team {name:?} ({id})");
-                        let _ = client.team_delete(id.clone());
-                    }
-                }
-            }
-        }
-
-        // Clean up zombie issues.
-        if let Ok(conn) = client.issues().first(250).send() {
-            for issue in &conn.nodes {
-                if let (Some(id), Some(title)) = (&issue.id, &issue.title) {
-                    if title.starts_with("[test]") {
-                        eprintln!("cleanup_zombies: deleting issue {title:?} ({id})");
-                        let _ = client.issue_delete::<Issue>(Some(true), id.clone());
-                    }
-                }
-            }
-        }
-    });
-}
-
-/// RAII guard — permanently deletes an issue on drop.
-struct IssueGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for IssueGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let _ = client.issue_delete::<Issue>(Some(true), self.id.clone());
-    }
-}
-
-/// RAII guard — permanently deletes a document on drop.
-struct DocumentGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for DocumentGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let _ = client.document_delete::<Document>(self.id.clone());
-    }
-}
-
-/// RAII guard — permanently deletes a team on drop.
-struct TeamGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for TeamGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let _ = client.team_delete(self.id.clone());
-    }
-}
-
-/// Helper: create a fresh test team and return its ID + RAII guard.
-/// Uses a unique key to avoid search index confusion from reused auto-generated keys.
-/// Calls `settle()` after creation to let the API propagate.
 fn create_test_team(client: &Client) -> (String, TeamGuard) {
-    use lineark_sdk::generated::inputs::TeamCreateInput;
-    cleanup_zombies();
-    let suffix = &uuid::Uuid::new_v4().to_string()[..8];
-    let unique = format!("[test] blocking {suffix}");
-    let key = format!("T{}", &suffix[..5]).to_uppercase();
-    let input = TeamCreateInput {
-        name: Some(unique),
-        key: Some(key),
-        ..Default::default()
-    };
-    let team = retry_create(|| client.team_create::<Team>(None, input.clone()));
-    let team_id = team.id.clone().unwrap();
-    let guard = TeamGuard {
-        token: test_token(),
-        id: team_id.clone(),
-    };
-    settle();
-    (team_id, guard)
+    let team = create_test_team_sync(client);
+    (team.id, team.guard)
 }
 
 test_with::runner!(blocking_online);
@@ -236,7 +83,7 @@ mod blocking_online {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let entity = retry_create(|| client.document_create::<Document>(input.clone()));
+        let entity = retry_create_sync(|| client.document_create::<Document>(input.clone()));
         let doc_id = entity.id.clone().unwrap();
         let _doc_guard = DocumentGuard {
             token: test_token(),
@@ -288,7 +135,7 @@ mod blocking_online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| client.issue_create::<Issue>(input.clone()));
+        let entity = retry_create_sync(|| client.issue_create::<Issue>(input.clone()));
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -313,7 +160,7 @@ mod blocking_online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| client.issue_create::<Issue>(input.clone()));
+        let entity = retry_create_sync(|| client.issue_create::<Issue>(input.clone()));
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),

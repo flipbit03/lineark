@@ -1,0 +1,15 @@
+[package]
+name = "lineark-test-utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Shared test utilities for lineark online tests"
+publish = false
+
+[dependencies]
+lineark-sdk = { path = "../lineark-sdk", version = "0.0.0", features = ["blocking"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+uuid = { version = "1", features = ["v4"] }
+home = "0.5"

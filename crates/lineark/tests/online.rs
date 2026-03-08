@@ -5,81 +5,19 @@
 
 use assert_cmd::Command;
 use lineark_sdk::generated::inputs::ProjectCreateInput;
-use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project, Team};
+use lineark_sdk::generated::types::{Comment, Issue, IssueRelation, Project};
 use lineark_sdk::Client;
+use lineark_test_utils::*;
 use predicates::prelude::*;
 
-fn no_online_test_token() -> Option<String> {
-    let path = home::home_dir()?.join(".linear_api_token_test");
-    if path.exists() {
-        None
-    } else {
-        Some("~/.linear_api_token_test not found".to_string())
-    }
-}
-
+/// Alias for `test_token()` — CLI tests historically used this name.
 fn api_token() -> String {
-    let path = home::home_dir()
-        .expect("could not determine home directory")
-        .join(".linear_api_token_test");
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("could not read {}: {}", path.display(), e))
-        .trim()
-        .to_string()
+    test_token()
 }
 
 fn lineark() -> Command {
     #[allow(deprecated)]
     Command::cargo_bin("lineark").unwrap()
-}
-
-/// Delete a team by its UUID to keep the workspace clean.
-fn delete_team(team_id: &str) {
-    let client = Client::from_token(api_token()).unwrap();
-    let id = team_id.to_string();
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(async { client.team_delete(id).await.unwrap() });
-}
-
-/// Permanently delete an issue by its UUID to keep the workspace clean.
-fn delete_issue(issue_id: &str) {
-    let client = Client::from_token(api_token()).unwrap();
-    let id = issue_id.to_string();
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(async { client.issue_delete::<Issue>(Some(true), id).await.unwrap() });
-}
-
-/// Retry a closure up to `max_attempts` times with exponential backoff.
-/// Delays: 0s, 1s, 2s, 4s, 8s, 10s, 10s, ... (capped at 10s).
-/// Returns `Ok(T)` on the first successful attempt, or `Err(last_error_message)`.
-fn retry_with_backoff<T, F>(max_attempts: u32, mut f: F) -> Result<T, String>
-where
-    F: FnMut() -> Result<T, String>,
-{
-    let mut last_err = String::new();
-    for attempt in 0..max_attempts {
-        let delay = if attempt == 0 {
-            0
-        } else {
-            std::cmp::min(1u64 << (attempt - 1), 10)
-        };
-        if delay > 0 {
-            std::thread::sleep(std::time::Duration::from_secs(delay));
-        }
-        match f() {
-            Ok(val) => return Ok(val),
-            Err(e) => last_err = e,
-        }
-    }
-    Err(last_err)
-}
-
-/// Wait for the Linear API to propagate recently created resources.
-/// Linear is eventually consistent — created resources may not be queryable immediately.
-fn settle() {
-    std::thread::sleep(std::time::Duration::from_secs(5));
 }
 
 /// Run a lineark CLI command with retry logic.
@@ -109,159 +47,12 @@ fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
         .expect("failed to execute lineark")
 }
 
-/// Delete leftover `[test]`-prefixed resources from previous test runs.
-/// Runs once at the start of the test suite via `std::sync::Once`.
-/// Best-effort: logs what it cleans up, tolerates failures.
-fn cleanup_zombies() {
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| {
-        let Ok(client) = Client::from_token(api_token()) else {
-            return;
-        };
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            // Clean up zombie teams.
-            if let Ok(conn) = client.teams::<Team>().first(250).send().await {
-                for team in &conn.nodes {
-                    if let (Some(id), Some(name)) = (&team.id, &team.name) {
-                        if name.starts_with("[test]") {
-                            eprintln!("cleanup_zombies: deleting team {name:?} ({id})");
-                            let _ = client.team_delete(id.clone()).await;
-                        }
-                    }
-                }
-            }
-
-            // Clean up zombie projects.
-            if let Ok(conn) = client.projects::<Project>().first(250).send().await {
-                for project in &conn.nodes {
-                    if let (Some(id), Some(name)) = (&project.id, &project.name) {
-                        if name.starts_with("[test]") {
-                            eprintln!("cleanup_zombies: deleting project {name:?} ({id})");
-                            let _ = client.project_delete::<Project>(id.clone()).await;
-                        }
-                    }
-                }
-            }
-
-            // Clean up zombie issues.
-            if let Ok(conn) = client.issues::<Issue>().first(250).send().await {
-                for issue in &conn.nodes {
-                    if let (Some(id), Some(title)) = (&issue.id, &issue.title) {
-                        if title.starts_with("[test]") {
-                            eprintln!("cleanup_zombies: deleting issue {title:?} ({id})");
-                            let _ = client.issue_delete::<Issue>(Some(true), id.clone()).await;
-                        }
-                    }
-                }
-            }
-        });
-    });
-}
-
-/// RAII guard — permanently deletes a team on drop.
-/// Ensures cleanup even when the test panics mid-way.
-struct TeamGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for TeamGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.team_delete(id).await });
-    }
-}
-
-/// RAII guard — permanently deletes an issue on drop.
-struct IssueGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for IssueGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.issue_delete::<Issue>(Some(true), id).await });
-    }
-}
-
-/// RAII guard — permanently deletes a project on drop.
-struct ProjectGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for ProjectGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.project_delete::<Project>(id).await });
-    }
-}
-
-/// RAII guard — deletes an issue label on drop.
-struct LabelGuard {
-    token: String,
-    id: String,
-}
-
-impl Drop for LabelGuard {
-    fn drop(&mut self) {
-        let Ok(client) = Client::from_token(self.token.clone()) else {
-            return;
-        };
-        let id = self.id.clone();
-        let _ = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { client.issue_label_delete(id).await });
-    }
-}
-
 /// Helper: create a fresh test team via the SDK and return (key, id, guard).
 fn create_test_team() -> (String, String, TeamGuard) {
-    use lineark_sdk::generated::inputs::TeamCreateInput;
-    cleanup_zombies();
-    let token = api_token();
-    let client = Client::from_token(token.clone()).unwrap();
+    let client = Client::from_token(api_token()).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let team: Team = rt.block_on(async {
-        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
-        let unique = format!("[test] cli {suffix}");
-        // Use a unique key so issue identifiers (e.g. T1A2B3C4-1) don't collide
-        // across test runs. Linear's search index gets confused when many teams
-        // reuse the same auto-generated key "TES".
-        let key = format!("T{}", &suffix[..5]).to_uppercase();
-        let input = TeamCreateInput {
-            name: Some(unique),
-            key: Some(key),
-            ..Default::default()
-        };
-        client.team_create::<Team>(None, input).await.unwrap()
-    });
-    let team_id = team.id.clone().unwrap();
-    let team_key = team.key.clone().unwrap();
-    let guard = TeamGuard {
-        token,
-        id: team_id.clone(),
-    };
-    // Wait for the team to propagate through Linear's eventually-consistent backend.
-    settle();
-    (team_key, team_id, guard)
+    let team = rt.block_on(create_test_team_async(&client));
+    (team.key, team.id, team.guard)
 }
 
 test_with::runner!(online);
