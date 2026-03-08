@@ -13,19 +13,6 @@ fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create test client")
 }
 
-async fn retry_create<T, F, Fut>(f: F) -> T
-where
-    F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = Result<T, lineark_sdk::LinearError>>,
-{
-    retry_create_async(f).await
-}
-
-async fn create_test_team(client: &Client) -> (String, TeamGuard) {
-    let team = create_test_team_async(client).await;
-    (team.id, team.guard)
-}
-
 test_with::tokio_runner!(online);
 
 #[test_with::module]
@@ -57,7 +44,7 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn teams_returns_at_least_one_team() {
         let client = test_client();
-        let (_team_id, _team_guard) = create_test_team(&client).await;
+        let _team = create_test_team_async(&client).await;
         let conn = client.teams::<Team>().first(10).send().await.unwrap();
         assert!(
             !conn.nodes.is_empty(),
@@ -72,7 +59,8 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_by_id() {
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
         let team = client.team::<Team>(team_id.clone()).await.unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -80,7 +68,8 @@ mod online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn team_fields_deserialize_correctly() {
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
         let team = client.team::<Team>(team_id).await.unwrap();
         assert!(team.id.is_some());
         assert!(team.key.is_some());
@@ -158,7 +147,7 @@ mod online {
             color: Some("#eb5757".to_string()),
             ..Default::default()
         };
-        let label = retry_create(|| {
+        let label = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_label_create::<IssueLabel>(None, input).await }
         })
@@ -366,7 +355,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue with a unique title.
         let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
@@ -376,7 +366,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })
@@ -438,7 +428,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue with a unique title in the first team.
         let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
@@ -448,7 +439,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })
@@ -554,7 +545,8 @@ mod online {
 
         let client = test_client();
 
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue.
         let input = IssueCreateInput {
@@ -564,7 +556,7 @@ mod online {
             priority: Some(4), // Low
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })
@@ -590,7 +582,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to update.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_update".to_string()),
@@ -598,7 +591,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })
@@ -636,7 +629,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to archive.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
@@ -644,7 +638,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })
@@ -681,7 +675,8 @@ mod online {
         let client = test_client();
 
         // Create an issue to comment on.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         let issue_input = IssueCreateInput {
             title: Some("[test] SDK comment_create".to_string()),
@@ -689,7 +684,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = retry_create(|| {
+        let issue_entity = retry_create_async(|| {
             let issue_input = issue_input.clone();
             async { client.issue_create::<Issue>(issue_input).await }
         })
@@ -706,7 +701,7 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = retry_create(|| {
+        let comment_entity = retry_create_async(|| {
             let comment_input = comment_input.clone();
             async { client.comment_create::<Comment>(comment_input).await }
         })
@@ -745,7 +740,8 @@ mod online {
         let client = test_client();
 
         // Create a team to associate the document with (Linear requires at least one parent).
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create a document.
         let input = DocumentCreateInput {
@@ -754,7 +750,7 @@ mod online {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let doc_entity = retry_create(|| {
+        let doc_entity = retry_create_async(|| {
             let input = input.clone();
             async { client.document_create::<Document>(input).await }
         })
@@ -813,7 +809,8 @@ mod online {
         let client = test_client();
 
         // Create a team for the test issues.
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create two issues to relate.
         let input_a = IssueCreateInput {
@@ -822,7 +819,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = retry_create(|| {
+        let entity_a = retry_create_async(|| {
             let input_a = input_a.clone();
             async { client.issue_create::<Issue>(input_a).await }
         })
@@ -839,7 +836,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = retry_create(|| {
+        let entity_b = retry_create_async(|| {
             let input_b = input_b.clone();
             async { client.issue_create::<Issue>(input_b).await }
         })
@@ -857,7 +854,7 @@ mod online {
             r#type: Some(IssueRelationType::Blocks),
             ..Default::default()
         };
-        let relation_entity = retry_create(|| {
+        let relation_entity = retry_create_async(|| {
             let relation_input = relation_input.clone();
             async {
                 client
@@ -974,7 +971,8 @@ mod online {
         use lineark_sdk::generated::inputs::{IssueCreateInput, IssueUpdateInput};
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create two issues.
         let input_a = IssueCreateInput {
@@ -986,7 +984,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = retry_create(|| {
+        let entity_a = retry_create_async(|| {
             let input_a = input_a.clone();
             async { client.issue_create::<Issue>(input_a).await }
         })
@@ -1006,7 +1004,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = retry_create(|| {
+        let entity_b = retry_create_async(|| {
             let input_b = input_b.clone();
             async { client.issue_create::<Issue>(input_b).await }
         })
@@ -1049,7 +1047,7 @@ mod online {
             name: Some(unique.clone()),
             ..Default::default()
         };
-        let team = retry_create(|| {
+        let team = retry_create_async(|| {
             let input = input.clone();
             async { client.team_create::<Team>(None, input).await }
         })
@@ -1099,7 +1097,7 @@ mod online {
             name: Some(unique),
             ..Default::default()
         };
-        let team = retry_create(|| {
+        let team = retry_create_async(|| {
             let input = input.clone();
             async { client.team_create::<Team>(None, input).await }
         })
@@ -1127,7 +1125,7 @@ mod online {
             user_id: Some(other_user_id),
             ..Default::default()
         };
-        let membership = retry_create(|| {
+        let membership = retry_create_async(|| {
             let membership_input = membership_input.clone();
             async {
                 client
@@ -1158,7 +1156,8 @@ mod online {
         };
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1170,7 +1169,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = retry_create(|| {
+        let issue_entity = retry_create_async(|| {
             let issue_input = issue_input.clone();
             async { client.issue_create::<Issue>(issue_input).await }
         })
@@ -1187,7 +1186,7 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = retry_create(|| {
+        let comment_entity = retry_create_async(|| {
             let comment_input = comment_input.clone();
             async { client.comment_create::<Comment>(comment_input).await }
         })
@@ -1218,7 +1217,8 @@ mod online {
         use lineark_sdk::generated::inputs::{CommentCreateInput, IssueCreateInput};
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1230,7 +1230,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = retry_create(|| {
+        let issue_entity = retry_create_async(|| {
             let issue_input = issue_input.clone();
             async { client.issue_create::<Issue>(issue_input).await }
         })
@@ -1247,7 +1247,7 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = retry_create(|| {
+        let comment_entity = retry_create_async(|| {
             let comment_input = comment_input.clone();
             async { client.comment_create::<Comment>(comment_input).await }
         })
@@ -1292,7 +1292,8 @@ mod online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client).await;
+        let team = create_test_team_async(&client).await;
+        let team_id = &team.id;
 
         // Create an issue so we can look up its branchName.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
@@ -1302,7 +1303,7 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = retry_create(|| {
+        let entity = retry_create_async(|| {
             let input = input.clone();
             async { client.issue_create::<Issue>(input).await }
         })

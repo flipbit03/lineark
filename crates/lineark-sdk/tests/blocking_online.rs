@@ -12,11 +12,6 @@ fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create blocking test client")
 }
 
-fn create_test_team(client: &Client) -> (String, TeamGuard) {
-    let team = create_test_team_sync(client);
-    (team.id, team.guard)
-}
-
 test_with::runner!(blocking_online);
 
 #[test_with::module]
@@ -36,7 +31,7 @@ mod blocking_online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_teams_list() {
         let client = test_client();
-        let (_team_id, _team_guard) = create_test_team(&client);
+        let _team = create_test_team_sync(&client);
         let conn = client.teams().first(10).send().unwrap();
         assert!(
             !conn.nodes.is_empty(),
@@ -50,7 +45,8 @@ mod blocking_online {
     #[test_with::runtime_ignore_if(no_online_test_token)]
     fn blocking_team_by_id() {
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client);
+        let team = create_test_team_sync(&client);
+        let team_id = &team.id;
         let team = client.team(team_id.clone()).unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -74,7 +70,8 @@ mod blocking_online {
         let client = test_client();
 
         // Create a team (documents require at least one parent).
-        let (team_id, _team_guard) = create_test_team(&client);
+        let team = create_test_team_sync(&client);
+        let team_id = &team.id;
 
         // Create.
         let input = DocumentCreateInput {
@@ -127,7 +124,8 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client);
+        let team = create_test_team_sync(&client);
+        let team_id = &team.id;
 
         let input = IssueCreateInput {
             title: Some("[test] blocking issue_create".to_string()),
@@ -152,7 +150,8 @@ mod blocking_online {
         use lineark_sdk::generated::inputs::IssueCreateInput;
 
         let client = test_client();
-        let (team_id, _team_guard) = create_test_team(&client);
+        let team = create_test_team_sync(&client);
+        let team_id = &team.id;
 
         let input = IssueCreateInput {
             title: Some("[test] blocking archive/unarchive".to_string()),
