@@ -29,45 +29,19 @@ COMMANDS:
   lineark whoami                                   Show authenticated user
   lineark teams list                               List all teams
   lineark teams read <KEY-OR-ID>                   Full team detail (members, settings)
-  lineark teams create <NAME>                      Create a team
-    [--key KEY] [--description TEXT]               Key (auto-generated if omitted)
-    [--icon ICON] [--color COLOR]                  Icon, color
-    [--timezone TZ] [--private]                    Timezone, private flag
-    [--cycles-enabled] [--triage-enabled]          Enable cycles/triage
-  lineark teams update <KEY-OR-ID>                 Update a team
-    [--name NAME] [--description TEXT] ...         (same flags as create, all optional)
-  lineark teams delete <KEY-OR-ID>                 Delete a team
-  lineark teams members add <TEAM> --user NAME     Add member to team
-  lineark teams members remove <TEAM> --user NAME  Remove member from team
+  lineark teams create|update|delete ...           Manage teams (--help for flags)
+  lineark teams members add|remove ...             Manage membership (--help for flags)
   lineark users list [--active]                    List users
   lineark projects list [--led-by-me]              List all projects (with lead)
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
-  lineark projects create <NAME> --team KEY[,KEY]  Create a new project
-    [--description TEXT] [--lead NAME-OR-ID|me]    Description, project lead
-    [--members NAME,...|me]                        Project members (comma-separated)
-    [--start-date DATE] [--target-date DATE]       Dates (YYYY-MM-DD)
-    [-p 0-4] [--content TEXT]                      Priority, markdown content
-    [--icon ICON] [--color COLOR]                  Icon, color
+  lineark projects create <NAME> --team KEY ...    Create project (--help for flags)
   lineark labels list [--team KEY]                 List labels (group, team, parent, color)
-  lineark labels create <NAME>                     Create a label (workspace-wide if no --team)
-    [--team KEY] [--color HEX]                     Team, color
-    [--description TEXT]                           Description
-    [--parent-label-group ID]                      Nest under a group label
-    [--make-label-group]                           Create as a group label
-  lineark labels update <ID>                       Update a label
-    [--name TEXT] [--color HEX]                    Name, color
-    [--description TEXT]                           Description
-    [--parent-label-group ID]                      Nest under a group label
-    [--clear-parent-label-group]                   Remove parent group
-    [--make-label-group] [--clear-label-group]     Promote/demote group
-  lineark labels delete <ID>                       Delete a label
+  lineark labels create|update|delete ...          Manage labels (--help for flags)
   lineark cycles list [-l N] [--team KEY]          List cycles
-    [--active]                                     Only the active cycle
-    [--around-active N]                            Active ± N neighbors
+    [--active] [--around-active N]                 Active cycle / ± N neighbors
   lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
-    [--project NAME-OR-ID]                         Filter by project
-    [--mine]                                       Only issues assigned to me
+    [--project NAME-OR-ID] [--mine]                Filter by project, assignee
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
   lineark issues find-branch <BRANCH>              Find issue by Git branch name
@@ -76,7 +50,7 @@ COMMANDS:
     [--status NAME,...] [--show-done]              Comma-separated status names
   lineark issues create <TITLE> --team KEY         Create an issue
     [-p 0-4] [-e N] [--assignee NAME-OR-ID|me]     0=none 1=urgent 2=high 3=medium 4=low
-    [--labels NAME,...] [-d TEXT] [-s NAME]        Label names (team-scoped), status name
+    [--labels NAME,...] [-d TEXT] [-s NAME]        Label names, status name
     [--parent ID] [--project NAME-OR-ID]           Parent issue, project, cycle
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
@@ -86,54 +60,18 @@ COMMANDS:
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                 Set or remove parent
     [--project NAME-OR-ID] [--cycle NAME-OR-ID]    Project, cycle
-  lineark issues batch-update ID [ID ...]          Batch update multiple issues
-    [-s NAME] [-p 0-4] [--assignee NAME-OR-ID|me] Status, priority, assignee
-  lineark issues archive <IDENTIFIER>              Archive an issue
-  lineark issues unarchive <IDENTIFIER>            Unarchive a previously archived issue
-  lineark issues delete <IDENTIFIER>               Delete (trash) an issue
-    [--permanently]                                Permanently delete instead of trashing
+  lineark issues batch-update ID [ID ...]          Batch update (--help for flags)
+  lineark issues archive|unarchive|delete ...      Lifecycle ops (--help for flags)
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
-  lineark comments update <COMMENT-UUID>           Update a comment
-    --body TEXT                                    New body in markdown
-  lineark comments resolve <COMMENT-UUID>          Resolve a comment thread
-    [--resolving-comment UUID]                     Reply that resolves thread
-  lineark comments unresolve <COMMENT-UUID>        Unresolve a comment thread
-  lineark comments delete <COMMENT-UUID>           Delete a comment
-  lineark relations create <ISSUE>                 Create an issue relation
-    --blocks <ISSUE>                               Source blocks target
-    --blocked-by <ISSUE>                           Source is blocked by target
-    --related <ISSUE>                              Mark issues as related
-    --duplicate <ISSUE>                            Mark as duplicate
-    --similar <ISSUE>                              Mark as similar
-  lineark relations delete <RELATION-UUID>         Delete an issue relation
+  lineark comments update|resolve|unresolve|delete Manage comments (--help for flags)
+  lineark relations create|delete ...              Issue relations (--help for flags)
   lineark documents list [--limit N]               List documents (lean output)
     [--project NAME-OR-ID] [--issue ID]            Filter by project or issue
   lineark documents read <ID>                      Read document (includes content)
-  lineark documents create --title TEXT            Create a document
-    [--content TEXT] [--project NAME-OR-ID]        Project name or UUID
-    [--issue ID]
-  lineark documents update <ID>                    Update a document
-    [--title TEXT] [--content TEXT]
-  lineark documents delete <ID>                    Delete (trash) a document
-  lineark project-milestones list --project NAME   List milestones for a project
-  lineark project-milestones read <ID>             Read a milestone (UUID or name with --project)
-    [--project NAME-OR-ID]
-  lineark project-milestones create <NAME>         Create a milestone
-    --project NAME-OR-ID [--target-date DATE]      DATE = YYYY-MM-DD
-    [--description TEXT]
-  lineark project-milestones update <ID>           Update a milestone
-    [--project NAME-OR-ID] [--name TEXT]
-    [--target-date DATE] [--description TEXT]
-  lineark project-milestones delete <ID>           Delete a milestone
-    [--project NAME-OR-ID]
-  lineark embeds upload <FILE> [--public]          Upload file to Linear, returns asset URL
-                                                   Embed as markdown [name](url) in issues,
-                                                   comments, or documents
-                                                   --public only works for images (not SVG)
-  lineark embeds download <URL>                    Download any file by URL (works with
-    [--output PATH] [--overwrite]                  Linear CDN URLs and external URLs alike)
-  lineark self update                              Update lineark to the latest release
-  lineark self update --check                      Check if an update is available
+  lineark documents create|update|delete ...       Manage documents (--help for flags)
+  lineark project-milestones ...                   Milestones CRUD (--help for flags)
+  lineark embeds upload|download ...               File embeds (--help for flags)
+  lineark self update [--check]                    Update lineark / check for updates
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token
