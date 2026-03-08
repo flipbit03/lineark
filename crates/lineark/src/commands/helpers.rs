@@ -412,8 +412,8 @@ pub async fn resolve_cycle_id(
 
 /// Parse a priority value from either a number (0-4) or a name.
 ///
-/// Mapping defined by the Linear GraphQL schema on [`IssueCreateInput.priority`] and
-/// [`IssueUpdateInput.priority`] (`schema/schema.graphql`):
+/// Mapping defined by the Linear GraphQL schema on `IssueCreateInput.priority` and
+/// `IssueUpdateInput.priority` (see `schema/schema.graphql`):
 ///
 /// | Value | Schema label | `priorityLabel` from API |
 /// |-------|-------------|--------------------------|
