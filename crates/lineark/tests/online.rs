@@ -189,9 +189,15 @@ fn create_test_team() -> (String, String, TeamGuard) {
     let client = Client::from_token(token.clone()).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let team: Team = rt.block_on(async {
-        let unique = format!("[test] cli {}", &uuid::Uuid::new_v4().to_string()[..8]);
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let unique = format!("[test] cli {suffix}");
+        // Use a unique key so issue identifiers (e.g. T1A2B3C4-1) don't collide
+        // across test runs. Linear's search index gets confused when many teams
+        // reuse the same auto-generated key "TES".
+        let key = format!("T{}", &suffix[..7]).to_uppercase();
         let input = TeamCreateInput {
             name: Some(unique),
+            key: Some(key),
             ..Default::default()
         };
         client.team_create::<Team>(None, input).await.unwrap()
