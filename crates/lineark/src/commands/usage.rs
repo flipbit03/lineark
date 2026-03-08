@@ -1,19 +1,66 @@
 use crate::version_check;
 
 /// Print a compact LLM-friendly command reference (<1000 tokens).
-pub async fn run() {
+pub async fn run(active_profile: Option<&str>) {
     let env_hint = if std::env::var("LINEAR_API_TOKEN").is_ok() {
         " (set)"
     } else {
         ""
     };
-    let file_hint = if std::env::var("HOME")
-        .map(|h| std::path::Path::new(&h).join(".linear_api_token").exists())
-        .unwrap_or(false)
-    {
-        " (found)"
+
+    let home = home::home_dir();
+
+    // Determine which token file to show on line 3, and build profile hints.
+    let active_name = match active_profile {
+        Some("default") | None => "default",
+        Some(p) => p,
+    };
+    let token_file_display = if active_name == "default" {
+        "~/.linear_api_token".to_string()
     } else {
-        ""
+        format!("~/.linear_api_token_{active_name}")
+    };
+
+    let (file_hint, profile_extra_lines) = match &home {
+        Some(h) => {
+            let active_path = if active_name == "default" {
+                h.join(".linear_api_token")
+            } else {
+                h.join(format!(".linear_api_token_{active_name}"))
+            };
+            let found = active_path.exists();
+
+            // Discover other profiles (excluding the active one).
+            let mut others: Vec<String> = Vec::new();
+            let default_exists = h.join(".linear_api_token").exists();
+            if default_exists && active_name != "default" {
+                others.push("\"default\"".to_string());
+            }
+            for p in crate::discover_profiles(h) {
+                if p != active_name {
+                    others.push(format!("\"{p}\""));
+                }
+            }
+
+            let hint = if found {
+                format!(" (found, active profile: \"{active_name}\")")
+            } else {
+                " (not found)".to_string()
+            };
+
+            let extra = if others.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "\n    other available profiles: {}.\
+                     \n    switch with --profile <name>",
+                    others.join(", ")
+                )
+            };
+
+            (hint, extra)
+        }
+        None => (String::new(), String::new()),
     };
 
     print!(
@@ -75,12 +122,13 @@ COMMANDS:
 
 GLOBAL OPTIONS:
   --api-token <TOKEN>   Override API token
+  --profile <NAME>      Use API token from ~/.linear_api_token_<NAME>
   --format human|json   Force output format (auto-detected by default)
 
 AUTH (in precedence order):
   1. --api-token flag
   2. $LINEAR_API_TOKEN env var{env_hint}
-  3. ~/.linear_api_token file{file_hint}
+  3. {token_file_display} file{file_hint}{profile_extra_lines}
 "#
     );
 

@@ -18,7 +18,7 @@ use lineark_sdk::generated::types::{User, Team};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::auto()?;
+    let client = Client::from_env()?;
 
     let me = client.whoami::<User>().await?;
     println!("Logged in as: {}", me.name.as_deref().unwrap_or("?"));
@@ -43,8 +43,7 @@ Create a [Linear API token](https://linear.app/settings/account/security) and pr
 |--------|---------|
 | Direct | `Client::from_token("lin_api_...")` |
 | Env var | `export LINEAR_API_TOKEN="lin_api_..."` then `Client::from_env()` |
-| File | `echo "lin_api_..." > ~/.linear_api_token` then `Client::from_file()` |
-| Auto | `Client::auto()` — tries env var, then file |
+| File | `Client::from_token_file(Path::new("/path/to/token"))` |
 
 ## Queries
 
@@ -113,7 +112,7 @@ struct LeanIssue {
     title: Option<String>,
 }
 
-let client = Client::auto()?;
+let client = Client::from_env()?;
 let issues = client.issues::<LeanIssue>().first(10).send().await?;
 for issue in &issues.nodes {
     println!("{}", issue.title.as_deref().unwrap_or("?"));

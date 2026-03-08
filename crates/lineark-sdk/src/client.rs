@@ -1,14 +1,15 @@
 //! Async Linear API client.
 //!
 //! The primary entry point for interacting with Linear's GraphQL API.
-//! Construct a [`Client`] via [`Client::auto`], [`Client::from_env`],
-//! [`Client::from_file`], or [`Client::from_token`], then call generated
-//! query and mutation methods.
+//! Construct a [`Client`] via [`Client::from_token`], [`Client::from_env`],
+//! or [`Client::from_token_file`], then call generated query and mutation
+//! methods.
 
 use crate::auth;
 use crate::error::{GraphQLError, LinearError};
 use crate::pagination::Connection;
 use serde::de::DeserializeOwned;
+use std::path::Path;
 
 const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
 
@@ -46,14 +47,9 @@ impl Client {
         Self::from_token(auth::token_from_env()?)
     }
 
-    /// Create a client from the `~/.linear_api_token` file.
-    pub fn from_file() -> Result<Self, LinearError> {
-        Self::from_token(auth::token_from_file()?)
-    }
-
-    /// Create a client by auto-detecting the token (env -> file).
-    pub fn auto() -> Result<Self, LinearError> {
-        Self::from_token(auth::auto_token()?)
+    /// Create a client from a token file at the given path.
+    pub fn from_token_file(path: &Path) -> Result<Self, LinearError> {
+        Self::from_token(auth::token_from_file(path)?)
     }
 
     /// Execute a GraphQL query and extract a single object from the response.

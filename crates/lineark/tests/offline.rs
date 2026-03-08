@@ -1164,3 +1164,264 @@ fn issues_update_no_flags_error_mentions_estimate() {
         .failure()
         .stderr(predicate::str::contains("--estimate"));
 }
+
+// ── Profile support ─────────────────────────────────────────────────────────
+
+#[test]
+fn profile_and_api_token_conflict() {
+    lineark()
+        .args(["--api-token", "fake", "--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn help_shows_profile_flag() {
+    lineark()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"));
+}
+
+#[test]
+fn usage_shows_profile_flag() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--profile"));
+}
+
+#[test]
+fn profile_missing_file_shows_error_with_profile_name() {
+    // Use a tmpdir as HOME so no token files exist.
+    let tmpdir = tempfile::tempdir().unwrap();
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "nonexistent", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Profile \"nonexistent\" not found",
+        ))
+        .stderr(predicate::str::contains("No profiles found"))
+        .stderr(predicate::str::contains(
+            "echo \"lin_api_...\" > ~/.linear_api_token_nonexistent",
+        ));
+}
+
+#[test]
+fn profile_missing_file_shows_available_profiles() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    // Create a "banana" profile and the default token file.
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok-default").unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token_banana"), "tok-banana").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "nonexistent", "whoami"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("\"default\""))
+        .stderr(predicate::str::contains("\"banana\""));
+}
+
+#[test]
+fn profile_reads_named_token_file() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        tmpdir.path().join(".linear_api_token_work"),
+        "fake-work-token",
+    )
+    .unwrap();
+
+    // The token is fake, so the API call fails — but we verify it gets past auth resolution.
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        // Should NOT be an auth config error — should be an API error.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn profile_skips_env_var() {
+    // Even with LINEAR_API_TOKEN set, --profile should use the file.
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        tmpdir.path().join(".linear_api_token_work"),
+        "profile-token",
+    )
+    .unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env("LINEAR_API_TOKEN", "env-token-should-be-ignored")
+        .args(["--profile", "work", "whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth — profile file exists.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn default_auth_uses_env_then_file() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "file-token").unwrap();
+
+    // Without --profile or --api-token, should use file token (env not set).
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth.
+        .stderr(predicate::str::contains("token").not());
+}
+
+#[test]
+fn usage_discovers_profiles() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok").unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token_work"), "tok").unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token_banana"), "tok").unwrap();
+    // _test should be filtered out.
+    std::fs::write(tmpdir.path().join(".linear_api_token_test"), "tok").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#"active profile: "default")"#))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "banana", "work"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"))
+        // _test filtered out.
+        .stdout(predicate::str::contains("\"test\"").not());
+}
+
+#[test]
+fn profile_default_reads_default_token_file() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        tmpdir.path().join(".linear_api_token"),
+        "fake-default-token",
+    )
+    .unwrap();
+
+    // --profile default should use ~/.linear_api_token (not ~/.linear_api_token_default).
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "default", "whoami"])
+        .assert()
+        .failure()
+        // Should fail on API call, not auth config.
+        .stderr(predicate::str::contains("Profile").not());
+}
+
+#[test]
+fn usage_default_active_no_others() {
+    // Only the default profile exists — no extra lines.
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"(found, active profile: "default")"#,
+        ))
+        .stdout(predicate::str::contains("other available").not());
+}
+
+#[test]
+fn usage_default_active_with_others() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok").unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token_work"), "tok").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"(found, active profile: "default")"#,
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "work"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"));
+}
+
+#[test]
+fn usage_with_named_profile_active() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok").unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token_work"), "tok").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "work", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            r#"~/.linear_api_token_work file (found, active profile: "work")"#,
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "default"."#,
+        ));
+}
+
+#[test]
+fn usage_with_missing_profile_shows_not_found() {
+    let tmpdir = tempfile::tempdir().unwrap();
+    std::fs::write(tmpdir.path().join(".linear_api_token"), "tok").unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "missing", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "~/.linear_api_token_missing file (not found)",
+        ))
+        .stdout(predicate::str::contains(
+            r#"other available profiles: "default"."#,
+        ))
+        .stdout(predicate::str::contains("switch with --profile <name>"));
+}
+
+#[test]
+fn usage_with_missing_profile_no_others() {
+    // No profiles exist at all — just "(not found)", no extra lines.
+    let tmpdir = tempfile::tempdir().unwrap();
+
+    lineark()
+        .env("HOME", tmpdir.path())
+        .env_remove("LINEAR_API_TOKEN")
+        .args(["--profile", "missing", "usage"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "~/.linear_api_token_missing file (not found)",
+        ))
+        .stdout(predicate::str::contains("other available").not());
+}
