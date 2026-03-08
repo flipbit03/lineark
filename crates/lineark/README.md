@@ -37,16 +37,16 @@ Or use an environment variable (`LINEAR_API_TOKEN`) or the `--api-token` flag.
 Store tokens for different workspaces in named files:
 
 ```sh
-echo "lin_api_..." > ~/.linear_api_token_work
-echo "lin_api_..." > ~/.linear_api_token_personal
+echo "lin_api_..." > ~/.linear_api_token            # "default" API token
+echo "lin_api_..." > ~/.linear_api_token_work       # "work" API token
+echo "lin_api_..." > ~/.linear_api_token_freelance  # "freelance" API token
 ```
 
 Then switch with `--profile`:
 
 ```sh
 lineark --profile work issues list --mine
-lineark --profile personal whoami
-lineark --profile default whoami          # explicitly use ~/.linear_api_token
+lineark --profile freelance whoami
 ```
 
 ## Usage
