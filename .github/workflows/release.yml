@@ -34,6 +34,7 @@ jobs:
           sed -i "s/^version = \"0.0.0\"/version = \"${VERSION}\"/" Cargo.toml
           sed -i "s/lineark-derive = { path = \"..\/lineark-derive\", version = \"0.0.0\" }/lineark-derive = { path = \"..\/lineark-derive\", version = \"${VERSION}\" }/" crates/lineark-sdk/Cargo.toml
           sed -i "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark/Cargo.toml
+          sed -i "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark-test-utils/Cargo.toml
           cargo update --workspace
 
       - name: Publish lineark-derive
@@ -132,6 +133,7 @@ jobs:
           sed -i'' -e "s/^version = \"0.0.0\"/version = \"${VERSION}\"/" Cargo.toml
           sed -i'' -e "s/lineark-derive = { path = \"..\/lineark-derive\", version = \"0.0.0\" }/lineark-derive = { path = \"..\/lineark-derive\", version = \"${VERSION}\" }/" crates/lineark-sdk/Cargo.toml
           sed -i'' -e "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark/Cargo.toml
+          sed -i'' -e "s/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"0.0.0\" }/lineark-sdk = { path = \"..\/lineark-sdk\", version = \"${VERSION}\" }/" crates/lineark-test-utils/Cargo.toml
 
       - name: Build binary
         run: cargo build --release --target ${{ matrix.target }} -p lineark --features binary-release
