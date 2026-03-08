@@ -7,6 +7,7 @@
 
 use lineark_sdk::generated::types::*;
 use lineark_sdk::Client;
+use std::future::Future;
 
 fn no_online_test_token() -> Option<String> {
     let path = home::home_dir()?.join(".linear_api_token_test");
@@ -29,6 +30,120 @@ fn test_token() -> String {
 
 fn test_client() -> Client {
     Client::from_token(test_token()).expect("failed to create test client")
+}
+
+/// Wait for the Linear API to propagate recently created resources.
+/// Linear is eventually consistent — created resources may not be queryable immediately.
+async fn settle() {
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+}
+
+/// Retry an async create operation up to 3 times with backoff on transient errors.
+/// Retries on "conflict on insert" or "already exists" errors from the Linear API.
+async fn retry_create<T, F, Fut>(mut f: F) -> T
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, lineark_sdk::LinearError>>,
+{
+    for attempt in 0..3u32 {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_secs(1u64 << attempt)).await;
+        }
+        match f().await {
+            Ok(val) => return val,
+            Err(e) => {
+                let msg = e.to_string();
+                if !msg.contains("conflict on insert") && !msg.contains("already exists") {
+                    panic!("create failed with non-transient error: {msg}");
+                }
+                if attempt == 2 {
+                    panic!("create failed after 3 retries: {msg}");
+                }
+                eprintln!(
+                    "retry_create: attempt {attempt} failed with transient error, retrying: {msg}"
+                );
+            }
+        }
+    }
+    unreachable!()
+}
+
+/// Retry a search operation with generous backoff for Linear's eventually-consistent search index.
+/// Returns `Some(conn)` on the first attempt where `predicate` returns true, or `None` after exhausting retries.
+async fn retry_search<T, F, Fut, P>(mut f: F, mut predicate: P) -> Option<T>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, lineark_sdk::LinearError>>,
+    P: FnMut(&T) -> bool,
+{
+    for i in 0..12 {
+        tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 2 } else { 5 })).await;
+        let result = match f().await {
+            Ok(v) => v,
+            Err(_) => continue, // rate-limited or transient error — retry
+        };
+        if predicate(&result) {
+            return Some(result);
+        }
+    }
+    None
+}
+
+/// Delete leftover `[test]`-prefixed resources from previous test runs.
+/// Runs once at the start of the test suite via `std::sync::Once`.
+/// Best-effort: logs what it cleans up, tolerates failures.
+async fn cleanup_zombies_impl() {
+    let Ok(client) = Client::from_token(test_token()) else {
+        return;
+    };
+
+    // Clean up zombie teams.
+    if let Ok(conn) = client.teams::<Team>().first(250).send().await {
+        for team in &conn.nodes {
+            if let (Some(id), Some(name)) = (&team.id, &team.name) {
+                if name.starts_with("[test]") {
+                    eprintln!("cleanup_zombies: deleting team {name:?} ({id})");
+                    let _ = client.team_delete(id.clone()).await;
+                }
+            }
+        }
+    }
+
+    // Clean up zombie projects.
+    if let Ok(conn) = client.projects::<Project>().first(250).send().await {
+        for project in &conn.nodes {
+            if let (Some(id), Some(name)) = (&project.id, &project.name) {
+                if name.starts_with("[test]") {
+                    eprintln!("cleanup_zombies: deleting project {name:?} ({id})");
+                    let _ = client.project_delete::<Project>(id.clone()).await;
+                }
+            }
+        }
+    }
+
+    // Clean up zombie issues.
+    if let Ok(conn) = client.issues::<Issue>().first(250).send().await {
+        for issue in &conn.nodes {
+            if let (Some(id), Some(title)) = (&issue.id, &issue.title) {
+                if title.starts_with("[test]") {
+                    eprintln!("cleanup_zombies: deleting issue {title:?} ({id})");
+                    let _ = client.issue_delete::<Issue>(Some(true), id.clone()).await;
+                }
+            }
+        }
+    }
+}
+
+fn cleanup_zombies() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let _ = std::thread::spawn(|| {
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(cleanup_zombies_impl());
+        })
+        .join();
+    });
 }
 
 /// RAII guard — permanently deletes a team on drop.
@@ -117,19 +232,32 @@ impl Drop for LabelGuard {
 }
 
 /// Helper: create a fresh test team and return its ID + RAII guard.
+/// Uses a unique key to avoid search index confusion from reused auto-generated keys.
+/// Calls `settle()` after creation to let the API propagate.
 async fn create_test_team(client: &Client) -> (String, TeamGuard) {
     use lineark_sdk::generated::inputs::TeamCreateInput;
-    let unique = format!("[test] sdk {}", &uuid::Uuid::new_v4().to_string()[..8]);
+    cleanup_zombies();
+    let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+    let unique = format!("[test] sdk {suffix}");
+    // Use a unique key so issue identifiers don't collide across test runs.
+    let key = format!("T{}", &suffix[..5]).to_uppercase();
     let input = TeamCreateInput {
         name: Some(unique),
+        key: Some(key),
         ..Default::default()
     };
-    let team = client.team_create::<Team>(None, input).await.unwrap();
+    let team = retry_create(|| {
+        let input = input.clone();
+        async { client.team_create::<Team>(None, input).await }
+    })
+    .await;
     let team_id = team.id.clone().unwrap();
     let guard = TeamGuard {
         token: test_token(),
         id: team_id.clone(),
     };
+    // Wait for the team to propagate through Linear's eventually-consistent backend.
+    settle().await;
     (team_id, guard)
 }
 
@@ -265,10 +393,11 @@ mod online {
             color: Some("#eb5757".to_string()),
             ..Default::default()
         };
-        let label = client
-            .issue_label_create::<IssueLabel>(None, input)
-            .await
-            .unwrap();
+        let label = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_label_create::<IssueLabel>(None, input).await }
+        })
+        .await;
         let label_id = label.id.clone().unwrap();
         let _label_guard = LabelGuard {
             token: test_token(),
@@ -482,7 +611,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -490,28 +623,27 @@ mod online {
         };
 
         // Linear's search index is eventually consistent — retry with generous backoff.
-        // Issues in freshly-created teams may take longer to appear in search.
-        let mut matched = false;
-        for i in 0..12 {
-            tokio::time::sleep(std::time::Duration::from_secs(if i < 3 { 2 } else { 5 })).await;
-            let found = match client
-                .search_issues::<IssueSearchResult>(&unique)
-                .first(5)
-                .send()
-                .await
-            {
-                Ok(v) => v,
-                Err(_) => continue, // rate-limited or transient error — retry
-            };
-            matched = found
-                .nodes
-                .iter()
-                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
-            if matched {
-                break;
-            }
-        }
-        assert!(matched, "search_issues(term) should find the created issue");
+        let search_unique = unique.clone();
+        let result = retry_search(
+            || {
+                client
+                    .search_issues::<IssueSearchResult>(&search_unique)
+                    .first(5)
+                    .send()
+            },
+            |conn| {
+                conn.nodes.iter().any(|n| {
+                    n.title
+                        .as_deref()
+                        .is_some_and(|t| t.contains(&search_unique))
+                })
+            },
+        )
+        .await;
+        assert!(
+            result.is_some(),
+            "search_issues(term) should find the created issue"
+        );
 
         // Search for nonsense — should NOT find it.
         let not_found = client
@@ -551,7 +683,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -559,28 +695,29 @@ mod online {
         };
 
         // Linear's search index is eventually consistent — retry with generous backoff.
-        let mut found = false;
-        for _ in 0..12 {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            let with_team = match client
-                .search_issues::<IssueSearchResult>(&unique)
-                .first(5)
-                .team_id(&team_id)
-                .send()
-                .await
-            {
-                Ok(v) => v,
-                Err(_) => continue, // rate-limited or transient error — retry
-            };
-            found = with_team
-                .nodes
-                .iter()
-                .any(|n| n.title.as_deref().is_some_and(|t| t.contains(&unique)));
-            if found {
-                break;
-            }
-        }
-        assert!(found, "search with correct team_id should find the issue");
+        let search_unique = unique.clone();
+        let search_team_id = team_id.clone();
+        let result = retry_search(
+            || {
+                client
+                    .search_issues::<IssueSearchResult>(&search_unique)
+                    .first(5)
+                    .team_id(&search_team_id)
+                    .send()
+            },
+            |conn| {
+                conn.nodes.iter().any(|n| {
+                    n.title
+                        .as_deref()
+                        .is_some_and(|t| t.contains(&search_unique))
+                })
+            },
+        )
+        .await;
+        assert!(
+            result.is_some(),
+            "search with correct team_id should find the issue"
+        );
 
         // Search with a fake team_id — should NOT find it.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -662,7 +799,11 @@ mod online {
             priority: Some(4), // Low
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -692,7 +833,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -734,7 +879,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -775,7 +924,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -788,10 +941,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         assert!(comment_entity.id.is_some());
 
         // Clean up: permanently delete the issue.
@@ -835,7 +989,11 @@ mod online {
             team_id: Some(team_id),
             ..Default::default()
         };
-        let doc_entity = client.document_create::<Document>(input).await.unwrap();
+        let doc_entity = retry_create(|| {
+            let input = input.clone();
+            async { client.document_create::<Document>(input).await }
+        })
+        .await;
         let doc_id = doc_entity.id.clone().unwrap();
         let _doc_guard = DocumentGuard {
             token: test_token(),
@@ -899,7 +1057,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let entity_a = retry_create(|| {
+            let input_a = input_a.clone();
+            async { client.issue_create::<Issue>(input_a).await }
+        })
+        .await;
         let issue_a_id = entity_a.id.clone().unwrap();
         let _issue_a_guard = IssueGuard {
             token: test_token(),
@@ -912,7 +1074,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let entity_b = retry_create(|| {
+            let input_b = input_b.clone();
+            async { client.issue_create::<Issue>(input_b).await }
+        })
+        .await;
         let issue_b_id = entity_b.id.clone().unwrap();
         let _issue_b_guard = IssueGuard {
             token: test_token(),
@@ -926,10 +1092,15 @@ mod online {
             r#type: Some(IssueRelationType::Blocks),
             ..Default::default()
         };
-        let relation_entity = client
-            .issue_relation_create::<IssueRelation>(None, relation_input)
-            .await
-            .unwrap();
+        let relation_entity = retry_create(|| {
+            let relation_input = relation_input.clone();
+            async {
+                client
+                    .issue_relation_create::<IssueRelation>(None, relation_input)
+                    .await
+            }
+        })
+        .await;
         assert!(relation_entity.id.is_some(), "relation should have an id");
 
         // Verify the relation is queryable.
@@ -1050,7 +1221,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_a = client.issue_create::<Issue>(input_a).await.unwrap();
+        let entity_a = retry_create(|| {
+            let input_a = input_a.clone();
+            async { client.issue_create::<Issue>(input_a).await }
+        })
+        .await;
         let id_a = entity_a.id.clone().unwrap();
         let _guard_a = IssueGuard {
             token: test_token(),
@@ -1066,7 +1241,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity_b = client.issue_create::<Issue>(input_b).await.unwrap();
+        let entity_b = retry_create(|| {
+            let input_b = input_b.clone();
+            async { client.issue_create::<Issue>(input_b).await }
+        })
+        .await;
         let id_b = entity_b.id.clone().unwrap();
         let _guard_b = IssueGuard {
             token: test_token(),
@@ -1105,7 +1284,11 @@ mod online {
             name: Some(unique.clone()),
             ..Default::default()
         };
-        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team = retry_create(|| {
+            let input = input.clone();
+            async { client.team_create::<Team>(None, input).await }
+        })
+        .await;
         let team_id = team.id.clone().unwrap();
         let _team_guard = TeamGuard {
             token: test_token(),
@@ -1151,7 +1334,11 @@ mod online {
             name: Some(unique),
             ..Default::default()
         };
-        let team = client.team_create::<Team>(None, input).await.unwrap();
+        let team = retry_create(|| {
+            let input = input.clone();
+            async { client.team_create::<Team>(None, input).await }
+        })
+        .await;
         let team_id = team.id.clone().unwrap();
         let _team_guard = TeamGuard {
             token: test_token(),
@@ -1175,10 +1362,15 @@ mod online {
             user_id: Some(other_user_id),
             ..Default::default()
         };
-        let membership = client
-            .team_membership_create::<TeamMembership>(membership_input)
-            .await
-            .unwrap();
+        let membership = retry_create(|| {
+            let membership_input = membership_input.clone();
+            async {
+                client
+                    .team_membership_create::<TeamMembership>(membership_input)
+                    .await
+            }
+        })
+        .await;
         let membership_id = membership.id.clone().unwrap();
         assert!(!membership_id.is_empty());
 
@@ -1213,7 +1405,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -1226,10 +1422,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         let comment_id = comment_entity.id.clone().unwrap();
         assert_eq!(comment_entity.body.as_deref(), Some("Original body"));
 
@@ -1268,7 +1465,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let issue_entity = client.issue_create::<Issue>(issue_input).await.unwrap();
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
         let issue_id = issue_entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
@@ -1281,10 +1482,11 @@ mod online {
             issue_id: Some(issue_id.clone()),
             ..Default::default()
         };
-        let comment_entity = client
-            .comment_create::<Comment>(comment_input)
-            .await
-            .unwrap();
+        let comment_entity = retry_create(|| {
+            let comment_input = comment_input.clone();
+            async { client.comment_create::<Comment>(comment_input).await }
+        })
+        .await;
         let comment_id = comment_entity.id.clone().unwrap();
         assert!(
             comment_entity.resolved_at.is_none(),
@@ -1335,7 +1537,11 @@ mod online {
             priority: Some(4),
             ..Default::default()
         };
-        let entity = client.issue_create::<Issue>(input).await.unwrap();
+        let entity = retry_create(|| {
+            let input = input.clone();
+            async { client.issue_create::<Issue>(input).await }
+        })
+        .await;
         let issue_id = entity.id.clone().unwrap();
         let _issue_guard = IssueGuard {
             token: test_token(),
