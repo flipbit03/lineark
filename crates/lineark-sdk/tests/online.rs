@@ -60,7 +60,7 @@ mod online {
     async fn team_by_id() {
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
         let team = client.team::<Team>(team_id.clone()).await.unwrap();
         assert_eq!(team.id, Some(team_id));
     }
@@ -69,7 +69,7 @@ mod online {
     async fn team_fields_deserialize_correctly() {
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
         let team = client.team::<Team>(team_id).await.unwrap();
         assert!(team.id.is_some());
         assert!(team.key.is_some());
@@ -356,7 +356,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue with a unique title.
         let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
@@ -429,7 +429,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue with a unique title in the first team.
         let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
@@ -546,7 +546,7 @@ mod online {
         let client = test_client();
 
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue.
         let input = IssueCreateInput {
@@ -583,7 +583,7 @@ mod online {
 
         // Create an issue to update.
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_update".to_string()),
@@ -630,7 +630,7 @@ mod online {
 
         // Create an issue to archive.
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         let input = IssueCreateInput {
             title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
@@ -676,7 +676,7 @@ mod online {
 
         // Create an issue to comment on.
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         let issue_input = IssueCreateInput {
             title: Some("[test] SDK comment_create".to_string()),
@@ -741,7 +741,7 @@ mod online {
 
         // Create a team to associate the document with (Linear requires at least one parent).
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create a document.
         let input = DocumentCreateInput {
@@ -810,7 +810,7 @@ mod online {
 
         // Create a team for the test issues.
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create two issues to relate.
         let input_a = IssueCreateInput {
@@ -972,7 +972,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create two issues.
         let input_a = IssueCreateInput {
@@ -1157,7 +1157,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1218,7 +1218,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue to comment on.
         let issue_input = IssueCreateInput {
@@ -1293,7 +1293,7 @@ mod online {
 
         let client = test_client();
         let team = create_test_team(&client).await;
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue so we can look up its branchName.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];

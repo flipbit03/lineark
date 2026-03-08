@@ -46,7 +46,7 @@ fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
 fn create_test_team() -> TestTeam {
     let client = Client::from_token(test_token()).unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(create_test_team(&client))
+    rt.block_on(lineark_test_utils::create_test_team(&client))
 }
 
 test_with::runner!(online);
@@ -424,7 +424,7 @@ mod online {
     fn issues_create_with_spaced_label_and_read_back() {
         let token = test_token();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create a label with a space in the name.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
@@ -702,7 +702,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -785,7 +785,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -936,7 +936,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -983,7 +983,7 @@ mod online {
         assert!(output.status.success(), "archive should succeed");
 
         // Wait for the archive to propagate before searching.
-        settle();
+        std::thread::sleep(std::time::Duration::from_secs(5));
 
         // Unarchive using the HUMAN identifier (e.g. CAD-1234), not the UUID.
         // This is the regression case: search_issues must include_archived(true)
@@ -1034,7 +1034,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue to delete.
         let output = lineark()
@@ -1101,7 +1101,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -1191,7 +1191,7 @@ mod online {
 
         // Create a team + issue to associate the document with.
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1377,7 +1377,7 @@ mod online {
         let token = test_token();
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1407,7 +1407,7 @@ mod online {
         let token = test_token();
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         let output = lineark()
             .args([
@@ -1649,7 +1649,7 @@ mod online {
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create two issues.
         let output = lineark()
@@ -1776,7 +1776,7 @@ mod online {
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create a parent issue.
         let output = lineark()
@@ -1912,7 +1912,7 @@ mod online {
         let token = test_token();
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Search with --team filter.
         let output = lineark()
@@ -1996,7 +1996,7 @@ mod online {
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create parent.
         let output = lineark()
@@ -2109,7 +2109,7 @@ mod online {
 
         // Create a team (projectCreate requires teamIds).
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create a test project via the SDK.
         let client = Client::from_token(test_token()).unwrap();
@@ -2290,7 +2290,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create a project via CLI (with retry for transient "conflict on insert" errors).
         let output = run_lineark_with_retry(&[
@@ -2441,7 +2441,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create a project with --lead me (with retry for transient API errors).
         let output = run_lineark_with_retry(&[
@@ -2559,7 +2559,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create a project with --lead me --members me (with retry for transient API errors).
         let output = run_lineark_with_retry(&[
@@ -2655,7 +2655,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Get my user ID.
         let output = lineark()
@@ -2732,7 +2732,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Get my user ID.
         let output = lineark()
@@ -2834,7 +2834,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -2903,7 +2903,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue to comment on.
         let output = lineark()
@@ -3404,7 +3404,7 @@ mod online {
     fn relations_create_blocks() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3436,7 +3436,7 @@ mod online {
     fn relations_create_blocked_by() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // "A --blocked-by B" means B blocks A.
@@ -3469,7 +3469,7 @@ mod online {
     fn relations_create_related() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3501,7 +3501,7 @@ mod online {
     fn relations_create_duplicate() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3533,7 +3533,7 @@ mod online {
     fn relations_create_similar() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         let output = lineark()
@@ -3565,7 +3565,7 @@ mod online {
     fn relations_create_and_delete() {
         let token = test_token();
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // Create a relation.
@@ -3625,7 +3625,7 @@ mod online {
         let token = test_token();
         let client = Client::from_token(token.clone()).unwrap();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue via SDK (more reliable than CLI for setup).
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
@@ -3782,7 +3782,7 @@ mod online {
         let token = test_token();
         let client = Client::from_token(token.clone()).unwrap();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue via SDK.
         let issue = tokio::runtime::Runtime::new().unwrap().block_on(async {
@@ -3884,7 +3884,7 @@ mod online {
         let token = test_token();
         let client = Client::from_token(&token).unwrap();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create an issue via SDK to get the branch name.
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -3961,7 +3961,7 @@ mod online {
         let token = test_token();
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create a project for the test (unique name to avoid conflicts).
         let project_label = format!(
@@ -4089,7 +4089,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue with --estimate.
         let output = lineark()
@@ -4217,7 +4217,7 @@ mod online {
         );
 
         let team = create_test_team();
-        let team_key = &team.key;
+        let team_key = team.key.clone();
 
         // Create an issue.
         let output = lineark()
@@ -4288,7 +4288,7 @@ mod online {
         let token = test_token();
         let client = Client::from_token(&token).unwrap();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create two issues via SDK.
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -4366,7 +4366,7 @@ mod online {
         let token = test_token();
         let client = Client::from_token(&token).unwrap();
         let team = create_test_team();
-        let team_id = &team.id;
+        let team_id = team.id.clone();
 
         // Create two issues.
         let rt = tokio::runtime::Runtime::new().unwrap();
