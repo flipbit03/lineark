@@ -8,6 +8,10 @@ authors.workspace = true
 description = "Shared test utilities for lineark online tests"
 publish = false
 
+[[bin]]
+name = "cleanup-test-workspace"
+path = "src/bin/cleanup.rs"
+
 [dependencies]
 lineark-sdk = { path = "../lineark-sdk", version = "0.0.0" }
 tokio = { version = "1", features = ["rt-multi-thread", "time"] }
