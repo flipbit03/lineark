@@ -341,6 +341,8 @@ pub struct IssueSummary {
     pub priority_label: Option<String>,
     pub estimate: Option<f64>,
     pub url: Option<String>,
+    pub completed_at: Option<String>,
+    pub canceled_at: Option<String>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
     #[graphql(nested)]
@@ -363,6 +365,8 @@ pub struct SearchSummary {
     pub priority_label: Option<String>,
     pub estimate: Option<f64>,
     pub url: Option<String>,
+    pub completed_at: Option<String>,
+    pub canceled_at: Option<String>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
     #[graphql(nested)]
@@ -392,6 +396,8 @@ pub struct IssueDetail {
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub archived_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub canceled_at: Option<String>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
     #[graphql(nested)]
