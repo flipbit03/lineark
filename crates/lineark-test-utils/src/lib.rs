@@ -9,7 +9,7 @@ mod retry;
 mod team;
 mod token;
 
-pub use cleanup::cleanup_zombies;
+pub use cleanup::{cleanup_workspace, cleanup_zombies};
 pub use guards::*;
 pub use retry::{retry_create, retry_search, retry_with_backoff, settle};
 pub use team::{create_test_team, TestTeam};

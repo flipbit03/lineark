@@ -24,5 +24,8 @@ test:
 	cargo test --workspace --test offline
 
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
+# Cleans the test workspace before running to avoid stale resource conflicts.
+# test_with's custom harness runs tests sequentially and aborts on first panic.
 test-online:
+	cargo run -p lineark-test-utils --bin cleanup-test-workspace
 	cargo test --workspace --test online -- --test-threads=1

@@ -48,9 +48,15 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
+      - name: Clean test workspace
+        run: cargo run -p lineark-test-utils --bin cleanup-test-workspace
+
       - name: Run online tests
         run: cargo test --workspace --test online -- --test-threads=1
 
+      - name: Clean test workspace (post)
+        if: always()
+        run: cargo run -p lineark-test-utils --bin cleanup-test-workspace
 
       - name: Remove safe-to-test label
         if: always()
