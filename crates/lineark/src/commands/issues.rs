@@ -256,6 +256,10 @@ struct IssueRow {
     labels: String,
     #[tabled(skip)]
     url: String,
+    #[tabled(skip)]
+    completed_at: Option<String>,
+    #[tabled(skip)]
+    canceled_at: Option<String>,
 }
 
 fn format_labels(labels: &Option<LabelConnection>) -> String {
@@ -295,6 +299,8 @@ impl From<&IssueSummary> for IssueRow {
             estimate: format_estimate(i.estimate),
             labels: format_labels(&i.labels),
             url: i.url.clone().unwrap_or_default(),
+            completed_at: i.completed_at.clone(),
+            canceled_at: i.canceled_at.clone(),
         }
     }
 }
@@ -323,6 +329,8 @@ impl From<&SearchSummary> for IssueRow {
             estimate: format_estimate(i.estimate),
             labels: format_labels(&i.labels),
             url: i.url.clone().unwrap_or_default(),
+            completed_at: i.completed_at.clone(),
+            canceled_at: i.canceled_at.clone(),
         }
     }
 }
