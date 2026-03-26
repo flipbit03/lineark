@@ -24,5 +24,6 @@ test:
 	cargo test --workspace --test offline
 
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
+# Uses nextest for fail-fast (abort on first failure) + serial execution.
 test-online:
-	cargo test --workspace --test online -- --test-threads=1
+	cargo nextest run --workspace --test online --test-threads=1 --fail-fast

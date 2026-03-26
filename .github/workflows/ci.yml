@@ -103,8 +103,11 @@ jobs:
         env:
           LINEAR_TEST_TOKEN: ${{ secrets.LINEAR_TEST_TOKEN }}
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
       - name: Run online tests
-        run: cargo test --workspace --test online -- --test-threads=1
+        run: cargo nextest run --workspace --test online --test-threads=1 --fail-fast
 
 
   build:
