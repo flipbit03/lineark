@@ -2272,7 +2272,11 @@ mod online {
                 team_ids: Some(vec![team_id]),
                 ..Default::default()
             };
-            client.project_create::<Project>(None, input).await.unwrap()
+            retry_create(|| {
+                let input = input.clone();
+                async { client.project_create::<Project>(None, input).await }
+            })
+            .await
         });
         let project_id = project.id.as_ref().unwrap().to_string();
         let _project_guard = ProjectGuard {
@@ -4050,7 +4054,11 @@ mod online {
                 priority: Some(4),
                 ..Default::default()
             };
-            let entity = client.issue_create::<Issue>(input).await.unwrap();
+            let entity = retry_create(|| {
+                let input = input.clone();
+                async { client.issue_create::<Issue>(input).await }
+            })
+            .await;
             let issue_id = entity.id.clone().unwrap();
             let branch_name = entity
                 .branch_name
