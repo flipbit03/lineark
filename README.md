@@ -46,8 +46,6 @@ We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool 
 
 Your agent discovers all commands at runtime via `lineark usage` — no tool schemas, no function definitions, no context bloat.
 
-> **Not using an AI agent?** Skip this step — lineark works great as a standalone CLI too.
-
 ### Authenticate
 
 Create a [Linear Personal API key](https://linear.app/settings/account/security) and save it:
