@@ -63,17 +63,7 @@ echo "lin_api_..." > ~/.linear_api_token_work
 lineark --profile work whoami
 ```
 
-### Use it
-
-```sh
-lineark whoami                              # check your identity
-lineark issues list --team ENG --mine       # my issues on the ENG team
-lineark issues search "auth bug" -l 5       # full-text search
-lineark issues create "Fix login" --team ENG -p 2 --assignee "Jane"
-lineark issues update ENG-42 -s "In Progress"
-```
-
-Output auto-detects format: human-readable tables in a terminal, JSON when piped. Override with `--format json`.
+That's it! Your agent is ready to use lineark.
 
 ## What it can do
 
