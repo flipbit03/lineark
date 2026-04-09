@@ -34,6 +34,20 @@ To update to the latest version:
 lineark self update
 ```
 
+### Set up your AI agent
+
+Add these lines to your agent's context file (`CLAUDE.md`, `.cursorrules`, system prompt, etc.):
+
+```
+We track our tickets and projects in Linear (https://linear.app), a project management tool.
+We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
+`lineark` executable. Run `lineark usage` to see usage information.
+```
+
+Your agent discovers all commands at runtime via `lineark usage` — no tool schemas, no function definitions, no context bloat.
+
+> **Not using an AI agent?** Skip this step — lineark works great as a standalone CLI too.
+
 ### Authenticate
 
 Create a [Linear Personal API key](https://linear.app/settings/account/security) and save it:
@@ -60,18 +74,6 @@ lineark issues update ENG-42 -s "In Progress"
 ```
 
 Output auto-detects format: human-readable tables in a terminal, JSON when piped. Override with `--format json`.
-
-## Set up your AI agent
-
-Add three lines to your LLM's context (`CLAUDE.md`, `.cursorrules`, system prompt, etc.):
-
-```
-We track our tickets and projects in Linear (https://linear.app), a project management tool.
-We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
-`lineark` executable. Run `lineark usage` to see usage information.
-```
-
-That's it. Your agent discovers all commands at runtime by running `lineark usage`: no tool schemas, no function definitions, no context bloat.
 
 ## What it can do
 
