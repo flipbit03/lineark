@@ -28,11 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh |
 
 Or via cargo: `cargo install lineark`
 
-To update to the latest version:
-
-```sh
-lineark self update
-```
+To update to the latest version: `lineark self update`
 
 ### Set up your AI agent
 
