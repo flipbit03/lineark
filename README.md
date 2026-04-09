@@ -28,11 +28,19 @@ curl -fsSL https://raw.githubusercontent.com/flipbit03/lineark/main/install.sh |
 
 Or via cargo: `cargo install lineark`
 
-To update to the latest version:
+To update to the latest version: `lineark self update`
 
-```sh
-lineark self update
+### Set up your AI agent
+
+Add these lines to your agent's context file (`CLAUDE.md`, `.cursorrules`, system prompt, etc.):
+
 ```
+We track our tickets and projects in Linear (https://linear.app), a project management tool.
+We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
+`lineark` executable. Run `lineark usage` to see usage information.
+```
+
+Your agent discovers all commands at runtime via `lineark usage` — no tool schemas, no function definitions, no context bloat.
 
 ### Authenticate
 
@@ -49,29 +57,7 @@ echo "lin_api_..." > ~/.linear_api_token_work
 lineark --profile work whoami
 ```
 
-### Use it
-
-```sh
-lineark whoami                              # check your identity
-lineark issues list --team ENG --mine       # my issues on the ENG team
-lineark issues search "auth bug" -l 5       # full-text search
-lineark issues create "Fix login" --team ENG -p 2 --assignee "Jane"
-lineark issues update ENG-42 -s "In Progress"
-```
-
-Output auto-detects format: human-readable tables in a terminal, JSON when piped. Override with `--format json`.
-
-## Set up your AI agent
-
-Add three lines to your LLM's context (`CLAUDE.md`, `.cursorrules`, system prompt, etc.):
-
-```
-We track our tickets and projects in Linear (https://linear.app), a project management tool.
-We use the `lineark` CLI tool for communicating with Linear. Use your Bash tool to call the
-`lineark` executable. Run `lineark usage` to see usage information.
-```
-
-That's it. Your agent discovers all commands at runtime by running `lineark usage`: no tool schemas, no function definitions, no context bloat.
+That's it! Your agent is ready to use lineark.
 
 ## What it can do
 
