@@ -1,5 +1,5 @@
 use clap::Args;
-use lineark_sdk::generated::inputs::{ProjectCreateInput, ProjectFilter};
+use lineark_sdk::generated::inputs::{ProjectCreateInput, ProjectFilter, ProjectUpdateInput};
 use lineark_sdk::generated::types::{
     Project, ProjectStatus, Team, TeamConnection, User, UserConnection,
 };
@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
 use super::helpers::{
-    parse_priority, resolve_project_id, resolve_team_ids, resolve_user_id_or_me,
-    resolve_user_ids_or_me,
+    parse_priority, resolve_project_id, resolve_project_label_ids, resolve_project_status_id,
+    resolve_team_ids, resolve_user_id_or_me, resolve_user_ids_or_me,
 };
 use crate::output::{self, Format};
 
@@ -81,6 +81,65 @@ pub enum ProjectsAction {
         /// Project color (hex color code).
         #[arg(long)]
         color: Option<String>,
+    },
+    /// Update an existing project. Returns the updated project.
+    ///
+    /// Examples:
+    ///   lineark projects update "Mobile App UX" --description "Updated scope"
+    ///   lineark projects update PROJECT-UUID --lead me --priority high
+    ///   lineark projects update "Alpha" --status "In Progress" --target-date 2026-06-01
+    ///   lineark projects update "Alpha" --clear-lead --clear-target-date
+    Update {
+        /// Project name or UUID.
+        id: String,
+        /// New project name.
+        #[arg(long)]
+        name: Option<String>,
+        /// Project description (markdown).
+        #[arg(short = 'd', long)]
+        description: Option<String>,
+        /// Markdown content for the project.
+        #[arg(long)]
+        content: Option<String>,
+        /// Project lead: user name, display name, UUID, or `me`.
+        #[arg(long)]
+        lead: Option<String>,
+        /// Remove the project lead.
+        #[arg(long, default_value = "false", conflicts_with = "lead")]
+        clear_lead: bool,
+        /// Project members: comma-separated user names, display names, UUIDs, or `me`. Replaces the existing set.
+        #[arg(long, value_delimiter = ',')]
+        members: Option<Vec<String>>,
+        /// Team(s) to associate with (key, name, or UUID). Comma-separated. Replaces the existing set.
+        #[arg(long, value_delimiter = ',')]
+        team: Option<Vec<String>>,
+        /// Planned start date (YYYY-MM-DD).
+        #[arg(long)]
+        start_date: Option<String>,
+        /// Remove the planned start date.
+        #[arg(long, default_value = "false", conflicts_with = "start_date")]
+        clear_start_date: bool,
+        /// Planned target/completion date (YYYY-MM-DD).
+        #[arg(long)]
+        target_date: Option<String>,
+        /// Remove the planned target date.
+        #[arg(long, default_value = "false", conflicts_with = "target_date")]
+        clear_target_date: bool,
+        /// Priority: 0-4 or none, urgent, high, medium, low.
+        #[arg(short = 'p', long, value_parser = parse_priority)]
+        priority: Option<i64>,
+        /// Project status name or UUID.
+        #[arg(long)]
+        status: Option<String>,
+        /// Project icon (emoji or icon name).
+        #[arg(long)]
+        icon: Option<String>,
+        /// Project color (hex color code).
+        #[arg(long)]
+        color: Option<String>,
+        /// Comma-separated project label names or UUIDs. Replaces the existing set.
+        #[arg(long, value_delimiter = ',')]
+        labels: Option<Vec<String>>,
     },
 }
 
@@ -295,6 +354,137 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
                 .project_create::<ProjectRef>(None, input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            output::print_one(&project, format);
+        }
+        ProjectsAction::Update {
+            id,
+            name,
+            description,
+            content,
+            lead,
+            clear_lead,
+            members,
+            team,
+            start_date,
+            clear_start_date,
+            target_date,
+            clear_target_date,
+            priority,
+            status,
+            icon,
+            color,
+            labels,
+        } => {
+            if name.is_none()
+                && description.is_none()
+                && content.is_none()
+                && lead.is_none()
+                && !clear_lead
+                && members.is_none()
+                && team.is_none()
+                && start_date.is_none()
+                && !clear_start_date
+                && target_date.is_none()
+                && !clear_target_date
+                && priority.is_none()
+                && status.is_none()
+                && icon.is_none()
+                && color.is_none()
+                && labels.is_none()
+            {
+                return Err(anyhow::anyhow!(
+                    "No update fields provided. Use --name, --description, --content, --lead, --members, --team, --start-date, --target-date, --priority, --status, --icon, --color, or --labels to specify changes."
+                ));
+            }
+
+            let project_id = resolve_project_id(client, &id).await?;
+
+            let lead_id = match lead {
+                Some(ref l) => Some(resolve_user_id_or_me(client, l).await?),
+                None => None,
+            };
+
+            let member_ids = match members {
+                Some(ref m) => Some(resolve_user_ids_or_me(client, m).await?),
+                None => None,
+            };
+
+            let team_ids = match team {
+                Some(ref t) => Some(resolve_team_ids(client, t).await?),
+                None => None,
+            };
+
+            let status_id = match status {
+                Some(ref s) => Some(resolve_project_status_id(client, s).await?),
+                None => None,
+            };
+
+            let label_ids = match labels {
+                Some(ref l) => Some(resolve_project_label_ids(client, l).await?),
+                None => None,
+            };
+
+            let start_date = start_date
+                .map(|d| d.parse::<chrono::NaiveDate>())
+                .transpose()
+                .map_err(|e| anyhow::anyhow!("Invalid start-date (expected YYYY-MM-DD): {}", e))?;
+
+            let target_date = target_date
+                .map(|d| d.parse::<chrono::NaiveDate>())
+                .transpose()
+                .map_err(|e| anyhow::anyhow!("Invalid target-date (expected YYYY-MM-DD): {}", e))?;
+
+            let input = ProjectUpdateInput {
+                name,
+                description,
+                content,
+                lead_id,
+                member_ids,
+                team_ids,
+                start_date,
+                target_date,
+                priority,
+                status_id,
+                icon,
+                color,
+                label_ids,
+                ..Default::default()
+            };
+
+            // When --clear-* flags are used, we need to send `null` for the
+            // relevant field. ProjectUpdateInput uses skip_serializing_if so
+            // None omits the field (no-op). We serialize to Value and inject null.
+            let project = if clear_lead || clear_start_date || clear_target_date {
+                let mut input_val = serde_json::to_value(&input)?;
+                let obj = input_val.as_object_mut().unwrap();
+                if clear_lead {
+                    obj.insert("leadId".to_string(), serde_json::Value::Null);
+                }
+                if clear_start_date {
+                    obj.insert("startDate".to_string(), serde_json::Value::Null);
+                }
+                if clear_target_date {
+                    obj.insert("targetDate".to_string(), serde_json::Value::Null);
+                }
+                let variables = serde_json::json!({ "input": input_val, "id": project_id });
+                let sel = <ProjectRef as GraphQLFields>::selection();
+                let query = format!(
+                    "mutation($input: ProjectUpdateInput!, $id: String!) {{ projectUpdate(input: $input, id: $id) {{ success project {{ {sel} }} }} }}"
+                );
+                let payload: serde_json::Value = client
+                    .execute(&query, variables, "projectUpdate")
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                serde_json::from_value::<ProjectRef>(
+                    payload.get("project").cloned().unwrap_or_default(),
+                )?
+            } else {
+                client
+                    .project_update::<ProjectRef>(input, project_id)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?
+            };
 
             output::print_one(&project, format);
         }

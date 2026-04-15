@@ -22,6 +22,8 @@ issueRelations = true
 issueRelation = true
 projectMilestones = true
 projectMilestone = true
+projectStatuses = true
+projectLabels = true
 
 [mutations]
 # Phase 2 — Core writes

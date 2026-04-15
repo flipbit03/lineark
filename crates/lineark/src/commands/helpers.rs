@@ -1,4 +1,6 @@
-use lineark_sdk::generated::types::{Cycle, IssueLabel, IssueSearchResult, Project, Team, User};
+use lineark_sdk::generated::types::{
+    Cycle, IssueLabel, IssueSearchResult, Project, ProjectLabel, ProjectStatus, Team, User,
+};
 use lineark_sdk::Client;
 
 /// Resolve a team key or name (e.g., "ENG" or "Engineering") to a team UUID.
@@ -408,6 +410,101 @@ pub async fn resolve_cycle_id(
         name_or_id,
         available.join(", ")
     ))
+}
+
+/// Resolve a project status name or UUID to a status UUID.
+/// If the input already looks like a UUID, return it as-is.
+/// Matches case-insensitively on `name`.
+pub async fn resolve_project_status_id(
+    client: &Client,
+    name_or_id: &str,
+) -> anyhow::Result<String> {
+    if uuid::Uuid::parse_str(name_or_id).is_ok() {
+        return Ok(name_or_id.to_string());
+    }
+    let conn = client
+        .project_statuses::<ProjectStatus>()
+        .first(250)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let matches: Vec<&ProjectStatus> = conn
+        .nodes
+        .iter()
+        .filter(|s| {
+            s.name
+                .as_deref()
+                .is_some_and(|n| n.eq_ignore_ascii_case(name_or_id))
+        })
+        .collect();
+
+    match matches.len() {
+        0 => {
+            let available: Vec<String> = conn.nodes.iter().filter_map(|s| s.name.clone()).collect();
+            Err(anyhow::anyhow!(
+                "Project status '{}' not found. Available: {}",
+                name_or_id,
+                available.join(", ")
+            ))
+        }
+        1 => Ok(matches[0].id.clone().unwrap_or_default()),
+        _ => {
+            let names: Vec<String> = matches.iter().filter_map(|s| s.name.clone()).collect();
+            Err(anyhow::anyhow!(
+                "Ambiguous project status '{}'. Matches: {}",
+                name_or_id,
+                names.join(", ")
+            ))
+        }
+    }
+}
+
+/// Resolve project label names or UUIDs to a vec of project label UUIDs.
+/// Matches case-insensitively on `name`.
+pub async fn resolve_project_label_ids(
+    client: &Client,
+    names_or_ids: &[String],
+) -> anyhow::Result<Vec<String>> {
+    let all_uuids = names_or_ids
+        .iter()
+        .all(|s| uuid::Uuid::parse_str(s).is_ok());
+    if all_uuids {
+        return Ok(names_or_ids.to_vec());
+    }
+
+    let conn = client
+        .project_labels::<ProjectLabel>()
+        .first(250)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let mut resolved = Vec::with_capacity(names_or_ids.len());
+    for item in names_or_ids {
+        if uuid::Uuid::parse_str(item).is_ok() {
+            resolved.push(item.clone());
+        } else {
+            let found = conn.nodes.iter().find(|l| {
+                l.name
+                    .as_deref()
+                    .is_some_and(|n| n.eq_ignore_ascii_case(item))
+            });
+            match found {
+                Some(label) => resolved.push(label.id.clone().unwrap_or_default()),
+                None => {
+                    let available: Vec<String> =
+                        conn.nodes.iter().filter_map(|l| l.name.clone()).collect();
+                    return Err(anyhow::anyhow!(
+                        "Project label '{}' not found. Available: {}",
+                        item,
+                        available.join(", ")
+                    ));
+                }
+            }
+        }
+    }
+    Ok(resolved)
 }
 
 /// Parse a priority value from either a number (0-4) or a name.

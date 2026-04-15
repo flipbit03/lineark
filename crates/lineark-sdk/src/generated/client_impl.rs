@@ -69,6 +69,12 @@ impl Client {
     pub fn search_issues<T>(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_, T> {
         crate::generated::queries::search_issues(self, term)
     }
+    /// All project statuses.
+    ///
+    /// Full type: [`ProjectStatus`](super::types::ProjectStatus)
+    pub fn project_statuses<T>(&self) -> ProjectStatusesQueryBuilder<'_, T> {
+        crate::generated::queries::project_statuses(self)
+    }
     /// All milestones for the project.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
@@ -85,6 +91,12 @@ impl Client {
         id: String,
     ) -> Result<T, LinearError> {
         crate::generated::queries::project_milestone::<T>(self, id).await
+    }
+    /// All project labels.
+    ///
+    /// Full type: [`ProjectLabel`](super::types::ProjectLabel)
+    pub fn project_labels<T>(&self) -> ProjectLabelsQueryBuilder<'_, T> {
+        crate::generated::queries::project_labels(self)
     }
     /// All issues.
     ///
