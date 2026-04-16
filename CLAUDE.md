@@ -86,6 +86,7 @@ There's a Claude Code command for the full workflow (fetch + codegen + fix break
 - **`lineark usage`** is the LLM entry point — a compact (<1000 tokens) command reference. Keep it small for token efficiency. Only add flags/commands here when they're important enough that an LLM should know about them upfront.
 - **`--help`** on every command/subcommand is the detailed reference. All flags, descriptions, defaults, and examples go here via clap doc comments. Commands should be fully self-discoverable via `--help`.
 - Rule of thumb: `usage` = "what can I do?", `--help` = "how exactly does this work?"
+- **Keep `usage` in sync with structural changes.** When adding or removing a command, or materially changing a flag's shape/semantics (not cosmetic tweaks, renames of hidden internals, or adding a `visible_alias`), review `crates/lineark/src/commands/usage.rs` and update it. If the "what can I do?" answer changed, `usage` must reflect it.
 
 ## PR guidelines
 
