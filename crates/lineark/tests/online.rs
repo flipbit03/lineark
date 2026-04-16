@@ -2800,6 +2800,187 @@ mod online {
         });
     }
 
+    // ── Projects update ─────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_update_multiple_fields_and_clear_lead() {
+        let token = test_token();
+        let unique_name = format!(
+            "[test] CLI projects update {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        let updated_name = format!("{unique_name} (renamed)");
+
+        let team = create_test_team();
+        let team_key = team.key.clone();
+
+        // Create a project with a lead and target date set.
+        let output = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "projects",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--lead",
+            "me",
+            "--description",
+            "Initial description.",
+            "--target-date",
+            "2026-12-31",
+            "--priority",
+            "3",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let project_id = created["id"].as_str().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
+
+        // Update name, description, and priority in a single call.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "update",
+                &project_id,
+                "--name",
+                &updated_name,
+                "--description",
+                "Updated description.",
+                "--priority",
+                "urgent",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects update should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(
+            updated["name"].as_str(),
+            Some(updated_name.as_str()),
+            "name should be updated"
+        );
+
+        // Read it back and verify the description/priority also persisted.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "read",
+                &project_id,
+            ])
+            .output()
+            .unwrap();
+        let detail: serde_json::Value =
+            serde_json::from_slice(&output.stdout).expect("read output should parse");
+        assert_eq!(
+            detail["description"].as_str(),
+            Some("Updated description."),
+            "description should be updated"
+        );
+        assert_eq!(detail["priority"].as_i64(), Some(1), "priority should be 1");
+        assert!(
+            !detail["lead"].is_null(),
+            "lead should still be set before clear-lead"
+        );
+
+        // Clear the lead and target date.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "update",
+                &project_id,
+                "--clear-lead",
+                "--clear-target-date",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "projects update --clear-lead should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Read back and verify lead/target-date are now null.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "read",
+                &project_id,
+            ])
+            .output()
+            .unwrap();
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail["lead"].is_null(),
+            "lead should be null after --clear-lead, got: {}",
+            detail["lead"]
+        );
+        assert!(
+            detail["targetDate"].is_null(),
+            "targetDate should be null after --clear-target-date, got: {}",
+            detail["targetDate"]
+        );
+    }
+
+    // ── Projects update requires at least one field ─────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn projects_update_without_fields_fails() {
+        let token = test_token();
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "projects",
+                "update",
+                "any-id",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(
+            !output.status.success(),
+            "projects update without fields should fail"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("No update fields provided"),
+            "expected 'No update fields provided' error, got: {stderr}"
+        );
+    }
+
     // ── Issues create with --assignee me ───────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

@@ -73,6 +73,7 @@ COMMANDS:
   lineark projects list [--led-by-me]              List all projects (with lead)
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
   lineark projects create <NAME> --team KEY ...    Create project (--help for flags)
+  lineark projects update <NAME-OR-ID> ...         Update project (--help for flags)
   lineark labels list [--team KEY]                 List labels (group, team, parent, color)
   lineark labels create|update|delete ...          Manage labels (--help for flags)
   lineark cycles list [-l N] [--team KEY]          List cycles
