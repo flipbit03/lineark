@@ -111,19 +111,16 @@ fn emit_mutation(
     for pf in &payload_obj.fields {
         let base = pf.ty.base_name();
         match type_kind_map.get(base) {
-            Some(TypeKind::Scalar) | Some(TypeKind::Enum) => {
-                if pf.name != "lastSyncId" {
-                    scalar_parts.push(pf.name.clone());
-                }
+            Some(TypeKind::Scalar) | Some(TypeKind::Enum) if pf.name != "lastSyncId" => {
+                scalar_parts.push(pf.name.clone());
             }
-            Some(TypeKind::Object) => {
-                // Only treat as entity if the Object type implements Node (has an `id` field).
-                if entity_info.is_none() {
-                    if let Some(obj) = object_map.get(base) {
-                        if obj.fields.iter().any(|f| f.name == "id") {
-                            entity_info =
-                                Some((pf.name.clone(), base.to_string(), is_list_type(&pf.ty)));
-                        }
+            // Only treat as entity if the Object type implements Node (has an `id` field),
+            // and only pick the first such field per payload.
+            Some(TypeKind::Object) if entity_info.is_none() => {
+                if let Some(obj) = object_map.get(base) {
+                    if obj.fields.iter().any(|f| f.name == "id") {
+                        entity_info =
+                            Some((pf.name.clone(), base.to_string(), is_list_type(&pf.ty)));
                     }
                 }
             }
