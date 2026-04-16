@@ -103,7 +103,7 @@ fn emit_input_struct(
                     | None
             )
         })
-        .map(|f| emit_field(f, type_kind_map, &input.name))
+        .map(|f| emit_field(f, type_kind_map))
         .collect();
 
     let derives = if defaultable.contains(&input.name) {
@@ -122,11 +122,7 @@ fn emit_input_struct(
     }
 }
 
-fn emit_field(
-    f: &FieldDef,
-    type_kind_map: &HashMap<String, TypeKind>,
-    input_name: &str,
-) -> TokenStream {
+fn emit_field(f: &FieldDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let field_name_str = f.name.to_snake_case();
     let original_name = &f.name;
     let safe_name = parser::safe_ident(&field_name_str);
@@ -139,7 +135,7 @@ fn emit_field(
     };
 
     let is_required = matches!(f.ty, GqlType::NonNull(_));
-    let rust_type = resolve_input_type(&f.ty, type_kind_map, input_name, &f.name);
+    let rust_type = resolve_input_type(&f.ty, type_kind_map);
     let fdoc = parser::doc_comment_tokens(&f.description);
     // If the snake_case name differs from the original camelCase, add serde rename.
     // We use rename_all on the struct level, so individual renames are only needed
@@ -171,37 +167,40 @@ fn emit_field(
 
 /// Resolve a GraphQL input field type into its emitted Rust tokens.
 ///
-/// - Nullable outer (`T`) → `MaybeUndefined<T>` so the consumer can distinguish
-///   omitted from explicit null.
-/// - Required outer (`T!`) → plain `T` / `Vec<T>` / `Box<InputT>`.
-fn resolve_input_type(
-    ty: &GqlType,
-    type_kind_map: &HashMap<String, TypeKind>,
-    input_name: &str,
-    field_name: &str,
-) -> TokenStream {
+/// Walks the type tree and applies nullability uniformly:
+///
+/// - At the **outermost** position, nullable wraps in `MaybeUndefined<T>` so
+///   the consumer can distinguish "omit this field" from "send explicit null".
+/// - **Inside a list**, nullable wraps in `Option<T>` — GraphQL list slots are
+///   always materialized (no "omit this slot" wire form), so the three-state
+///   distinction is meaningless one level in.
+/// - Required positions emit plain `T` at any depth.
+///
+/// This handles every shape the GraphQL spec allows (`T`, `T!`, `[T!]!`,
+/// `[T!]`, `[T]!`, `[T]`, and arbitrarily nested lists like `[[T!]!]!`)
+/// without special-casing the schema.
+fn resolve_input_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    resolve(ty, type_kind_map, /* depth = */ 0)
+}
+
+fn resolve(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>, depth: usize) -> TokenStream {
     match ty {
-        GqlType::NonNull(inner) => resolve_payload(inner, type_kind_map, input_name, field_name),
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth),
         other => {
-            let inner = resolve_payload(other, type_kind_map, input_name, field_name);
-            quote! { MaybeUndefined<#inner> }
+            let inner = resolve_required(other, type_kind_map, depth);
+            if depth == 0 {
+                quote! { MaybeUndefined<#inner> }
+            } else {
+                quote! { Option<#inner> }
+            }
         }
     }
 }
 
-/// Resolve the "payload" type — the value that either sits inside
-/// `MaybeUndefined<_>` for a nullable field or is used directly for a required
-/// field.
-///
-/// Also enforces Linear's schema invariant that list types have non-null
-/// element types (`[T!]` / `[T!]!`, never `[T]` / `[T]!`). If Linear ever adds
-/// a nullable-inner list, the maintainer should extend this function
-/// deliberately rather than have codegen silently emit a mismatched type.
-fn resolve_payload(
+fn resolve_required(
     ty: &GqlType,
     type_kind_map: &HashMap<String, TypeKind>,
-    input_name: &str,
-    field_name: &str,
+    depth: usize,
 ) -> TokenStream {
     match ty {
         GqlType::Named(name) => {
@@ -220,17 +219,9 @@ fn resolve_payload(
                 graphql_type_to_rust(name)
             }
         }
-        GqlType::NonNull(inner) => resolve_payload(inner, type_kind_map, input_name, field_name),
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth),
         GqlType::List(inner) => {
-            if !matches!(**inner, GqlType::NonNull(_)) {
-                panic!(
-                    "codegen: input `{input_name}.{field_name}` uses a list with a nullable inner \
-                     type (`[T]` or `[T]!`), which is not currently supported. Linear's schema had \
-                     zero such occurrences when this codegen was written. Extend \
-                     `resolve_payload` in emit_inputs.rs to decide the Rust representation."
-                );
-            }
-            let elem = resolve_payload(inner, type_kind_map, input_name, field_name);
+            let elem = resolve(inner, type_kind_map, depth + 1);
             quote! { Vec<#elem> }
         }
     }
