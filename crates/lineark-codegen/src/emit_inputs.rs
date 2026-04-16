@@ -226,3 +226,113 @@ fn resolve_required(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn type_kind_map() -> HashMap<String, TypeKind> {
+        let mut m = HashMap::new();
+        m.insert("String".to_string(), TypeKind::Scalar);
+        m
+    }
+
+    /// Render a single field's resolved Rust type with whitespace collapsed,
+    /// so test assertions can compare against a clean expected string without
+    /// matching the exact spacing `quote!` produces.
+    fn rendered(ty: GqlType) -> String {
+        resolve_input_type(&ty, &type_kind_map())
+            .to_string()
+            .split_whitespace()
+            .collect::<String>()
+    }
+
+    fn named() -> GqlType {
+        GqlType::Named("String".to_string())
+    }
+    fn nn(t: GqlType) -> GqlType {
+        GqlType::NonNull(Box::new(t))
+    }
+    fn list(t: GqlType) -> GqlType {
+        GqlType::List(Box::new(t))
+    }
+
+    /// Each row covers one shape the GraphQL spec allows. The full table is
+    /// in one test so any drift is visible at a glance.
+    #[test]
+    fn input_field_shapes() {
+        // Scalars
+        assert_eq!(rendered(nn(named())), "String", "T!");
+        assert_eq!(rendered(named()), "MaybeUndefined<String>", "T");
+
+        // First-level lists
+        assert_eq!(rendered(nn(list(nn(named())))), "Vec<String>", "[T!]!");
+        assert_eq!(
+            rendered(list(nn(named()))),
+            "MaybeUndefined<Vec<String>>",
+            "[T!]"
+        );
+        assert_eq!(rendered(nn(list(named()))), "Vec<Option<String>>", "[T]!");
+        assert_eq!(
+            rendered(list(named())),
+            "MaybeUndefined<Vec<Option<String>>>",
+            "[T]"
+        );
+
+        // Nested lists — verify the recursion compounds correctly
+        assert_eq!(
+            rendered(nn(list(nn(list(nn(named())))))),
+            "Vec<Vec<String>>",
+            "[[T!]!]!"
+        );
+        assert_eq!(
+            rendered(list(nn(list(named())))),
+            "MaybeUndefined<Vec<Vec<Option<String>>>>",
+            "[[T]!]"
+        );
+        assert_eq!(
+            rendered(nn(list(list(nn(named()))))),
+            "Vec<Option<Vec<String>>>",
+            "[[T!]]!"
+        );
+    }
+
+    /// End-to-end: build an input struct with one field of each shape and
+    /// confirm the emitted code parses as valid Rust and contains the right
+    /// type wrappers + skip-serializing predicate on the right fields.
+    #[test]
+    fn emit_struct_for_all_list_shapes_parses() {
+        let mk_field = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+        let inputs = vec![InputDef {
+            name: "Sample".to_string(),
+            description: None,
+            fields: vec![
+                mk_field("a", nn(named())),
+                mk_field("b", named()),
+                mk_field("c", nn(list(nn(named())))),
+                mk_field("d", list(nn(named()))),
+                mk_field("e", nn(list(named()))),
+                mk_field("f", list(named())),
+            ],
+        }];
+        let output = emit(&inputs, &type_kind_map()).to_string();
+        syn::parse_file(&output).expect("emitted input code must be valid Rust");
+
+        let normalized: String = output.split_whitespace().collect();
+        // Required field: no skip predicate, plain T
+        assert!(normalized.contains("puba:String,"));
+        // Nullable field: MaybeUndefined wrapper + skip predicate
+        assert!(normalized.contains("MaybeUndefined::is_undefined"));
+        assert!(normalized.contains("pubb:MaybeUndefined<String>,"));
+        // Lists honor inner nullability uniformly
+        assert!(normalized.contains("pubc:Vec<String>,"));
+        assert!(normalized.contains("pubd:MaybeUndefined<Vec<String>>,"));
+        assert!(normalized.contains("pube:Vec<Option<String>>,"));
+        assert!(normalized.contains("pubf:MaybeUndefined<Vec<Option<String>>>,"));
+    }
+}

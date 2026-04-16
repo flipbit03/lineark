@@ -346,6 +346,93 @@ mod tests {
         assert!(output.contains("label_ids"));
     }
 
+    fn rendered_output(ty: GqlType) -> String {
+        let map = make_type_kind_map();
+        resolve_type(&ty, &map)
+            .to_string()
+            .split_whitespace()
+            .collect::<String>()
+    }
+
+    fn n(t: GqlType) -> GqlType {
+        GqlType::NonNull(Box::new(t))
+    }
+    fn l(t: GqlType) -> GqlType {
+        GqlType::List(Box::new(t))
+    }
+    fn s() -> GqlType {
+        GqlType::Named("String".to_string())
+    }
+
+    /// Output convention: outermost is **always** wrapped in `Option<>`
+    /// (lean-struct selection allows any field to be missing). Inside lists,
+    /// element nullability is honored faithfully.
+    #[test]
+    fn output_field_shapes() {
+        // Outer wrap is Option regardless of `!` — this is the lean-struct convention.
+        assert_eq!(rendered_output(n(s())), "Option<String>", "T!");
+        assert_eq!(rendered_output(s()), "Option<String>", "T");
+
+        // First-level lists
+        assert_eq!(
+            rendered_output(n(l(n(s())))),
+            "Option<Vec<String>>",
+            "[T!]!"
+        );
+        assert_eq!(rendered_output(l(n(s()))), "Option<Vec<String>>", "[T!]");
+        assert_eq!(
+            rendered_output(n(l(s()))),
+            "Option<Vec<Option<String>>>",
+            "[T]!"
+        );
+        assert_eq!(
+            rendered_output(l(s())),
+            "Option<Vec<Option<String>>>",
+            "[T]"
+        );
+
+        // Nested lists
+        assert_eq!(
+            rendered_output(n(l(n(l(n(s())))))),
+            "Option<Vec<Vec<String>>>",
+            "[[T!]!]!"
+        );
+        assert_eq!(
+            rendered_output(l(n(l(s())))),
+            "Option<Vec<Vec<Option<String>>>>",
+            "[[T]!]"
+        );
+        assert_eq!(
+            rendered_output(n(l(l(n(s()))))),
+            "Option<Vec<Option<Vec<String>>>>",
+            "[[T!]]!"
+        );
+    }
+
+    /// `Box<>` is added at the outer level whenever the innermost named type
+    /// is an Object — that's the existing convention to keep mutually recursive
+    /// types sized. It applies even to list-of-Object fields (`Option<Box<Vec<Team>>>`),
+    /// which is functionally fine (Vec is already heap-allocated) but adds an
+    /// unnecessary allocation. Captured here so any future change to the rule
+    /// is intentional.
+    #[test]
+    fn output_object_outer_wrap_uses_box() {
+        let map = make_type_kind_map();
+        let team = GqlType::Named("Team".to_string());
+        let outer: String = resolve_type(&team, &map)
+            .to_string()
+            .split_whitespace()
+            .collect();
+        assert_eq!(outer, "Option<Box<Team>>");
+
+        let team_list = n(l(n(GqlType::Named("Team".to_string()))));
+        let listed: String = resolve_type(&team_list, &map)
+            .to_string()
+            .split_whitespace()
+            .collect();
+        assert_eq!(listed, "Option<Box<Vec<Team>>>");
+    }
+
     #[test]
     fn emit_graphql_fields_selection() {
         let type_kind_map = make_type_kind_map();
