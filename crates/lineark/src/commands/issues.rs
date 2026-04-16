@@ -6,7 +6,7 @@ use lineark_sdk::generated::types::{
     Comment, CommentConnection, Issue, IssueConnection, IssueLabel, IssueLabelConnection,
     IssueRelation, IssueRelationConnection, IssueSearchResult, User, WorkflowState,
 };
-use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::{Client, GraphQLFields, MaybeUndefined};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
@@ -722,17 +722,17 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let input = IssueCreateInput {
-                title: Some(title),
-                team_id: Some(team_id),
-                assignee_id,
-                label_ids,
-                priority,
-                estimate,
-                description,
-                parent_id,
-                state_id,
-                project_id,
-                cycle_id,
+                title: title.into(),
+                team_id,
+                assignee_id: assignee_id.into(),
+                label_ids: label_ids.into(),
+                priority: priority.into(),
+                estimate: estimate.into(),
+                description: description.into(),
+                parent_id: parent_id.into(),
+                state_id: state_id.into(),
+                project_id: project_id.into(),
+                cycle_id: cycle_id.into(),
                 ..Default::default()
             };
 
@@ -862,14 +862,14 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let input = IssueUpdateInput {
-                assignee_id,
-                priority,
-                state_id,
-                label_ids,
-                added_label_ids,
-                removed_label_ids,
-                project_id,
-                cycle_id,
+                assignee_id: assignee_id.into(),
+                priority: priority.into(),
+                state_id: state_id.into(),
+                label_ids: label_ids.into(),
+                added_label_ids: added_label_ids.into(),
+                removed_label_ids: removed_label_ids.into(),
+                project_id: project_id.into(),
+                cycle_id: cycle_id.into(),
                 ..Default::default()
             };
 
@@ -978,49 +978,32 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 (None, None, None)
             };
 
+            let parent_id = if clear_parent {
+                MaybeUndefined::Null
+            } else {
+                parent_id.into()
+            };
+
             let input = IssueUpdateInput {
-                title,
-                description,
-                assignee_id,
-                priority,
-                estimate,
-                state_id,
+                title: title.into(),
+                description: description.into(),
+                assignee_id: assignee_id.into(),
+                priority: priority.into(),
+                estimate: estimate.into(),
+                state_id: state_id.into(),
                 parent_id,
-                label_ids,
-                added_label_ids,
-                removed_label_ids,
-                project_id,
-                cycle_id,
+                label_ids: label_ids.into(),
+                added_label_ids: added_label_ids.into(),
+                removed_label_ids: removed_label_ids.into(),
+                project_id: project_id.into(),
+                cycle_id: cycle_id.into(),
                 ..Default::default()
             };
 
-            // When --clear-parent is used, we need to send `parentId: null` to
-            // the API. The generated IssueUpdateInput uses skip_serializing_if
-            // so None omits the field (no-op). We serialize to Value and inject null.
-            let issue = if clear_parent {
-                let mut input_val = serde_json::to_value(&input)?;
-                input_val
-                    .as_object_mut()
-                    .unwrap()
-                    .insert("parentId".to_string(), serde_json::Value::Null);
-                let variables = serde_json::json!({ "input": input_val, "id": issue_id });
-                let sel = <IssueRef as GraphQLFields>::selection();
-                let query = format!(
-                    "mutation($input: IssueUpdateInput!, $id: String!) {{ issueUpdate(input: $input, id: $id) {{ success issue {{ {sel} }} }} }}"
-                );
-                let payload: serde_json::Value = client
-                    .execute(&query, variables, "issueUpdate")
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-                serde_json::from_value::<IssueRef>(
-                    payload.get("issue").cloned().unwrap_or_default(),
-                )?
-            } else {
-                client
-                    .issue_update::<IssueRef>(input, issue_id)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?
-            };
+            let issue = client
+                .issue_update::<IssueRef>(input, issue_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&issue, format);
         }

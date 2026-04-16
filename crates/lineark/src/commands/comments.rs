@@ -86,8 +86,8 @@ pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::R
             let issue_id = resolve_issue_id(client, &issue).await?;
 
             let input = CommentCreateInput {
-                body: Some(body),
-                issue_id: Some(issue_id),
+                body: body.into(),
+                issue_id: issue_id.into(),
                 ..Default::default()
             };
 
@@ -104,7 +104,7 @@ pub async fn run(cmd: CommentsCmd, client: &Client, format: Format) -> anyhow::R
             }
 
             let input = CommentUpdateInput {
-                body,
+                body: body.into(),
                 ..Default::default()
             };
 

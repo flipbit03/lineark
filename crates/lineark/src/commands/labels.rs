@@ -3,7 +3,7 @@ use lineark_sdk::generated::inputs::{
     IssueLabelCreateInput, IssueLabelFilter, IssueLabelUpdateInput,
 };
 use lineark_sdk::generated::types::IssueLabel;
-use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::{Client, GraphQLFields, MaybeUndefined};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
@@ -246,12 +246,16 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let input = IssueLabelCreateInput {
-                name: Some(name),
-                color,
-                description,
-                parent_id: parent_label_group,
-                team_id,
-                is_group: if make_label_group { Some(true) } else { None },
+                name,
+                color: color.into(),
+                description: description.into(),
+                parent_id: parent_label_group.into(),
+                team_id: team_id.into(),
+                is_group: if make_label_group {
+                    MaybeUndefined::Value(true)
+                } else {
+                    MaybeUndefined::Undefined
+                },
                 ..Default::default()
             };
 
@@ -286,48 +290,32 @@ pub async fn run(cmd: LabelsCmd, client: &Client, format: Format) -> anyhow::Res
             }
 
             let is_group = if make_label_group {
-                Some(true)
+                MaybeUndefined::Value(true)
             } else if clear_label_group {
-                Some(false)
+                MaybeUndefined::Value(false)
             } else {
-                None
+                MaybeUndefined::Undefined
+            };
+
+            let parent_id = if clear_parent_label_group {
+                MaybeUndefined::Null
+            } else {
+                parent_label_group.into()
             };
 
             let input = IssueLabelUpdateInput {
-                name,
-                color,
-                description,
-                parent_id: parent_label_group,
+                name: name.into(),
+                color: color.into(),
+                description: description.into(),
+                parent_id,
                 is_group,
                 ..Default::default()
             };
 
-            // When --clear-parent-label-group is used, send `parentId: null` to the API.
-            // The generated input uses skip_serializing_if so None omits the field.
-            let label = if clear_parent_label_group {
-                let mut input_val = serde_json::to_value(&input)?;
-                input_val
-                    .as_object_mut()
-                    .unwrap()
-                    .insert("parentId".to_string(), serde_json::Value::Null);
-                let variables = serde_json::json!({ "input": input_val, "id": id });
-                let sel = <LabelRef as GraphQLFields>::selection();
-                let query = format!(
-                    "mutation($input: IssueLabelUpdateInput!, $id: String!) {{ issueLabelUpdate(input: $input, id: $id) {{ success issueLabel {{ {sel} }} }} }}"
-                );
-                let payload: serde_json::Value = client
-                    .execute(&query, variables, "issueLabelUpdate")
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-                serde_json::from_value::<LabelRef>(
-                    payload.get("issueLabel").cloned().unwrap_or_default(),
-                )?
-            } else {
-                client
-                    .issue_label_update::<LabelRef>(None, input, id)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?
-            };
+            let label = client
+                .issue_label_update::<LabelRef>(None, input, id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&label, format);
         }

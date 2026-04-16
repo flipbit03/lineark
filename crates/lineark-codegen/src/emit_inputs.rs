@@ -1,15 +1,17 @@
 use crate::emit_scalars::graphql_type_to_rust;
-use crate::parser::{self, GqlType, InputDef, TypeKind};
+use crate::parser::{self, FieldDef, GqlType, InputDef, TypeKind};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    let defaultable = compute_defaultable_inputs(inputs, type_kind_map);
+
     let structs: Vec<TokenStream> = inputs
         .iter()
         .filter(|i| !i.name.is_empty())
-        .map(|i| emit_input_struct(i, type_kind_map))
+        .map(|i| emit_input_struct(i, type_kind_map, &defaultable))
         .collect();
 
     quote! {
@@ -19,12 +21,65 @@ pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> T
 
         use serde::{Deserialize, Serialize};
         use super::enums::*;
+        use crate::field_update::MaybeUndefined;
 
         #(#structs)*
     }
 }
 
-fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Compute which input structs can still derive `Default`.
+///
+/// Required (non-null) fields now emit as plain `T` instead of `Option<T>`, so
+/// the struct only derives `Default` if every required field's Rust type also
+/// has `Default`. Generated enums don't derive `Default`, and mutually recursive
+/// input objects need a fixed-point pass to converge.
+fn compute_defaultable_inputs(
+    inputs: &[InputDef],
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> HashSet<String> {
+    let mut defaultable: HashSet<String> = inputs.iter().map(|i| i.name.clone()).collect();
+    loop {
+        let snapshot = defaultable.clone();
+        defaultable.retain(|name| {
+            let Some(input) = inputs.iter().find(|i| i.name == *name) else {
+                return true;
+            };
+            input.fields.iter().all(|f| {
+                // Nullable fields always have Default (MaybeUndefined::Undefined).
+                if !matches!(f.ty, GqlType::NonNull(_)) {
+                    return true;
+                }
+                type_has_default(&f.ty, type_kind_map, &snapshot)
+            })
+        });
+        if defaultable.len() == snapshot.len() {
+            break;
+        }
+    }
+    defaultable
+}
+
+fn type_has_default(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    defaultable_inputs: &HashSet<String>,
+) -> bool {
+    match ty {
+        GqlType::NonNull(inner) => type_has_default(inner, type_kind_map, defaultable_inputs),
+        GqlType::List(_) => true,
+        GqlType::Named(name) => match type_kind_map.get(name.as_str()) {
+            Some(TypeKind::Enum) => false,
+            Some(TypeKind::InputObject) => defaultable_inputs.contains(name),
+            _ => true,
+        },
+    }
+}
+
+fn emit_input_struct(
+    input: &InputDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    defaultable: &HashSet<String>,
+) -> TokenStream {
     let name = quote::format_ident!("{}", input.name);
     let doc = parser::doc_comment_tokens(&input.description);
 
@@ -39,50 +94,27 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
             let base = f.ty.base_name();
             matches!(
                 type_kind_map.get(base),
-                Some(TypeKind::Scalar) | Some(TypeKind::Enum) | Some(TypeKind::InputObject)
-                    | Some(TypeKind::Union) | Some(TypeKind::Interface) | Some(TypeKind::Object)
+                Some(TypeKind::Scalar)
+                    | Some(TypeKind::Enum)
+                    | Some(TypeKind::InputObject)
+                    | Some(TypeKind::Union)
+                    | Some(TypeKind::Interface)
+                    | Some(TypeKind::Object)
                     | None
             )
         })
-        .map(|f| {
-            let field_name_str = f.name.to_snake_case();
-            let original_name = &f.name;
-            let safe_name = parser::safe_ident(&field_name_str);
-            let field_ident = if safe_name.starts_with("r#") {
-                let raw: TokenStream = safe_name.parse().unwrap();
-                raw
-            } else {
-                let ident = quote::format_ident!("{}", safe_name);
-                quote! { #ident }
-            };
-            let rust_type = resolve_input_type(&f.ty, type_kind_map);
-            let fdoc = parser::doc_comment_tokens(&f.description);
-            // If the snake_case name differs from the original camelCase, add serde rename.
-            // We use rename_all on the struct level, so individual renames are only needed
-            // if to_snake_case -> to_camelCase roundtrip doesn't match.
-            let needs_rename = {
-                let roundtrip = heck::AsLowerCamelCase(&field_name_str).to_string();
-                roundtrip != *original_name
-            };
-            if needs_rename {
-                quote! {
-                    #fdoc
-                    #[serde(rename = #original_name, default, skip_serializing_if = "Option::is_none")]
-                    pub #field_ident: #rust_type,
-                }
-            } else {
-                quote! {
-                    #fdoc
-                    #[serde(default, skip_serializing_if = "Option::is_none")]
-                    pub #field_ident: #rust_type,
-                }
-            }
-        })
+        .map(|f| emit_field(f, type_kind_map, &input.name))
         .collect();
+
+    let derives = if defaultable.contains(&input.name) {
+        quote! { #[derive(Debug, Clone, Default, Serialize, Deserialize)] }
+    } else {
+        quote! { #[derive(Debug, Clone, Serialize, Deserialize)] }
+    };
 
     quote! {
         #doc
-        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+        #derives
         #[serde(rename_all = "camelCase")]
         pub struct #name {
             #(#fields)*
@@ -90,33 +122,115 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
     }
 }
 
-/// All input fields are `Option<T>` for easy Default derivation and the `..Default::default()` pattern.
-fn resolve_input_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
-    let inner = resolve_inner(ty, type_kind_map);
-    quote! { Option<#inner> }
+fn emit_field(
+    f: &FieldDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    input_name: &str,
+) -> TokenStream {
+    let field_name_str = f.name.to_snake_case();
+    let original_name = &f.name;
+    let safe_name = parser::safe_ident(&field_name_str);
+    let field_ident = if safe_name.starts_with("r#") {
+        let raw: TokenStream = safe_name.parse().unwrap();
+        raw
+    } else {
+        let ident = quote::format_ident!("{}", safe_name);
+        quote! { #ident }
+    };
+
+    let is_required = matches!(f.ty, GqlType::NonNull(_));
+    let rust_type = resolve_input_type(&f.ty, type_kind_map, input_name, &f.name);
+    let fdoc = parser::doc_comment_tokens(&f.description);
+    // If the snake_case name differs from the original camelCase, add serde rename.
+    // We use rename_all on the struct level, so individual renames are only needed
+    // if to_snake_case -> to_camelCase roundtrip doesn't match.
+    let needs_rename = {
+        let roundtrip = heck::AsLowerCamelCase(&field_name_str).to_string();
+        roundtrip != *original_name
+    };
+
+    // Required fields are always serialized; nullable fields use MaybeUndefined's
+    // skip predicate so `Undefined` omits the field from the JSON payload.
+    let serde_attr = match (needs_rename, is_required) {
+        (true, true) => quote! { #[serde(rename = #original_name)] },
+        (false, true) => quote! {},
+        (true, false) => quote! {
+            #[serde(rename = #original_name, default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+        },
+        (false, false) => quote! {
+            #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+        },
+    };
+
+    quote! {
+        #fdoc
+        #serde_attr
+        pub #field_ident: #rust_type,
+    }
 }
 
-fn resolve_inner(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Resolve a GraphQL input field type into its emitted Rust tokens.
+///
+/// - Nullable outer (`T`) → `MaybeUndefined<T>` so the consumer can distinguish
+///   omitted from explicit null.
+/// - Required outer (`T!`) → plain `T` / `Vec<T>` / `Box<InputT>`.
+fn resolve_input_type(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    input_name: &str,
+    field_name: &str,
+) -> TokenStream {
+    match ty {
+        GqlType::NonNull(inner) => resolve_payload(inner, type_kind_map, input_name, field_name),
+        other => {
+            let inner = resolve_payload(other, type_kind_map, input_name, field_name);
+            quote! { MaybeUndefined<#inner> }
+        }
+    }
+}
+
+/// Resolve the "payload" type — the value that either sits inside
+/// `MaybeUndefined<_>` for a nullable field or is used directly for a required
+/// field.
+///
+/// Also enforces Linear's schema invariant that list types have non-null
+/// element types (`[T!]` / `[T!]!`, never `[T]` / `[T]!`). If Linear ever adds
+/// a nullable-inner list, the maintainer should extend this function
+/// deliberately rather than have codegen silently emit a mismatched type.
+fn resolve_payload(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    input_name: &str,
+    field_name: &str,
+) -> TokenStream {
     match ty {
         GqlType::Named(name) => {
             let kind = type_kind_map.get(name.as_str());
             if matches!(kind, Some(TypeKind::InputObject)) {
                 let ident = quote::format_ident!("{}", name);
-                // Self-reference: input types reference other input types in the same module.
+                // Self- and mutual-reference: input types reference other input
+                // types in the same module.
                 quote! { Box<#ident> }
             } else if matches!(
                 kind,
                 Some(TypeKind::Union) | Some(TypeKind::Interface) | Some(TypeKind::Object)
             ) {
-                // Union/interface/object types in inputs are serialized as raw JSON.
                 quote! { serde_json::Value }
             } else {
                 graphql_type_to_rust(name)
             }
         }
-        GqlType::NonNull(inner) => resolve_inner(inner, type_kind_map),
+        GqlType::NonNull(inner) => resolve_payload(inner, type_kind_map, input_name, field_name),
         GqlType::List(inner) => {
-            let elem = resolve_inner(inner, type_kind_map);
+            if !matches!(**inner, GqlType::NonNull(_)) {
+                panic!(
+                    "codegen: input `{input_name}.{field_name}` uses a list with a nullable inner \
+                     type (`[T]` or `[T]!`), which is not currently supported. Linear's schema had \
+                     zero such occurrences when this codegen was written. Extend \
+                     `resolve_payload` in emit_inputs.rs to decide the Rust representation."
+                );
+            }
+            let elem = resolve_payload(inner, type_kind_map, input_name, field_name);
             quote! { Vec<#elem> }
         }
     }

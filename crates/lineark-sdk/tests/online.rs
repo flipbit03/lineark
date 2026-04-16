@@ -143,8 +143,8 @@ mod online {
             &uuid::Uuid::new_v4().to_string()[..8]
         );
         let input = IssueLabelCreateInput {
-            name: Some(unique.clone()),
-            color: Some("#eb5757".to_string()),
+            name: unique.clone(),
+            color: Some("#eb5757".to_string()).into(),
             ..Default::default()
         };
         let label = retry_create(|| {
@@ -163,7 +163,7 @@ mod online {
 
         // Update the label's color.
         let update_input = IssueLabelUpdateInput {
-            color: Some("#4ea7fc".to_string()),
+            color: Some("#4ea7fc".to_string()).into(),
             ..Default::default()
         };
         let updated = client
@@ -361,9 +361,9 @@ mod online {
         // Create an issue with a unique title.
         let unique = format!("[builder-test-{}]", uuid::Uuid::new_v4());
         let input = IssueCreateInput {
-            title: Some(unique.clone()),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some(unique.clone()).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity = retry_create(|| {
@@ -434,9 +434,9 @@ mod online {
         // Create an issue with a unique title in the first team.
         let unique = format!("[team-filter-{}]", uuid::Uuid::new_v4());
         let input = IssueCreateInput {
-            title: Some(unique.clone()),
-            team_id: Some(team_id.clone()),
-            priority: Some(4),
+            title: Some(unique.clone()).into(),
+            team_id: team_id.clone(),
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity = retry_create(|| {
@@ -550,10 +550,10 @@ mod online {
 
         // Create an issue.
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_create_and_delete".to_string()),
-            team_id: Some(team_id),
-            description: Some("Automated test — will be deleted immediately.".to_string()),
-            priority: Some(4), // Low
+            title: Some("[test] SDK issue_create_and_delete".to_string()).into(),
+            team_id,
+            description: Some("Automated test — will be deleted immediately.".to_string()).into(),
+            priority: Some(4).into(), // Low
             ..Default::default()
         };
         let entity = retry_create(|| {
@@ -586,9 +586,9 @@ mod online {
         let team_id = team.id.clone();
 
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_update".to_string()),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some("[test] SDK issue_update".to_string()).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity = retry_create(|| {
@@ -604,8 +604,8 @@ mod online {
 
         // Update the issue.
         let update_input = IssueUpdateInput {
-            title: Some("[test] SDK issue_update — updated".to_string()),
-            priority: Some(3), // Medium
+            title: Some("[test] SDK issue_update — updated".to_string()).into(),
+            priority: Some(3).into(), // Medium
             ..Default::default()
         };
         let updated_entity = client
@@ -633,9 +633,9 @@ mod online {
         let team_id = team.id.clone();
 
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_archive_and_unarchive".to_string()),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some("[test] SDK issue_archive_and_unarchive".to_string()).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity = retry_create(|| {
@@ -679,9 +679,9 @@ mod online {
         let team_id = team.id.clone();
 
         let issue_input = IssueCreateInput {
-            title: Some("[test] SDK comment_create".to_string()),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some("[test] SDK comment_create".to_string()).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let issue_entity = retry_create(|| {
@@ -697,8 +697,8 @@ mod online {
 
         // Create a comment.
         let comment_input = CommentCreateInput {
-            body: Some("Automated test comment from lineark SDK.".to_string()),
-            issue_id: Some(issue_id.clone()),
+            body: Some("Automated test comment from lineark SDK.".to_string()).into(),
+            issue_id: Some(issue_id.clone()).into(),
             ..Default::default()
         };
         let comment_entity = retry_create(|| {
@@ -745,9 +745,9 @@ mod online {
 
         // Create a document.
         let input = DocumentCreateInput {
-            title: Some("[test] SDK document_create_update_and_delete".to_string()),
-            content: Some("Automated test document content.".to_string()),
-            team_id: Some(team_id),
+            title: "[test] SDK document_create_update_and_delete".to_string(),
+            content: Some("Automated test document content.".to_string()).into(),
+            team_id: Some(team_id).into(),
             ..Default::default()
         };
         let doc_entity = retry_create(|| {
@@ -772,8 +772,8 @@ mod online {
 
         // Update the document.
         let update_input = DocumentUpdateInput {
-            title: Some("[test] SDK document — updated".to_string()),
-            content: Some("Updated content.".to_string()),
+            title: Some("[test] SDK document — updated".to_string()).into(),
+            content: Some("Updated content.".to_string()).into(),
             ..Default::default()
         };
         // Just verify the update succeeded.
@@ -814,9 +814,9 @@ mod online {
 
         // Create two issues to relate.
         let input_a = IssueCreateInput {
-            title: Some("[test] relation issue A".to_string()),
-            team_id: Some(team_id.clone()),
-            priority: Some(4),
+            title: Some("[test] relation issue A".to_string()).into(),
+            team_id: team_id.clone(),
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity_a = retry_create(|| {
@@ -831,9 +831,9 @@ mod online {
         };
 
         let input_b = IssueCreateInput {
-            title: Some("[test] relation issue B".to_string()),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some("[test] relation issue B".to_string()).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity_b = retry_create(|| {
@@ -849,10 +849,10 @@ mod online {
 
         // Create a "blocks" relation: A blocks B.
         let relation_input = IssueRelationCreateInput {
-            issue_id: Some(issue_a_id.clone()),
-            related_issue_id: Some(issue_b_id.clone()),
-            r#type: Some(IssueRelationType::Blocks),
-            ..Default::default()
+            id: lineark_sdk::MaybeUndefined::Undefined,
+            issue_id: issue_a_id.clone(),
+            related_issue_id: issue_b_id.clone(),
+            r#type: IssueRelationType::Blocks,
         };
         let relation_entity = retry_create(|| {
             let relation_input = relation_input.clone();
@@ -979,9 +979,10 @@ mod online {
             title: Some(format!(
                 "[test] SDK batch_update A {}",
                 &uuid::Uuid::new_v4().to_string()[..8]
-            )),
-            team_id: Some(team_id.clone()),
-            priority: Some(4),
+            ))
+            .into(),
+            team_id: team_id.clone(),
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity_a = retry_create(|| {
@@ -999,9 +1000,10 @@ mod online {
             title: Some(format!(
                 "[test] SDK batch_update B {}",
                 &uuid::Uuid::new_v4().to_string()[..8]
-            )),
-            team_id: Some(team_id),
-            priority: Some(4),
+            ))
+            .into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity_b = retry_create(|| {
@@ -1017,7 +1019,7 @@ mod online {
 
         // Batch update both issues' priority.
         let update_input = IssueUpdateInput {
-            priority: Some(2),
+            priority: Some(2).into(),
             ..Default::default()
         };
         let result = client
@@ -1044,7 +1046,7 @@ mod online {
         // Create a team with a unique name.
         let unique = format!("[test] sdk-team {}", &uuid::Uuid::new_v4().to_string()[..8]);
         let input = TeamCreateInput {
-            name: Some(unique.clone()),
+            name: unique.clone(),
             ..Default::default()
         };
         let team = retry_create(|| {
@@ -1062,7 +1064,7 @@ mod online {
 
         // Update the team's description.
         let update_input = TeamUpdateInput {
-            description: Some("Updated by SDK test.".to_string()),
+            description: Some("Updated by SDK test.".to_string()).into(),
             ..Default::default()
         };
         let updated = client
@@ -1094,7 +1096,7 @@ mod online {
             &uuid::Uuid::new_v4().to_string()[..8]
         );
         let input = TeamCreateInput {
-            name: Some(unique),
+            name: unique,
             ..Default::default()
         };
         let team = retry_create(|| {
@@ -1121,8 +1123,8 @@ mod online {
 
         // Add the other user as a member — must succeed cleanly.
         let membership_input = TeamMembershipCreateInput {
-            team_id: Some(team_id.clone()),
-            user_id: Some(other_user_id),
+            team_id: team_id.clone(),
+            user_id: other_user_id,
             ..Default::default()
         };
         let membership = retry_create(|| {
@@ -1164,9 +1166,10 @@ mod online {
             title: Some(format!(
                 "[test] SDK comment_update_changes_body {}",
                 &uuid::Uuid::new_v4().to_string()[..8]
-            )),
-            team_id: Some(team_id),
-            priority: Some(4),
+            ))
+            .into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let issue_entity = retry_create(|| {
@@ -1182,8 +1185,8 @@ mod online {
 
         // Create a comment with the original body.
         let comment_input = CommentCreateInput {
-            body: Some("Original body".to_string()),
-            issue_id: Some(issue_id.clone()),
+            body: Some("Original body".to_string()).into(),
+            issue_id: Some(issue_id.clone()).into(),
             ..Default::default()
         };
         let comment_entity = retry_create(|| {
@@ -1196,7 +1199,7 @@ mod online {
 
         // Update the comment body.
         let update_input = CommentUpdateInput {
-            body: Some("Updated body".to_string()),
+            body: Some("Updated body".to_string()).into(),
             ..Default::default()
         };
         let updated = client
@@ -1225,9 +1228,10 @@ mod online {
             title: Some(format!(
                 "[test] SDK comment_resolve_and_unresolve {}",
                 &uuid::Uuid::new_v4().to_string()[..8]
-            )),
-            team_id: Some(team_id),
-            priority: Some(4),
+            ))
+            .into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let issue_entity = retry_create(|| {
@@ -1243,8 +1247,8 @@ mod online {
 
         // Create a comment.
         let comment_input = CommentCreateInput {
-            body: Some("Thread to resolve".to_string()),
-            issue_id: Some(issue_id.clone()),
+            body: Some("Thread to resolve".to_string()).into(),
+            issue_id: Some(issue_id.clone()).into(),
             ..Default::default()
         };
         let comment_entity = retry_create(|| {
@@ -1298,9 +1302,9 @@ mod online {
         // Create an issue so we can look up its branchName.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
         let input = IssueCreateInput {
-            title: Some(format!("[test] SDK branch search {uid}")),
-            team_id: Some(team_id),
-            priority: Some(4),
+            title: Some(format!("[test] SDK branch search {uid}")).into(),
+            team_id,
+            priority: Some(4).into(),
             ..Default::default()
         };
         let entity = retry_create(|| {

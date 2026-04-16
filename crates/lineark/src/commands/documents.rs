@@ -199,10 +199,10 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             };
 
             let input = DocumentCreateInput {
-                title: Some(title),
-                content,
-                project_id,
-                issue_id,
+                title,
+                content: content.into(),
+                project_id: project_id.into(),
+                issue_id: issue_id.into(),
                 ..Default::default()
             };
 
@@ -221,8 +221,8 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
             }
 
             let input = DocumentUpdateInput {
-                title,
-                content,
+                title: title.into(),
+                content: content.into(),
                 ..Default::default()
             };
 

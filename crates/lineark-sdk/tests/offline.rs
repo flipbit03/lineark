@@ -437,8 +437,8 @@ async fn document_create_sends_input_variable() {
 
     let (server, client) = setup_mutation("documentCreate").await;
     let input = DocumentCreateInput {
-        title: Some("Test Document".to_string()),
-        content: Some("# Hello".to_string()),
+        title: "Test Document".to_string(),
+        content: "# Hello".to_string().into(),
         ..Default::default()
     };
     let _ = client.document_create::<Document>(input).await;
@@ -453,7 +453,7 @@ async fn document_update_sends_input_and_id() {
 
     let (server, client) = setup_mutation("documentUpdate").await;
     let input = DocumentUpdateInput {
-        title: Some("Updated Title".to_string()),
+        title: "Updated Title".to_string().into(),
         ..Default::default()
     };
     let _ = client
@@ -481,10 +481,10 @@ async fn issue_relation_create_sends_input() {
 
     let (server, client) = setup_mutation("issueRelationCreate").await;
     let input = IssueRelationCreateInput {
-        issue_id: Some("issue-a".to_string()),
-        related_issue_id: Some("issue-b".to_string()),
-        r#type: Some(IssueRelationType::Blocks),
-        ..Default::default()
+        id: lineark_sdk::MaybeUndefined::Undefined,
+        issue_id: "issue-a".to_string(),
+        related_issue_id: "issue-b".to_string(),
+        r#type: IssueRelationType::Blocks,
     };
     let _ = client
         .issue_relation_create::<IssueRelation>(None, input)
@@ -588,8 +588,8 @@ async fn team_create_sends_input_variable() {
 
     let (server, client) = setup_mutation("teamCreate").await;
     let input = TeamCreateInput {
-        name: Some("Test Team".to_string()),
-        key: Some("TST".to_string()),
+        name: "Test Team".to_string(),
+        key: "TST".to_string().into(),
         ..Default::default()
     };
     let _ = client.team_create::<Team>(None, input).await;
@@ -605,7 +605,7 @@ async fn team_update_sends_input_and_id() {
 
     let (server, client) = setup_mutation("teamUpdate").await;
     let input = TeamUpdateInput {
-        description: Some("Updated description".to_string()),
+        description: "Updated description".to_string().into(),
         ..Default::default()
     };
     let _ = client
@@ -632,8 +632,8 @@ async fn team_membership_create_sends_input() {
 
     let (server, client) = setup_mutation("teamMembershipCreate").await;
     let input = TeamMembershipCreateInput {
-        user_id: Some("user-uuid-abc".to_string()),
-        team_id: Some("team-uuid-def".to_string()),
+        user_id: "user-uuid-abc".to_string(),
+        team_id: "team-uuid-def".to_string(),
         ..Default::default()
     };
     let _ = client.team_membership_create::<TeamMembership>(input).await;

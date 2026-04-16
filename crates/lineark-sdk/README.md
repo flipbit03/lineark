@@ -152,12 +152,40 @@ use lineark_sdk::generated::inputs::IssueCreateInput;
 use lineark_sdk::generated::types::Issue;
 
 let payload = client.issue_create::<Issue>(IssueCreateInput {
-    title: Some("Fix the bug".to_string()),
-    team_id: Some("team-uuid".to_string()),
-    priority: Some(2),
+    team_id: "team-uuid".to_string(),              // required
+    title: "Fix the bug".to_string().into(),       // nullable → MaybeUndefined
+    priority: 2.into(),                            // nullable → MaybeUndefined
     ..Default::default()
 }).await?;
 ```
+
+### Three-state fields on update/create inputs
+
+Nullable input fields use [`MaybeUndefined<T>`](crate::MaybeUndefined) so you
+can distinguish "leave unchanged" from "explicit null" — GraphQL's nullable
+inputs carry both meanings, and `Option<T>` + `skip_serializing_if` can only
+express the first.
+
+| Intent | Value | Wire form |
+|---|---|---|
+| Leave unchanged | `MaybeUndefined::Undefined` (the default) | field omitted |
+| Clear on the server | `MaybeUndefined::Null` | `"field": null` |
+| Set to a value | `MaybeUndefined::Value(v)` or `v.into()` | `"field": v` |
+
+```rust
+use lineark_sdk::generated::inputs::ProjectUpdateInput;
+use lineark_sdk::MaybeUndefined;
+
+// Rename a project AND clear its lead in a single mutation.
+let input = ProjectUpdateInput {
+    name: "New name".to_string().into(),
+    lead_id: MaybeUndefined::Null,
+    ..Default::default()
+};
+client.project_update::<Project>(input, project_id).await?;
+```
+
+Required fields (schema type ends with `!`) stay as plain `T` — no wrapper.
 
 | Method | Description |
 |--------|-------------|
