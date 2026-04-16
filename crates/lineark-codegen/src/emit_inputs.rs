@@ -41,13 +41,15 @@ fn compute_input_reachability(
         if input.name.is_empty() {
             continue;
         }
-        let mut deps = Vec::new();
+        // Dedupe: multiple fields can target the same InputObject, and duplicate
+        // edges would just expand the DFS stack without changing reachability.
+        let mut deps: HashSet<String> = HashSet::new();
         for field in &input.fields {
             if let Some(target) = direct_input_target(&field.ty, type_kind_map) {
-                deps.push(target.to_string());
+                deps.insert(target.to_string());
             }
         }
-        edges.insert(input.name.clone(), deps);
+        edges.insert(input.name.clone(), deps.into_iter().collect());
     }
     dep_graph::reachability(&edges)
 }
@@ -496,6 +498,88 @@ mod tests {
         assert!(
             normalized.contains("pubkids:Vec<Filter>,"),
             "Filter.kids should not be Boxed (Vec breaks self-cycle): {normalized}"
+        );
+
+        let pretty = emit(&inputs, &map).to_string();
+        if let Err(e) = syn::parse_file(&pretty) {
+            panic!("emitted code must be valid Rust: {e}\n\n{pretty}");
+        }
+    }
+
+    /// Three-node cycle (A → B → C → A). The 2-node case is covered above; this
+    /// one catches any bug specific to longer cycles — e.g. a DFS that
+    /// accidentally short-circuits at depth 1. A fourth type `Outsider` sits
+    /// upstream of the cycle and must NOT be considered cyclic just because it
+    /// can reach a cyclic node.
+    #[test]
+    fn input_box_handles_three_node_and_longer_cycles() {
+        let mut map = HashMap::new();
+        map.insert("String".to_string(), TypeKind::Scalar);
+        map.insert("A".to_string(), TypeKind::InputObject);
+        map.insert("B".to_string(), TypeKind::InputObject);
+        map.insert("C".to_string(), TypeKind::InputObject);
+        map.insert("Outsider".to_string(), TypeKind::InputObject);
+
+        let mk = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+
+        let inputs = vec![
+            // Cycle: A → B → C → A
+            InputDef {
+                name: "A".to_string(),
+                description: None,
+                fields: vec![mk("b", GqlType::Named("B".to_string()))],
+            },
+            InputDef {
+                name: "B".to_string(),
+                description: None,
+                fields: vec![mk("c", GqlType::Named("C".to_string()))],
+            },
+            InputDef {
+                name: "C".to_string(),
+                description: None,
+                fields: vec![mk("a", GqlType::Named("A".to_string()))],
+            },
+            // Outsider points INTO the cycle but nothing points back.
+            InputDef {
+                name: "Outsider".to_string(),
+                description: None,
+                fields: vec![mk("a", GqlType::Named("A".to_string()))],
+            },
+        ];
+
+        let normalized: String = emit(&inputs, &map).to_string().split_whitespace().collect();
+
+        // Every edge in the cycle needs Box (the analysis is conservative —
+        // Boxing any single edge would suffice, but breaking all of them is
+        // simpler and always correct).
+        assert!(
+            normalized.contains("pubb:MaybeUndefined<Box<B>>,"),
+            "A.b should be Boxed (in cycle A→B→C→A): {normalized}"
+        );
+        assert!(
+            normalized.contains("pubc:MaybeUndefined<Box<C>>,"),
+            "B.c should be Boxed (in cycle): {normalized}"
+        );
+        assert!(
+            normalized.contains("pub\u{0061}:MaybeUndefined<Box<A>>,"),
+            "C.a should be Boxed (closes the cycle): {normalized}"
+        );
+
+        // Outsider.a → A. A cannot reach Outsider, so embedding A in Outsider
+        // is size-safe (A's own cycles are already broken by the Boxes above).
+        // The emit output contains both C.a and Outsider.a as `a: ...Box<A>...,`
+        // so we need to look at the Outsider struct specifically. Easiest way:
+        // the emitted source has exactly four struct bodies; only C's a field
+        // should be boxed. Verify by counting.
+        let box_a_count = normalized.matches("Box<A>").count();
+        assert_eq!(
+            box_a_count, 1,
+            "only C.a should Box A; Outsider.a should not. Got {box_a_count} in: {normalized}"
         );
 
         let pretty = emit(&inputs, &map).to_string();

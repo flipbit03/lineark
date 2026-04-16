@@ -652,3 +652,85 @@ async fn team_membership_delete_sends_id() {
     assert_eq!(vars["id"], "membership-uuid-123");
     assert_eq!(vars["alsoLeaveParentTeams"], Value::Null);
 }
+
+// ── MaybeUndefined wire-format contract ──────────────────────────────────
+//
+// The central guarantee of the three-state wrapper: on a generated input
+// struct, `Undefined` fields disappear from the payload entirely, `Null`
+// fields serialize as JSON `null`, and `Value(v)` serializes as `v`. These
+// tests pin the contract end-to-end through a real generated `*UpdateInput`
+// without hitting the network, so a codegen change that silently breaks the
+// mapping would fail offline CI.
+
+#[test]
+fn maybe_undefined_null_serializes_as_json_null_on_generated_input() {
+    use lineark_sdk::generated::inputs::ProjectUpdateInput;
+    use lineark_sdk::MaybeUndefined;
+
+    let input = ProjectUpdateInput {
+        lead_id: MaybeUndefined::Null,
+        ..Default::default()
+    };
+    let json = serde_json::to_value(&input).unwrap();
+    let obj = json
+        .as_object()
+        .expect("ProjectUpdateInput serializes to object");
+
+    // Null fields are present with a JSON null.
+    assert_eq!(obj.get("leadId"), Some(&Value::Null));
+    // All other fields (still Undefined via Default) are omitted entirely.
+    assert_eq!(
+        obj.len(),
+        1,
+        "only the explicitly-set field should appear: {obj:?}"
+    );
+    assert!(!obj.contains_key("name"));
+    assert!(!obj.contains_key("description"));
+    assert!(!obj.contains_key("startDate"));
+    assert!(!obj.contains_key("targetDate"));
+}
+
+#[test]
+fn maybe_undefined_value_serializes_as_wrapped_value_on_generated_input() {
+    use lineark_sdk::generated::inputs::ProjectUpdateInput;
+    use lineark_sdk::MaybeUndefined;
+
+    let input = ProjectUpdateInput {
+        name: MaybeUndefined::Value("renamed".to_string()),
+        lead_id: MaybeUndefined::Null,
+        ..Default::default()
+    };
+    let json = serde_json::to_value(&input).unwrap();
+    let obj = json.as_object().unwrap();
+
+    assert_eq!(obj.get("name"), Some(&Value::String("renamed".to_string())));
+    assert_eq!(obj.get("leadId"), Some(&Value::Null));
+    assert_eq!(obj.len(), 2);
+}
+
+#[test]
+fn maybe_undefined_roundtrip_preserves_null_but_collapses_undefined() {
+    use lineark_sdk::generated::inputs::ProjectUpdateInput;
+    use lineark_sdk::MaybeUndefined;
+
+    // `Null` survives a JSON round-trip because the field is serialized and
+    // then re-parsed. `Undefined` is dropped on serialize (via
+    // skip_serializing_if) and the absent field deserializes back to
+    // `Undefined` via `#[serde(default)]` — so the round-trip is
+    // information-preserving for both states, even though they both collapse
+    // to "no wire data" mid-flight.
+    let original = ProjectUpdateInput {
+        name: MaybeUndefined::Value("X".to_string()),
+        lead_id: MaybeUndefined::Null,
+        ..Default::default()
+    };
+    let json = serde_json::to_string(&original).unwrap();
+    let restored: ProjectUpdateInput = serde_json::from_str(&json).unwrap();
+
+    assert!(matches!(restored.name, MaybeUndefined::Value(ref s) if s == "X"));
+    assert!(matches!(restored.lead_id, MaybeUndefined::Null));
+    // Fields that were Undefined round-trip back to Undefined (omitted → absent
+    // → default → Undefined).
+    assert!(matches!(restored.description, MaybeUndefined::Undefined));
+    assert!(matches!(restored.start_date, MaybeUndefined::Undefined));
+}

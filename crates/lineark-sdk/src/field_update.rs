@@ -26,6 +26,25 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// A three-state field value: undefined (omitted), null (explicit clear), or a concrete value.
 ///
 /// See the [module documentation](self) for the rationale and wire-format mapping.
+///
+/// # Struct-context contract
+///
+/// The [`Undefined`](MaybeUndefined::Undefined) / [`Null`](MaybeUndefined::Null)
+/// distinction is preserved on the wire **only** when this value sits in a
+/// struct field carrying
+/// `#[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]`
+/// — which is what codegen emits for every nullable input field. In any other
+/// context (`serde_json::to_value(MaybeUndefined::<T>::Undefined)`, a bare
+/// value inside a `Vec<MaybeUndefined<T>>`, etc.) `Undefined` cannot be
+/// "omitted" — there's no containing struct to omit it from — and serializes
+/// as JSON `null`, collapsing the distinction. Use this type *only* as a
+/// struct field paired with the skip predicate above.
+///
+/// # Derive bounds
+///
+/// The [`Eq`] and [`Hash`] impls are conditional on `T: Eq + Hash`. Types
+/// containing non-`Eq` scalars (notably `f64`) therefore can't derive those
+/// traits transitively — this is expected and matches `Option<T>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MaybeUndefined<T> {
     /// Field is absent from the serialized output.
@@ -62,6 +81,20 @@ impl<T> From<T> for MaybeUndefined<T> {
     }
 }
 
+/// Lifts an `Option<T>` into the three-state world, collapsing `None` to
+/// [`Undefined`](MaybeUndefined::Undefined).
+///
+/// This is the right default for **constructing** input values: a CLI flag
+/// that wasn't passed (`Option::None`) means "leave the field unchanged", so
+/// it maps to `Undefined`. If you instead want `None` to clear the field on
+/// the server, use [`MaybeUndefined::Null`] explicitly.
+///
+/// Note the intentional asymmetry with [`Deserialize`]: when round-tripping
+/// through JSON, an absent field deserializes to `Undefined` (via the
+/// `#[serde(default)]` on the field), while an explicit JSON `null`
+/// deserializes to `Null`. That matches GraphQL's wire semantics. `Option<T>`
+/// doesn't carry the "absent" vs "null" distinction, so `From<Option<T>>`
+/// can't preserve it either.
 impl<T> From<Option<T>> for MaybeUndefined<T> {
     fn from(o: Option<T>) -> Self {
         match o {
@@ -84,11 +117,25 @@ impl<T: Serialize> Serialize for MaybeUndefined<T> {
     }
 }
 
+/// Maps the three JSON inputs a struct field can present as follows:
+///
+/// | Input                          | Result      |
+/// |--------------------------------|-------------|
+/// | field absent from JSON         | `Undefined` (via `#[serde(default)]`) |
+/// | field present with `null`      | `Null`      |
+/// | field present with a value `v` | `Value(v)`  |
+///
+/// Absent-field handling is driven by `#[serde(default)]` on the struct
+/// field, not by this impl — serde only calls `deserialize` when the key is
+/// present. Codegen emits that attribute on every nullable input field, which
+/// is what preserves the three-state distinction on round-trip.
+///
+/// Note the intentional asymmetry with [`From<Option<T>>`]: `None → Undefined`
+/// during construction (a missing CLI flag shouldn't touch the server),
+/// but JSON `null → Null` during deserialization (the server *did* send
+/// `null`).
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for MaybeUndefined<T> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        // Serde delivers a present field (whether JSON `null` or a value) here.
-        // Missing-field handling is driven by `#[serde(default)]` on the field:
-        // absent → Undefined via Default.
         Option::<T>::deserialize(d).map(|o| match o {
             Some(v) => Self::Value(v),
             None => Self::Null,

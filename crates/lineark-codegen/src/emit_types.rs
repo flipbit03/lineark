@@ -45,13 +45,15 @@ fn compute_object_reachability(
         if obj.name.is_empty() {
             continue;
         }
-        let mut deps = Vec::new();
+        // Dedupe: multiple fields can target the same Object type, and duplicate
+        // edges would just expand the DFS stack without changing reachability.
+        let mut deps: HashSet<String> = HashSet::new();
         for field in &obj.fields {
             if let Some(target) = direct_object_target(&field.ty, type_kind_map) {
-                deps.push(target.to_string());
+                deps.insert(target.to_string());
             }
         }
-        edges.insert(obj.name.clone(), deps);
+        edges.insert(obj.name.clone(), deps.into_iter().collect());
     }
     dep_graph::reachability(&edges)
 }
