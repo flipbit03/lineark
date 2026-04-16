@@ -78,12 +78,24 @@ fn is_includable_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) 
     )
 }
 
-/// Resolve a GraphQL type to its Rust type tokens.
-/// All output type fields are wrapped in `Option<T>`.
-/// Uses `Box<T>` for Object-typed fields to avoid infinite-size types
-/// from mutual recursion (e.g., Integration <-> Organization).
+/// Resolve a GraphQL output field type to its Rust type tokens.
+///
+/// **Outermost** is always wrapped in `Option<T>` regardless of the schema's
+/// required marker — this lets consumers define lean structs via
+/// `#[derive(GraphQLFields)]` that omit fields they don't select, with the
+/// missing field deserializing as `None`. Object types additionally get
+/// `Box<T>` to keep mutually recursive types (e.g. `Integration` ↔
+/// `Organization`) sized.
+///
+/// **Inside lists**, nullability is honored faithfully: nullable elements
+/// become `Option<T>`, required elements stay bare `T`. GraphQL list slots
+/// are always materialized on the wire, so there's no "field omitted"
+/// concept inside a list — `Option` is the right shape.
+///
+/// This produces correct Rust shapes for every list shape the spec allows
+/// (`[T!]!`, `[T!]`, `[T]!`, `[T]`, and arbitrary nesting like `[[T!]!]!`).
 fn resolve_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
-    let inner = resolve_inner_type(ty, type_kind_map);
+    let inner = resolve_required(ty, type_kind_map);
     let base = ty.base_name();
     if matches!(type_kind_map.get(base), Some(TypeKind::Object)) {
         quote! { Option<Box<#inner>> }
@@ -92,23 +104,34 @@ fn resolve_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> Toke
     }
 }
 
-/// Resolve the inner type (without the outer Option wrapper).
-fn resolve_inner_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Resolve a type as if it were required at its current position. Strips
+/// outer `NonNull` markers, recurses into lists via [`resolve_list_element`].
+fn resolve_required(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     match ty {
-        GqlType::Named(name) => {
-            let base = name.as_str();
-            match type_kind_map.get(base) {
-                Some(TypeKind::Object) => {
-                    let ident = quote::format_ident!("{}", name);
-                    quote! { #ident }
-                }
-                _ => graphql_type_to_rust(name),
+        GqlType::Named(name) => match type_kind_map.get(name.as_str()) {
+            Some(TypeKind::Object) => {
+                let ident = quote::format_ident!("{}", name);
+                quote! { #ident }
             }
-        }
-        GqlType::NonNull(inner) => resolve_inner_type(inner, type_kind_map),
+            _ => graphql_type_to_rust(name),
+        },
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map),
         GqlType::List(inner) => {
-            let elem = resolve_inner_type(inner, type_kind_map);
+            let elem = resolve_list_element(inner, type_kind_map);
             quote! { Vec<#elem> }
+        }
+    }
+}
+
+/// Resolve a single list element. Nullable elements wrap in `Option<T>`,
+/// required elements stay bare. Mutually recurses with [`resolve_required`]
+/// to handle nested lists.
+fn resolve_list_element(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    match ty {
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map),
+        other => {
+            let payload = resolve_required(other, type_kind_map);
+            quote! { Option<#payload> }
         }
     }
 }
