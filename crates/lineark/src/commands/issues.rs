@@ -65,7 +65,7 @@ pub enum IssuesAction {
         #[arg(long)]
         assignee: Option<String>,
         /// Filter by status names (comma-separated).
-        #[arg(long, value_delimiter = ',')]
+        #[arg(long, visible_alias = "state", value_delimiter = ',')]
         status: Option<Vec<String>>,
     },
     /// Create a new issue. Returns the created issue.
@@ -100,7 +100,7 @@ pub enum IssuesAction {
         #[arg(long)]
         parent: Option<String>,
         /// Initial status name (resolved against team's workflow states).
-        #[arg(short = 's', long)]
+        #[arg(short = 's', long, visible_alias = "state")]
         status: Option<String>,
         /// Project name or UUID.
         #[arg(long)]
@@ -153,7 +153,7 @@ pub enum IssuesAction {
         #[arg(required = true, num_args = 1..)]
         identifiers: Vec<String>,
         /// New status name (resolved against the first issue's team workflow states).
-        #[arg(short = 's', long)]
+        #[arg(short = 's', long, visible_alias = "state")]
         status: Option<String>,
         /// Priority: 0-4 or none, urgent, high, medium, low.
         #[arg(short = 'p', long, value_parser = parse_priority)]
@@ -187,7 +187,7 @@ pub enum IssuesAction {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
         /// New status name (resolved against the issue's team workflow states).
-        #[arg(short = 's', long)]
+        #[arg(short = 's', long, visible_alias = "state")]
         status: Option<String>,
         /// Priority: 0-4 or none, urgent, high, medium, low.
         #[arg(short = 'p', long, value_parser = parse_priority)]
