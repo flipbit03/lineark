@@ -1,3 +1,4 @@
+use crate::dep_graph::{self, reaches};
 use crate::emit_scalars::graphql_type_to_rust;
 use crate::parser::{self, FieldDef, GqlType, InputDef, TypeKind};
 use heck::ToSnakeCase;
@@ -7,11 +8,12 @@ use std::collections::{HashMap, HashSet};
 
 pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     let defaultable = compute_defaultable_inputs(inputs, type_kind_map);
+    let reach = compute_input_reachability(inputs, type_kind_map);
 
     let structs: Vec<TokenStream> = inputs
         .iter()
         .filter(|i| !i.name.is_empty())
-        .map(|i| emit_input_struct(i, type_kind_map, &defaultable))
+        .map(|i| emit_input_struct(i, type_kind_map, &defaultable, &reach))
         .collect();
 
     quote! {
@@ -24,6 +26,52 @@ pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> T
         use crate::field_update::MaybeUndefined;
 
         #(#structs)*
+    }
+}
+
+/// Build the InputObject dependency graph (edges through direct, non-list
+/// references only) and compute transitive reachability. Used to decide
+/// per-field whether `Box<T>` is needed for size correctness.
+fn compute_input_reachability(
+    inputs: &[InputDef],
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> HashMap<String, HashSet<String>> {
+    let mut edges: HashMap<String, Vec<String>> = HashMap::with_capacity(inputs.len());
+    for input in inputs {
+        if input.name.is_empty() {
+            continue;
+        }
+        let mut deps = Vec::new();
+        for field in &input.fields {
+            if let Some(target) = direct_input_target(&field.ty, type_kind_map) {
+                deps.push(target.to_string());
+            }
+        }
+        edges.insert(input.name.clone(), deps);
+    }
+    dep_graph::reachability(&edges)
+}
+
+/// If `ty` is a direct (non-list) reference to an InputObject, return that
+/// type's name. Lists return `None` because `Vec<T>` is sized and breaks
+/// size cycles regardless of `T`.
+fn direct_input_target<'a>(
+    ty: &'a GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> Option<&'a str> {
+    match ty {
+        GqlType::NonNull(inner) => direct_input_target(inner, type_kind_map),
+        GqlType::Named(name) => {
+            if matches!(
+                type_kind_map.get(name.as_str()),
+                Some(TypeKind::InputObject)
+            ) {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        }
+        GqlType::List(_) => None,
     }
 }
 
@@ -79,6 +127,7 @@ fn emit_input_struct(
     input: &InputDef,
     type_kind_map: &HashMap<String, TypeKind>,
     defaultable: &HashSet<String>,
+    reach: &HashMap<String, HashSet<String>>,
 ) -> TokenStream {
     let name = quote::format_ident!("{}", input.name);
     let doc = parser::doc_comment_tokens(&input.description);
@@ -103,7 +152,7 @@ fn emit_input_struct(
                     | None
             )
         })
-        .map(|f| emit_field(f, type_kind_map))
+        .map(|f| emit_field(f, type_kind_map, &input.name, reach))
         .collect();
 
     let derives = if defaultable.contains(&input.name) {
@@ -122,7 +171,12 @@ fn emit_input_struct(
     }
 }
 
-fn emit_field(f: &FieldDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+fn emit_field(
+    f: &FieldDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
     let field_name_str = f.name.to_snake_case();
     let original_name = &f.name;
     let safe_name = parser::safe_ident(&field_name_str);
@@ -135,7 +189,7 @@ fn emit_field(f: &FieldDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenS
     };
 
     let is_required = matches!(f.ty, GqlType::NonNull(_));
-    let rust_type = resolve_input_type(&f.ty, type_kind_map);
+    let rust_type = resolve_input_type(&f.ty, type_kind_map, container, reach);
     let fdoc = parser::doc_comment_tokens(&f.description);
     // If the snake_case name differs from the original camelCase, add serde rename.
     // We use rename_all on the struct level, so individual renames are only needed
@@ -176,18 +230,36 @@ fn emit_field(f: &FieldDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenS
 ///   distinction is meaningless one level in.
 /// - Required positions emit plain `T` at any depth.
 ///
+/// `Box<T>` is added to a direct InputObject reference only when the field
+/// would otherwise create an infinite-size struct: at depth 0 (where the
+/// containing wrapper is `MaybeUndefined<_>` or plain `T`, both of which need
+/// `T` to be sized) and the target can transitively reach `container` in the
+/// schema's reference graph. Non-cyclic references and references inside lists
+/// (where `Vec<T>` already breaks the size cycle) drop the `Box` entirely.
+///
 /// This handles every shape the GraphQL spec allows (`T`, `T!`, `[T!]!`,
 /// `[T!]`, `[T]!`, `[T]`, and arbitrarily nested lists like `[[T!]!]!`)
 /// without special-casing the schema.
-fn resolve_input_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
-    resolve(ty, type_kind_map, /* depth = */ 0)
+fn resolve_input_type(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
+    resolve(ty, type_kind_map, /* depth = */ 0, container, reach)
 }
 
-fn resolve(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>, depth: usize) -> TokenStream {
+fn resolve(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    depth: usize,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
     match ty {
-        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth),
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth, container, reach),
         other => {
-            let inner = resolve_required(other, type_kind_map, depth);
+            let inner = resolve_required(other, type_kind_map, depth, container, reach);
             if depth == 0 {
                 quote! { MaybeUndefined<#inner> }
             } else {
@@ -201,15 +273,24 @@ fn resolve_required(
     ty: &GqlType,
     type_kind_map: &HashMap<String, TypeKind>,
     depth: usize,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
 ) -> TokenStream {
     match ty {
         GqlType::Named(name) => {
             let kind = type_kind_map.get(name.as_str());
             if matches!(kind, Some(TypeKind::InputObject)) {
                 let ident = quote::format_ident!("{}", name);
-                // Self- and mutual-reference: input types reference other input
-                // types in the same module.
-                quote! { Box<#ident> }
+                // Box only when depth == 0 (above us is `MaybeUndefined<_>` or
+                // plain `T`, both needing sized T) AND the target can reach the
+                // containing struct (true size cycle). Inside a list, Vec breaks
+                // the cycle on its own and Box is unnecessary.
+                let needs_box = depth == 0 && reaches(name, container, reach);
+                if needs_box {
+                    quote! { Box<#ident> }
+                } else {
+                    quote! { #ident }
+                }
             } else if matches!(
                 kind,
                 Some(TypeKind::Union) | Some(TypeKind::Interface) | Some(TypeKind::Object)
@@ -219,9 +300,9 @@ fn resolve_required(
                 graphql_type_to_rust(name)
             }
         }
-        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth),
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth, container, reach),
         GqlType::List(inner) => {
-            let elem = resolve(inner, type_kind_map, depth + 1);
+            let elem = resolve(inner, type_kind_map, depth + 1, container, reach);
             quote! { Vec<#elem> }
         }
     }
@@ -239,9 +320,12 @@ mod tests {
 
     /// Render a single field's resolved Rust type with whitespace collapsed,
     /// so test assertions can compare against a clean expected string without
-    /// matching the exact spacing `quote!` produces.
+    /// matching the exact spacing `quote!` produces. Uses an empty reach map
+    /// so cycles are impossible — `Box` never applies, isolating list/nullability
+    /// rules from Box rules.
     fn rendered(ty: GqlType) -> String {
-        resolve_input_type(&ty, &type_kind_map())
+        let reach: HashMap<String, HashSet<String>> = HashMap::new();
+        resolve_input_type(&ty, &type_kind_map(), "Container", &reach)
             .to_string()
             .split_whitespace()
             .collect::<String>()
@@ -334,5 +418,89 @@ mod tests {
         assert!(normalized.contains("pubd:MaybeUndefined<Vec<String>>,"));
         assert!(normalized.contains("pube:Vec<Option<String>>,"));
         assert!(normalized.contains("pubf:MaybeUndefined<Vec<Option<String>>>,"));
+    }
+
+    /// Box is only emitted on InputObject fields when the field would otherwise
+    /// create an infinite-size struct: at depth 0 (where the wrapper —
+    /// `MaybeUndefined<_>` or plain `T` — needs `T` sized) and the target can
+    /// transitively reach the containing struct. List-wrapped fields drop Box
+    /// because `Vec<T>` is sized, and non-cyclic refs drop Box because there's
+    /// no size cycle to break.
+    #[test]
+    fn input_box_only_when_field_creates_size_cycle() {
+        // Schema:
+        //   Container { f1: Filter, f2: [Filter!]!, f3: Loner }
+        //   Filter    { c: Container, kids: [Filter!]! }
+        //   Loner     { name: String }
+        let mut map = HashMap::new();
+        map.insert("String".to_string(), TypeKind::Scalar);
+        map.insert("Container".to_string(), TypeKind::InputObject);
+        map.insert("Filter".to_string(), TypeKind::InputObject);
+        map.insert("Loner".to_string(), TypeKind::InputObject);
+
+        let mk = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+
+        let inputs = vec![
+            InputDef {
+                name: "Container".to_string(),
+                description: None,
+                fields: vec![
+                    mk("f1", GqlType::Named("Filter".to_string())),
+                    mk("f2", nn(list(nn(GqlType::Named("Filter".to_string()))))),
+                    mk("f3", GqlType::Named("Loner".to_string())),
+                ],
+            },
+            InputDef {
+                name: "Filter".to_string(),
+                description: None,
+                fields: vec![
+                    mk("c", GqlType::Named("Container".to_string())),
+                    mk("kids", nn(list(nn(GqlType::Named("Filter".to_string()))))),
+                ],
+            },
+            InputDef {
+                name: "Loner".to_string(),
+                description: None,
+                fields: vec![mk("name", named())],
+            },
+        ];
+
+        let normalized: String = emit(&inputs, &map).to_string().split_whitespace().collect();
+
+        // Container.f1 → Filter, and Filter reaches Container → Box.
+        assert!(
+            normalized.contains("pubf1:MaybeUndefined<Box<Filter>>,"),
+            "Container.f1 should be Boxed (cycle through Filter): {normalized}"
+        );
+        // Container.f2 → list of Filter; Vec breaks the size cycle, no Box.
+        assert!(
+            normalized.contains("pubf2:Vec<Filter>,"),
+            "Container.f2 should not be Boxed (Vec breaks cycle): {normalized}"
+        );
+        // Container.f3 → Loner; Loner cannot reach Container, no Box.
+        assert!(
+            normalized.contains("pubf3:MaybeUndefined<Loner>,"),
+            "Container.f3 should not be Boxed (no cycle): {normalized}"
+        );
+        // Filter.c closes the cycle from the other side → Box.
+        assert!(
+            normalized.contains("pubc:MaybeUndefined<Box<Container>>,"),
+            "Filter.c should be Boxed (cycle): {normalized}"
+        );
+        // Filter.kids → self-list, breaks cycle via Vec → no Box.
+        assert!(
+            normalized.contains("pubkids:Vec<Filter>,"),
+            "Filter.kids should not be Boxed (Vec breaks self-cycle): {normalized}"
+        );
+
+        let pretty = emit(&inputs, &map).to_string();
+        if let Err(e) = syn::parse_file(&pretty) {
+            panic!("emitted code must be valid Rust: {e}\n\n{pretty}");
+        }
     }
 }

@@ -68,11 +68,11 @@ pub struct AgentActivity {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The agent session this activity belongs to.
-    pub agent_session: Option<Box<AgentSession>>,
+    pub agent_session: Option<AgentSession>,
     /// The comment this activity is linked to.
-    pub source_comment: Option<Box<Comment>>,
+    pub source_comment: Option<Comment>,
     /// The user who created this agent activity.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// Metadata about the external source that created this agent activity.
     pub source_metadata: Option<serde_json::Value>,
     /// An optional modifier that provides additional instructions on how the activity should be interpreted.
@@ -115,9 +115,9 @@ impl GraphQLFields for AgentActivityActionContent {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentActivityConnection {
-    pub edges: Option<Box<Vec<AgentActivityEdge>>>,
-    pub nodes: Option<Box<Vec<AgentActivity>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<AgentActivityEdge>>,
+    pub nodes: Option<Vec<AgentActivity>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for AgentActivityConnection {
     type FullType = Self;
@@ -128,7 +128,7 @@ impl GraphQLFields for AgentActivityConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentActivityEdge {
-    pub node: Option<Box<AgentActivity>>,
+    pub node: Option<AgentActivity>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -178,7 +178,7 @@ pub struct AgentActivityPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The agent activity that was created or updated.
-    pub agent_activity: Option<Box<AgentActivity>>,
+    pub agent_activity: Option<AgentActivity>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -273,7 +273,7 @@ pub struct AgentSession {
     /// The user who dismissed the agent session.
     pub dismissed_by: Option<Box<User>>,
     /// Activities associated with this agent session.
-    pub activities: Option<Box<AgentActivityConnection>>,
+    pub activities: Option<AgentActivityConnection>,
     /// The URL of an external agent-hosted page associated with this session.
     pub external_link: Option<String>,
     /// A summary of the activities in this session.
@@ -289,9 +289,9 @@ pub struct AgentSession {
     /// Agent session URL.
     pub url: Option<String>,
     /// `Internal` Pull requests associated with this agent session.
-    pub pull_requests: Option<Box<AgentSessionToPullRequestConnection>>,
+    pub pull_requests: Option<AgentSessionToPullRequestConnection>,
     /// External links associated with this session.
-    pub external_links: Option<Box<Vec<AgentSessionExternalLink>>>,
+    pub external_links: Option<Vec<AgentSessionExternalLink>>,
     /// URLs of external resources associated with this session.
     pub external_urls: Option<serde_json::Value>,
 }
@@ -305,9 +305,9 @@ impl GraphQLFields for AgentSession {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentSessionConnection {
-    pub edges: Option<Box<Vec<AgentSessionEdge>>>,
-    pub nodes: Option<Box<Vec<AgentSession>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<AgentSessionEdge>>,
+    pub nodes: Option<Vec<AgentSession>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for AgentSessionConnection {
     type FullType = Self;
@@ -318,7 +318,7 @@ impl GraphQLFields for AgentSessionConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentSessionEdge {
-    pub node: Option<Box<AgentSession>>,
+    pub node: Option<AgentSession>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -351,7 +351,7 @@ pub struct AgentSessionPayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The agent session that was created or updated.
-    pub agent_session: Option<Box<AgentSession>>,
+    pub agent_session: Option<AgentSession>,
 }
 impl GraphQLFields for AgentSessionPayload {
     type FullType = Self;
@@ -373,9 +373,9 @@ pub struct AgentSessionToPullRequest {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The pull request that the agent session is associated with.
-    pub pull_request: Option<Box<PullRequest>>,
+    pub pull_request: Option<PullRequest>,
     /// The agent session that the pull request is associated with.
-    pub agent_session: Option<Box<AgentSession>>,
+    pub agent_session: Option<AgentSession>,
 }
 impl GraphQLFields for AgentSessionToPullRequest {
     type FullType = Self;
@@ -386,9 +386,9 @@ impl GraphQLFields for AgentSessionToPullRequest {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentSessionToPullRequestConnection {
-    pub edges: Option<Box<Vec<AgentSessionToPullRequestEdge>>>,
-    pub nodes: Option<Box<Vec<AgentSessionToPullRequest>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<AgentSessionToPullRequestEdge>>,
+    pub nodes: Option<Vec<AgentSessionToPullRequest>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for AgentSessionToPullRequestConnection {
     type FullType = Self;
@@ -399,7 +399,7 @@ impl GraphQLFields for AgentSessionToPullRequestConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentSessionToPullRequestEdge {
-    pub node: Option<Box<AgentSessionToPullRequest>>,
+    pub node: Option<AgentSessionToPullRequest>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -481,11 +481,11 @@ pub struct AsksChannelConnectPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The new Asks Slack channel mapping for the connected channel.
-    pub mapping: Option<Box<SlackChannelNameMapping>>,
+    pub mapping: Option<SlackChannelNameMapping>,
     /// Whether the bot needs to be manually added to the channel.
     pub add_bot: Option<bool>,
 }
@@ -509,11 +509,11 @@ pub struct AsksWebPage {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The organization that the Asks web page belongs to.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The Asks web settings this page belongs to.
-    pub asks_web_settings: Option<Box<AsksWebSettings>>,
+    pub asks_web_settings: Option<AsksWebSettings>,
     /// The user who created the Asks web page.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The title of the page.
     pub title: Option<String>,
     /// The description of the page.
@@ -546,7 +546,7 @@ pub struct AsksWebPagePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The Asks web page that was created or updated.
-    pub asks_web_page: Option<Box<AsksWebPage>>,
+    pub asks_web_page: Option<AsksWebPage>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -570,15 +570,15 @@ pub struct AsksWebSettings {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The organization that the Asks web settings are associated with.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The user who created the Asks web settings.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The custom domain for the Asks web form. If null, the default Linear-hosted domain will be used.
     pub domain: Option<String>,
     /// The email intake address associated with these Asks web settings.
-    pub email_intake_address: Option<Box<EmailIntakeAddress>>,
+    pub email_intake_address: Option<EmailIntakeAddress>,
     /// The identity provider for SAML authentication on this Asks web form.
-    pub identity_provider: Option<Box<IdentityProvider>>,
+    pub identity_provider: Option<IdentityProvider>,
 }
 impl GraphQLFields for AsksWebSettings {
     type FullType = Self;
@@ -592,7 +592,7 @@ pub struct AsksWebSettingsPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The Asks web settings that were created or updated.
-    pub asks_web_settings: Option<Box<AsksWebSettings>>,
+    pub asks_web_settings: Option<AsksWebSettings>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -622,9 +622,9 @@ pub struct Attachment {
     /// Location of the attachment which is also used as an identifier.
     pub url: Option<String>,
     /// The creator of the attachment.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The non-Linear user who created the attachment.
-    pub external_user_creator: Option<Box<ExternalUser>>,
+    pub external_user_creator: Option<ExternalUser>,
     /// Custom metadata related to the attachment.
     pub metadata: Option<serde_json::Value>,
     /// Information about the source which created the attachment.
@@ -634,9 +634,9 @@ pub struct Attachment {
     /// Indicates if attachments for the same source application should be grouped in the Linear UI.
     pub group_by_source: Option<bool>,
     /// The issue this attachment was originally created on. Will be undefined if the attachment hasn't been moved.
-    pub original_issue: Option<Box<Issue>>,
+    pub original_issue: Option<Issue>,
     /// The issue this attachment belongs to.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The body data of the attachment, if any.
     pub body_data: Option<String>,
 }
@@ -650,9 +650,9 @@ impl GraphQLFields for Attachment {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AttachmentConnection {
-    pub edges: Option<Box<Vec<AttachmentEdge>>>,
-    pub nodes: Option<Box<Vec<Attachment>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<AttachmentEdge>>,
+    pub nodes: Option<Vec<Attachment>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for AttachmentConnection {
     type FullType = Self;
@@ -663,7 +663,7 @@ impl GraphQLFields for AttachmentConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AttachmentEdge {
-    pub node: Option<Box<Attachment>>,
+    pub node: Option<Attachment>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -679,7 +679,7 @@ pub struct AttachmentPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issue attachment that was created.
-    pub attachment: Option<Box<Attachment>>,
+    pub attachment: Option<Attachment>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -716,9 +716,9 @@ pub struct AuditEntry {
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     pub r#type: Option<String>,
     /// The organization the audit log belongs to.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The user that caused the audit entry to be created.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The ID of the user that caused the audit entry to be created.
     pub actor_id: Option<String>,
     /// IP from actor when entry was recorded.
@@ -740,9 +740,9 @@ impl GraphQLFields for AuditEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AuditEntryConnection {
-    pub edges: Option<Box<Vec<AuditEntryEdge>>>,
-    pub nodes: Option<Box<Vec<AuditEntry>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<AuditEntryEdge>>,
+    pub nodes: Option<Vec<AuditEntry>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for AuditEntryConnection {
     type FullType = Self;
@@ -753,7 +753,7 @@ impl GraphQLFields for AuditEntryConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AuditEntryEdge {
-    pub node: Option<Box<AuditEntry>>,
+    pub node: Option<AuditEntry>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -870,13 +870,13 @@ pub struct AuthResolverResponse {
     /// Should the signup flow allow access for the domain.
     pub allow_domain_access: Option<bool>,
     /// List of active users that belong to the user account.
-    pub users: Option<Box<Vec<AuthUser>>>,
+    pub users: Option<Vec<AuthUser>>,
     /// List of locked users that are locked by login restrictions
-    pub locked_users: Option<Box<Vec<AuthUser>>>,
+    pub locked_users: Option<Vec<AuthUser>>,
     /// List of organizations allowing this user account to join automatically.
-    pub available_organizations: Option<Box<Vec<AuthOrganization>>>,
+    pub available_organizations: Option<Vec<AuthOrganization>>,
     /// List of organization available to this user account but locked due to the current auth method.
-    pub locked_organizations: Option<Box<Vec<AuthOrganization>>>,
+    pub locked_organizations: Option<Vec<AuthOrganization>>,
     /// ID of the organization last accessed by the user.
     pub last_used_organization_id: Option<String>,
     /// The authentication service used for the current session (e.g., google, email, saml).
@@ -912,9 +912,9 @@ pub struct AuthUser {
     /// User account ID the user belongs to.
     pub user_account_id: Option<String>,
     /// Organization the user belongs to.
-    pub organization: Option<Box<AuthOrganization>>,
+    pub organization: Option<AuthOrganization>,
     /// `INTERNAL` Identity provider the user is managed by.
-    pub identity_provider: Option<Box<AuthIdentityProvider>>,
+    pub identity_provider: Option<AuthIdentityProvider>,
 }
 impl GraphQLFields for AuthUser {
     type FullType = Self;
@@ -1035,25 +1035,25 @@ pub struct Comment {
     /// Comment's URL.
     pub url: Option<String>,
     /// The children of the comment.
-    pub children: Option<Box<CommentConnection>>,
+    pub children: Option<CommentConnection>,
     /// Agent session associated with this comment.
     pub agent_session: Option<Box<AgentSession>>,
     /// `Internal` Agent sessions associated with this comment.
-    pub agent_sessions: Option<Box<AgentSessionConnection>>,
+    pub agent_sessions: Option<AgentSessionConnection>,
     /// Issues created from this comment.
-    pub created_issues: Option<Box<IssueConnection>>,
+    pub created_issues: Option<IssueConnection>,
     /// The bot that created the comment.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// `Internal` The user on whose behalf the comment was created, e.g. when the Linear assistant creates a comment for a user.
     pub on_behalf_of: Option<Box<User>>,
     /// The external thread that the comment is synced with.
-    pub external_thread: Option<Box<SyncedExternalThread>>,
+    pub external_thread: Option<SyncedExternalThread>,
     /// `Internal` Whether the comment should be hidden from Linear clients. This is typically used for bot comments that provide redundant information (e.g., Slack Asks confirmation messages).
     pub hide_in_linear: Option<bool>,
     /// Reactions associated with the comment.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// The external services the comment is synced with.
-    pub synced_with: Option<Box<Vec<ExternalEntityInfo>>>,
+    pub synced_with: Option<Vec<ExternalEntityInfo>>,
 }
 impl GraphQLFields for Comment {
     type FullType = Self;
@@ -1065,9 +1065,9 @@ impl GraphQLFields for Comment {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CommentConnection {
-    pub edges: Option<Box<Vec<CommentEdge>>>,
-    pub nodes: Option<Box<Vec<Comment>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CommentEdge>>,
+    pub nodes: Option<Vec<Comment>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CommentConnection {
     type FullType = Self;
@@ -1078,7 +1078,7 @@ impl GraphQLFields for CommentConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CommentEdge {
-    pub node: Option<Box<Comment>>,
+    pub node: Option<Comment>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1094,7 +1094,7 @@ pub struct CommentPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The comment that was created or updated.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1131,8 +1131,8 @@ impl GraphQLFields for CreateCsvExportReportPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CreateOrJoinOrganizationResponse {
-    pub organization: Option<Box<AuthOrganization>>,
-    pub user: Option<Box<AuthUser>>,
+    pub organization: Option<AuthOrganization>,
+    pub user: Option<AuthUser>,
 }
 impl GraphQLFields for CreateOrJoinOrganizationResponse {
     type FullType = Self;
@@ -1190,19 +1190,19 @@ pub struct CustomView {
     /// The team associated with the custom view.
     pub team: Option<Box<Team>>,
     /// Projects associated with the custom view.
-    pub projects: Option<Box<ProjectConnection>>,
+    pub projects: Option<ProjectConnection>,
     /// Issues associated with the custom view.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// Feed items associated with the custom view.
-    pub updates: Option<Box<FeedItemConnection>>,
+    pub updates: Option<FeedItemConnection>,
     /// The current users view preferences for this custom view.
-    pub user_view_preferences: Option<Box<ViewPreferences>>,
+    pub user_view_preferences: Option<ViewPreferences>,
     /// The organizations default view preferences for this custom view.
-    pub organization_view_preferences: Option<Box<ViewPreferences>>,
+    pub organization_view_preferences: Option<ViewPreferences>,
     /// The calculated view preferences values for this custom view.
-    pub view_preferences_values: Option<Box<ViewPreferencesValues>>,
+    pub view_preferences_values: Option<ViewPreferencesValues>,
     /// Initiatives associated with the custom view.
-    pub initiatives: Option<Box<InitiativeConnection>>,
+    pub initiatives: Option<InitiativeConnection>,
 }
 impl GraphQLFields for CustomView {
     type FullType = Self;
@@ -1214,9 +1214,9 @@ impl GraphQLFields for CustomView {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomViewConnection {
-    pub edges: Option<Box<Vec<CustomViewEdge>>>,
-    pub nodes: Option<Box<Vec<CustomView>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CustomViewEdge>>,
+    pub nodes: Option<Vec<CustomView>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CustomViewConnection {
     type FullType = Self;
@@ -1227,7 +1227,7 @@ impl GraphQLFields for CustomViewConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomViewEdge {
-    pub node: Option<Box<CustomView>>,
+    pub node: Option<CustomView>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1263,23 +1263,23 @@ pub struct CustomViewNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The custom view subscribed to.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -1302,7 +1302,7 @@ pub struct CustomViewPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The custom view that was created or updated.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1354,13 +1354,13 @@ pub struct Customer {
     /// The user who owns the customer.
     pub owner: Option<Box<User>>,
     /// The current status of the customer.
-    pub status: Option<Box<CustomerStatus>>,
+    pub status: Option<CustomerStatus>,
     /// The annual revenue generated by the customer.
     pub revenue: Option<i64>,
     /// The size of the customer.
     pub size: Option<f64>,
     /// The tier of the customer.
-    pub tier: Option<Box<CustomerTier>>,
+    pub tier: Option<CustomerTier>,
     /// The approximate number of needs of the customer.
     pub approximate_need_count: Option<f64>,
     /// The customer's unique URL slug.
@@ -1382,9 +1382,9 @@ impl GraphQLFields for Customer {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerConnection {
-    pub edges: Option<Box<Vec<CustomerEdge>>>,
-    pub nodes: Option<Box<Vec<Customer>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CustomerEdge>>,
+    pub nodes: Option<Vec<Customer>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CustomerConnection {
     type FullType = Self;
@@ -1395,7 +1395,7 @@ impl GraphQLFields for CustomerConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerEdge {
-    pub node: Option<Box<Customer>>,
+    pub node: Option<Customer>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1419,17 +1419,17 @@ pub struct CustomerNeed {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The customer that this need is attached to.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The issue this need is referencing.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The project this need is referencing.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The comment this need is referencing.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// The attachment this need is referencing.
-    pub attachment: Option<Box<Attachment>>,
+    pub attachment: Option<Attachment>,
     /// The project attachment this need is referencing.
-    pub project_attachment: Option<Box<ProjectAttachment>>,
+    pub project_attachment: Option<ProjectAttachment>,
     /// Whether the customer need is important or not. 0 = Not important, 1 = Important.
     pub priority: Option<f64>,
     /// The need content in markdown format.
@@ -1437,9 +1437,9 @@ pub struct CustomerNeed {
     /// `Internal` The content of the need as a Prosemirror document.
     pub body_data: Option<String>,
     /// The creator of the customer need.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The issue this customer need was originally created on. Will be undefined if the customer need hasn't been moved.
-    pub original_issue: Option<Box<Issue>>,
+    pub original_issue: Option<Issue>,
     /// The URL of the underlying attachment, if any
     pub url: Option<String>,
 }
@@ -1458,7 +1458,7 @@ pub struct CustomerNeedArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<CustomerNeed>>,
+    pub entity: Option<CustomerNeed>,
 }
 impl GraphQLFields for CustomerNeedArchivePayload {
     type FullType = Self;
@@ -1469,9 +1469,9 @@ impl GraphQLFields for CustomerNeedArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerNeedConnection {
-    pub edges: Option<Box<Vec<CustomerNeedEdge>>>,
-    pub nodes: Option<Box<Vec<CustomerNeed>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CustomerNeedEdge>>,
+    pub nodes: Option<Vec<CustomerNeed>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CustomerNeedConnection {
     type FullType = Self;
@@ -1482,7 +1482,7 @@ impl GraphQLFields for CustomerNeedConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerNeedEdge {
-    pub node: Option<Box<CustomerNeed>>,
+    pub node: Option<CustomerNeed>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1508,11 +1508,11 @@ pub struct CustomerNeedNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -1551,15 +1551,15 @@ pub struct CustomerNeedNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related customer need.
     pub customer_need_id: Option<String>,
     /// The issue related to the notification.
-    pub related_issue: Option<Box<Issue>>,
+    pub related_issue: Option<Issue>,
     /// The project related to the notification.
-    pub related_project: Option<Box<Project>>,
+    pub related_project: Option<Project>,
     /// The customer need related to the notification.
-    pub customer_need: Option<Box<CustomerNeed>>,
+    pub customer_need: Option<CustomerNeed>,
 }
 impl GraphQLFields for CustomerNeedNotification {
     type FullType = Self;
@@ -1574,7 +1574,7 @@ pub struct CustomerNeedPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The customer need that was created or updated.
-    pub need: Option<Box<CustomerNeed>>,
+    pub need: Option<CustomerNeed>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1590,11 +1590,11 @@ pub struct CustomerNeedUpdatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The customer need that was created or updated.
-    pub need: Option<Box<CustomerNeed>>,
+    pub need: Option<CustomerNeed>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The related customer needs that were updated.
-    pub updated_related_needs: Option<Box<Vec<CustomerNeed>>>,
+    pub updated_related_needs: Option<Vec<CustomerNeed>>,
 }
 impl GraphQLFields for CustomerNeedUpdatePayload {
     type FullType = Self;
@@ -1618,11 +1618,11 @@ pub struct CustomerNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -1661,11 +1661,11 @@ pub struct CustomerNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related customer.
     pub customer_id: Option<String>,
     /// The customer related to the notification.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
 }
 impl GraphQLFields for CustomerNotification {
     type FullType = Self;
@@ -1688,23 +1688,23 @@ pub struct CustomerNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer subscribed to.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -1727,7 +1727,7 @@ pub struct CustomerPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The customer that was created or updated.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1772,9 +1772,9 @@ impl GraphQLFields for CustomerStatus {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerStatusConnection {
-    pub edges: Option<Box<Vec<CustomerStatusEdge>>>,
-    pub nodes: Option<Box<Vec<CustomerStatus>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CustomerStatusEdge>>,
+    pub nodes: Option<Vec<CustomerStatus>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CustomerStatusConnection {
     type FullType = Self;
@@ -1785,7 +1785,7 @@ impl GraphQLFields for CustomerStatusConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerStatusEdge {
-    pub node: Option<Box<CustomerStatus>>,
+    pub node: Option<CustomerStatus>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1801,7 +1801,7 @@ pub struct CustomerStatusPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The customer status that was created or updated.
-    pub status: Option<Box<CustomerStatus>>,
+    pub status: Option<CustomerStatus>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1844,9 +1844,9 @@ impl GraphQLFields for CustomerTier {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerTierConnection {
-    pub edges: Option<Box<Vec<CustomerTierEdge>>>,
-    pub nodes: Option<Box<Vec<CustomerTier>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CustomerTierEdge>>,
+    pub nodes: Option<Vec<CustomerTier>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CustomerTierConnection {
     type FullType = Self;
@@ -1857,7 +1857,7 @@ impl GraphQLFields for CustomerTierConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CustomerTierEdge {
-    pub node: Option<Box<CustomerTier>>,
+    pub node: Option<CustomerTier>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -1873,7 +1873,7 @@ pub struct CustomerTierPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The customer tier that was created or updated.
-    pub tier: Option<Box<CustomerTier>>,
+    pub tier: Option<CustomerTier>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -1935,9 +1935,9 @@ pub struct Cycle {
     /// Whether the cycle is in the past.
     pub is_past: Option<bool>,
     /// Issues associated with the cycle.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// Issues that weren't completed when the cycle was closed.
-    pub uncompleted_issues_upon_close: Option<Box<IssueConnection>>,
+    pub uncompleted_issues_upon_close: Option<IssueConnection>,
     /// The overall progress of the cycle. This is the (completed estimate points + 0.25 * in progress estimate points) / total estimate points.
     pub progress: Option<f64>,
     /// Whether the cycle is the next cycle for the team.
@@ -1945,9 +1945,9 @@ pub struct Cycle {
     /// Whether the cycle is the previous cycle for the team.
     pub is_previous: Option<bool>,
     /// `Internal` Documents associated with the cycle.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// `Internal` Links associated with the cycle.
-    pub links: Option<Box<EntityExternalLinkConnection>>,
+    pub links: Option<EntityExternalLinkConnection>,
 }
 impl GraphQLFields for Cycle {
     type FullType = Self;
@@ -1965,7 +1965,7 @@ pub struct CycleArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Cycle>>,
+    pub entity: Option<Cycle>,
 }
 impl GraphQLFields for CycleArchivePayload {
     type FullType = Self;
@@ -1976,9 +1976,9 @@ impl GraphQLFields for CycleArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CycleConnection {
-    pub edges: Option<Box<Vec<CycleEdge>>>,
-    pub nodes: Option<Box<Vec<Cycle>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<CycleEdge>>,
+    pub nodes: Option<Vec<Cycle>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for CycleConnection {
     type FullType = Self;
@@ -1989,7 +1989,7 @@ impl GraphQLFields for CycleConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CycleEdge {
-    pub node: Option<Box<Cycle>>,
+    pub node: Option<Cycle>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2013,23 +2013,23 @@ pub struct CycleNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The cycle subscribed to.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -2052,7 +2052,7 @@ pub struct CyclePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The Cycle that was created or updated.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2176,7 +2176,7 @@ pub struct Document {
     /// The order of the item in the resources list.
     pub sort_order: Option<f64>,
     /// Comments associated with the document.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// The documents content in markdown format.
     pub content: Option<String>,
     /// `Internal` The documents content as YJS state.
@@ -2202,7 +2202,7 @@ pub struct DocumentArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Document>>,
+    pub entity: Option<Document>,
 }
 impl GraphQLFields for DocumentArchivePayload {
     type FullType = Self;
@@ -2213,9 +2213,9 @@ impl GraphQLFields for DocumentArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentConnection {
-    pub edges: Option<Box<Vec<DocumentEdge>>>,
-    pub nodes: Option<Box<Vec<Document>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<DocumentEdge>>,
+    pub nodes: Option<Vec<Document>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for DocumentConnection {
     type FullType = Self;
@@ -2259,9 +2259,9 @@ pub struct DocumentContent {
     /// The time at which the document content was restored from a previous version.
     pub restored_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Comments associated with the document content.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// `ALPHA` The histories of the document content.
-    pub history: Option<Box<DocumentContentHistoryConnection>>,
+    pub history: Option<DocumentContentHistoryConnection>,
 }
 impl GraphQLFields for DocumentContent {
     type FullType = Self;
@@ -2283,7 +2283,7 @@ pub struct DocumentContentHistory {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The document content that this history item is associated with.
-    pub document_content: Option<Box<DocumentContent>>,
+    pub document_content: Option<DocumentContent>,
     /// `Internal` The document content as a Prosemirror document.
     pub content_data: Option<serde_json::Value>,
     /// IDs of actors whose edits went into this history item.
@@ -2300,9 +2300,9 @@ impl GraphQLFields for DocumentContentHistory {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentContentHistoryConnection {
-    pub edges: Option<Box<Vec<DocumentContentHistoryEdge>>>,
-    pub nodes: Option<Box<Vec<DocumentContentHistory>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<DocumentContentHistoryEdge>>,
+    pub nodes: Option<Vec<DocumentContentHistory>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for DocumentContentHistoryConnection {
     type FullType = Self;
@@ -2313,7 +2313,7 @@ impl GraphQLFields for DocumentContentHistoryConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentContentHistoryEdge {
-    pub node: Option<Box<DocumentContentHistory>>,
+    pub node: Option<DocumentContentHistory>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2327,7 +2327,7 @@ impl GraphQLFields for DocumentContentHistoryEdge {
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentContentHistoryPayload {
     /// The document content history entries.
-    pub history: Option<Box<Vec<DocumentContentHistoryType>>>,
+    pub history: Option<Vec<DocumentContentHistoryType>>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2360,7 +2360,7 @@ impl GraphQLFields for DocumentContentHistoryType {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentEdge {
-    pub node: Option<Box<Document>>,
+    pub node: Option<Document>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2392,11 +2392,11 @@ pub struct DocumentNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -2435,7 +2435,7 @@ pub struct DocumentNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related document ID.
     pub document_id: Option<String>,
 }
@@ -2452,7 +2452,7 @@ pub struct DocumentPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The document that was created or updated.
-    pub document: Option<Box<Document>>,
+    pub document: Option<Document>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2465,11 +2465,11 @@ impl GraphQLFields for DocumentPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentSearchPayload {
-    pub edges: Option<Box<Vec<DocumentSearchResultEdge>>>,
-    pub nodes: Option<Box<Vec<DocumentSearchResult>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<DocumentSearchResultEdge>>,
+    pub nodes: Option<Vec<DocumentSearchResult>>,
+    pub page_info: Option<PageInfo>,
     /// Archived entities matching the search term along with all their dependencies.
-    pub archive_payload: Option<Box<ArchiveResponse>>,
+    pub archive_payload: Option<ArchiveResponse>,
     /// Total number of results for query without filters applied.
     pub total_count: Option<f64>,
 }
@@ -2498,25 +2498,25 @@ pub struct DocumentSearchResult {
     /// The color of the icon.
     pub color: Option<String>,
     /// The user who created the document.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The user who last updated the document.
-    pub updated_by: Option<Box<User>>,
+    pub updated_by: Option<User>,
     /// The project that the document is associated with.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The initiative that the document is associated with.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// `Internal` The team that the document is associated with.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The issue that the document is associated with.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// `Internal` The release that the document is associated with.
-    pub release: Option<Box<Release>>,
+    pub release: Option<Release>,
     /// `Internal` The cycle that the document is associated with.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The document's unique URL slug.
     pub slug_id: Option<String>,
     /// The last template that was applied to this document.
-    pub last_applied_template: Option<Box<Template>>,
+    pub last_applied_template: Option<Template>,
     /// The time at which the document was hidden. Null if the entity has not been hidden.
     pub hidden_at: Option<chrono::DateTime<chrono::Utc>>,
     /// A flag that indicates whether the document is in the trash bin.
@@ -2524,7 +2524,7 @@ pub struct DocumentSearchResult {
     /// The order of the item in the resources list.
     pub sort_order: Option<f64>,
     /// Comments associated with the document.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// The documents content in markdown format.
     pub content: Option<String>,
     /// `Internal` The documents content as YJS state.
@@ -2546,7 +2546,7 @@ impl GraphQLFields for DocumentSearchResult {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DocumentSearchResultEdge {
-    pub node: Option<Box<DocumentSearchResult>>,
+    pub node: Option<DocumentSearchResult>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2578,27 +2578,27 @@ pub struct Draft {
     /// `INTERNAL` Whether the draft was ported from a local draft.
     pub was_local_draft: Option<bool>,
     /// The user who created the draft.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The issue for which this is a draft comment.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The project for which this is a draft project update.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The project update for which this is a draft comment.
-    pub project_update: Option<Box<ProjectUpdate>>,
+    pub project_update: Option<ProjectUpdate>,
     /// The initiative for which this is a draft initiative update.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The initiative update for which this is a draft comment.
-    pub initiative_update: Option<Box<InitiativeUpdate>>,
+    pub initiative_update: Option<InitiativeUpdate>,
     /// The post for which this is a draft comment.
-    pub post: Option<Box<Post>>,
+    pub post: Option<Post>,
     /// The comment for which this is a draft comment reply.
-    pub parent_comment: Option<Box<Comment>>,
+    pub parent_comment: Option<Comment>,
     /// The customer need that this draft is referencing.
-    pub customer_need: Option<Box<CustomerNeed>>,
+    pub customer_need: Option<CustomerNeed>,
     /// `INTERNAL` Allows for multiple drafts per entity (currently constrained to Pull Requests).
     pub anchor: Option<String>,
     /// The team for which this is a draft post.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
 }
 impl GraphQLFields for Draft {
     type FullType = Self;
@@ -2610,9 +2610,9 @@ impl GraphQLFields for Draft {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DraftConnection {
-    pub edges: Option<Box<Vec<DraftEdge>>>,
-    pub nodes: Option<Box<Vec<Draft>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<DraftEdge>>,
+    pub nodes: Option<Vec<Draft>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for DraftConnection {
     type FullType = Self;
@@ -2623,7 +2623,7 @@ impl GraphQLFields for DraftConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DraftEdge {
-    pub node: Option<Box<Draft>>,
+    pub node: Option<Draft>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2661,15 +2661,15 @@ pub struct EmailIntakeAddress {
     /// Whether the commenter's name is included in the email replies.
     pub use_user_names_in_replies: Option<bool>,
     /// The template that the email address is associated with.
-    pub template: Option<Box<Template>>,
+    pub template: Option<Template>,
     /// The team that the email address is associated with.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The organization that the email address is associated with.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The SES domain identity that the email address is associated with.
-    pub ses_domain_identity: Option<Box<SesDomainIdentity>>,
+    pub ses_domain_identity: Option<SesDomainIdentity>,
     /// The user who created the email intake address.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// Whether issues created from that email address will be turned into customer requests.
     pub customer_requests_enabled: Option<bool>,
     /// The auto-reply message for issue created. If not set, the default reply will be used.
@@ -2698,7 +2698,7 @@ pub struct EmailIntakeAddressPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The email address that was created or updated.
-    pub email_intake_address: Option<Box<EmailIntakeAddress>>,
+    pub email_intake_address: Option<EmailIntakeAddress>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2754,9 +2754,9 @@ pub struct Emoji {
     /// The source of the emoji.
     pub source: Option<String>,
     /// The user who created the emoji.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The organization that the emoji belongs to.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
 }
 impl GraphQLFields for Emoji {
     type FullType = Self;
@@ -2767,9 +2767,9 @@ impl GraphQLFields for Emoji {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct EmojiConnection {
-    pub edges: Option<Box<Vec<EmojiEdge>>>,
-    pub nodes: Option<Box<Vec<Emoji>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<EmojiEdge>>,
+    pub nodes: Option<Vec<Emoji>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for EmojiConnection {
     type FullType = Self;
@@ -2780,7 +2780,7 @@ impl GraphQLFields for EmojiConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct EmojiEdge {
-    pub node: Option<Box<Emoji>>,
+    pub node: Option<Emoji>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2796,7 +2796,7 @@ pub struct EmojiPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The emoji that was created.
-    pub emoji: Option<Box<Emoji>>,
+    pub emoji: Option<Emoji>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2826,9 +2826,9 @@ pub struct EntityExternalLink {
     /// The order of the item in the resources list.
     pub sort_order: Option<f64>,
     /// The user who created the link.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The initiative that the link is associated with.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
 }
 impl GraphQLFields for EntityExternalLink {
     type FullType = Self;
@@ -2839,9 +2839,9 @@ impl GraphQLFields for EntityExternalLink {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct EntityExternalLinkConnection {
-    pub edges: Option<Box<Vec<EntityExternalLinkEdge>>>,
-    pub nodes: Option<Box<Vec<EntityExternalLink>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<EntityExternalLinkEdge>>,
+    pub nodes: Option<Vec<EntityExternalLink>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for EntityExternalLinkConnection {
     type FullType = Self;
@@ -2852,7 +2852,7 @@ impl GraphQLFields for EntityExternalLinkConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct EntityExternalLinkEdge {
-    pub node: Option<Box<EntityExternalLink>>,
+    pub node: Option<EntityExternalLink>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -2868,7 +2868,7 @@ pub struct EntityExternalLinkPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The link that was created or updated.
-    pub entity_external_link: Option<Box<EntityExternalLink>>,
+    pub entity_external_link: Option<EntityExternalLink>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -2981,9 +2981,9 @@ impl GraphQLFields for ExternalUser {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ExternalUserConnection {
-    pub edges: Option<Box<Vec<ExternalUserEdge>>>,
-    pub nodes: Option<Box<Vec<ExternalUser>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ExternalUserEdge>>,
+    pub nodes: Option<Vec<ExternalUser>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ExternalUserConnection {
     type FullType = Self;
@@ -2994,7 +2994,7 @@ impl GraphQLFields for ExternalUserConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ExternalUserEdge {
-    pub node: Option<Box<ExternalUser>>,
+    pub node: Option<ExternalUser>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3043,9 +3043,9 @@ impl GraphQLFields for Facet {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FacetConnection {
-    pub edges: Option<Box<Vec<FacetEdge>>>,
-    pub nodes: Option<Box<Vec<Facet>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<FacetEdge>>,
+    pub nodes: Option<Vec<Facet>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for FacetConnection {
     type FullType = Self;
@@ -3056,7 +3056,7 @@ impl GraphQLFields for FacetConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FacetEdge {
-    pub node: Option<Box<Facet>>,
+    pub node: Option<Facet>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3096,7 +3096,7 @@ pub struct Favorite {
     /// The order of the item in the favorites list.
     pub sort_order: Option<f64>,
     /// Children of the favorite. Only applies to favorites of type folder.
-    pub children: Option<Box<FavoriteConnection>>,
+    pub children: Option<FavoriteConnection>,
     /// The favorited issue.
     pub issue: Option<Box<Issue>>,
     /// The favorited project.
@@ -3152,9 +3152,9 @@ impl GraphQLFields for Favorite {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FavoriteConnection {
-    pub edges: Option<Box<Vec<FavoriteEdge>>>,
-    pub nodes: Option<Box<Vec<Favorite>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<FavoriteEdge>>,
+    pub nodes: Option<Vec<Favorite>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for FavoriteConnection {
     type FullType = Self;
@@ -3165,7 +3165,7 @@ impl GraphQLFields for FavoriteConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FavoriteEdge {
-    pub node: Option<Box<Favorite>>,
+    pub node: Option<Favorite>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3181,7 +3181,7 @@ pub struct FavoritePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The object that was added as a favorite.
-    pub favorite: Option<Box<Favorite>>,
+    pub favorite: Option<Favorite>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3205,17 +3205,17 @@ pub struct FeedItem {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The organization that will see this feed item.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The user that will see this feed item.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The team that will see this feed item.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The project update that is in the feed.
-    pub project_update: Option<Box<ProjectUpdate>>,
+    pub project_update: Option<ProjectUpdate>,
     /// The initiative update that is in the feed.
-    pub initiative_update: Option<Box<InitiativeUpdate>>,
+    pub initiative_update: Option<InitiativeUpdate>,
     /// The post that is in the feed.
-    pub post: Option<Box<Post>>,
+    pub post: Option<Post>,
 }
 impl GraphQLFields for FeedItem {
     type FullType = Self;
@@ -3226,9 +3226,9 @@ impl GraphQLFields for FeedItem {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FeedItemConnection {
-    pub edges: Option<Box<Vec<FeedItemEdge>>>,
-    pub nodes: Option<Box<Vec<FeedItem>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<FeedItemEdge>>,
+    pub nodes: Option<Vec<FeedItem>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for FeedItemConnection {
     type FullType = Self;
@@ -3239,7 +3239,7 @@ impl GraphQLFields for FeedItemConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FeedItemEdge {
-    pub node: Option<Box<FeedItem>>,
+    pub node: Option<FeedItem>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3285,7 +3285,7 @@ pub struct FrontAttachmentPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issue attachment that was created.
-    pub attachment: Option<Box<Attachment>>,
+    pub attachment: Option<Attachment>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3309,11 +3309,11 @@ pub struct GitAutomationState {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The associated workflow state.
-    pub state: Option<Box<WorkflowState>>,
+    pub state: Option<WorkflowState>,
     /// The team to which this automation state belongs.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The target branch associated to this automation state.
-    pub target_branch: Option<Box<GitAutomationTargetBranch>>,
+    pub target_branch: Option<GitAutomationTargetBranch>,
     /// The event that triggers the automation.
     pub event: Option<GitAutomationStates>,
     /// `DEPRECATED` The target branch, if null, the automation will be triggered on any branch.
@@ -3328,9 +3328,9 @@ impl GraphQLFields for GitAutomationState {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct GitAutomationStateConnection {
-    pub edges: Option<Box<Vec<GitAutomationStateEdge>>>,
-    pub nodes: Option<Box<Vec<GitAutomationState>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<GitAutomationStateEdge>>,
+    pub nodes: Option<Vec<GitAutomationState>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for GitAutomationStateConnection {
     type FullType = Self;
@@ -3341,7 +3341,7 @@ impl GraphQLFields for GitAutomationStateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct GitAutomationStateEdge {
-    pub node: Option<Box<GitAutomationState>>,
+    pub node: Option<GitAutomationState>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3357,7 +3357,7 @@ pub struct GitAutomationStatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The automation state that was created or updated.
-    pub git_automation_state: Option<Box<GitAutomationState>>,
+    pub git_automation_state: Option<GitAutomationState>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3381,13 +3381,13 @@ pub struct GitAutomationTargetBranch {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The team to which this Git target branch automation belongs.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The target branch pattern.
     pub branch_pattern: Option<String>,
     /// Whether the branch pattern is a regular expression.
     pub is_regex: Option<bool>,
     /// Automation states associated with the target branch.
-    pub automation_states: Option<Box<GitAutomationStateConnection>>,
+    pub automation_states: Option<GitAutomationStateConnection>,
 }
 impl GraphQLFields for GitAutomationTargetBranch {
     type FullType = Self;
@@ -3401,7 +3401,7 @@ pub struct GitAutomationTargetBranchPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The Git target branch automation that was created or updated.
-    pub target_branch: Option<Box<GitAutomationTargetBranch>>,
+    pub target_branch: Option<GitAutomationTargetBranch>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3417,7 +3417,7 @@ pub struct GitHubCommitIntegrationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The webhook secret to provide to GitHub.
@@ -3447,7 +3447,7 @@ pub struct GitHubEnterpriseServerPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The setup address.
@@ -3469,7 +3469,7 @@ pub struct GitLabIntegrationCreatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The webhook secret to provide to GitLab.
@@ -3493,7 +3493,7 @@ pub struct GitLabTestConnectionPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// Error message if the connection test failed.
@@ -3620,7 +3620,7 @@ pub struct Initiative {
     /// A flag that indicates whether the initiative is in the trash bin.
     pub trashed: Option<bool>,
     /// `Internal` Facets associated with the initiative.
-    pub facets: Option<Box<Vec<Facet>>>,
+    pub facets: Option<Vec<Facet>>,
     /// The estimated completion date of the initiative.
     pub target_date: Option<chrono::NaiveDate>,
     /// The resolution of the initiative's estimated completion date.
@@ -3640,27 +3640,27 @@ pub struct Initiative {
     /// Initiative URL.
     pub url: Option<String>,
     /// Projects associated with the initiative.
-    pub projects: Option<Box<ProjectConnection>>,
+    pub projects: Option<ProjectConnection>,
     /// Links associated with the initiative.
-    pub links: Option<Box<EntityExternalLinkConnection>>,
+    pub links: Option<EntityExternalLinkConnection>,
     /// Settings for all integrations associated with that initiative.
     pub integrations_settings: Option<Box<IntegrationsSettings>>,
     /// History entries associated with the initiative.
-    pub history: Option<Box<InitiativeHistoryConnection>>,
+    pub history: Option<InitiativeHistoryConnection>,
     /// Initiative updates associated with the initiative.
-    pub initiative_updates: Option<Box<InitiativeUpdateConnection>>,
+    pub initiative_updates: Option<InitiativeUpdateConnection>,
     /// Sub-initiatives associated with the initiative.
-    pub sub_initiatives: Option<Box<InitiativeConnection>>,
+    pub sub_initiatives: Option<InitiativeConnection>,
     /// Parent initiative associated with the initiative.
     pub parent_initiative: Option<Box<Initiative>>,
     /// `Internal` Parent initiatives associated with the initiative.
-    pub parent_initiatives: Option<Box<InitiativeConnection>>,
+    pub parent_initiatives: Option<InitiativeConnection>,
     /// The initiative's content in markdown format.
     pub content: Option<String>,
     /// The content of the initiative description.
     pub document_content: Option<Box<DocumentContent>>,
     /// Documents associated with the initiative.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
 }
 impl GraphQLFields for Initiative {
     type FullType = Self;
@@ -3678,7 +3678,7 @@ pub struct InitiativeArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Initiative>>,
+    pub entity: Option<Initiative>,
 }
 impl GraphQLFields for InitiativeArchivePayload {
     type FullType = Self;
@@ -3689,9 +3689,9 @@ impl GraphQLFields for InitiativeArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeConnection {
-    pub edges: Option<Box<Vec<InitiativeEdge>>>,
-    pub nodes: Option<Box<Vec<Initiative>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<InitiativeEdge>>,
+    pub nodes: Option<Vec<Initiative>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for InitiativeConnection {
     type FullType = Self;
@@ -3702,7 +3702,7 @@ impl GraphQLFields for InitiativeConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeEdge {
-    pub node: Option<Box<Initiative>>,
+    pub node: Option<Initiative>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3728,7 +3728,7 @@ pub struct InitiativeHistory {
     /// The events that happened while recording that history.
     pub entries: Option<serde_json::Value>,
     /// The initiative that the history is associated with.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
 }
 impl GraphQLFields for InitiativeHistory {
     type FullType = Self;
@@ -3739,9 +3739,9 @@ impl GraphQLFields for InitiativeHistory {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeHistoryConnection {
-    pub edges: Option<Box<Vec<InitiativeHistoryEdge>>>,
-    pub nodes: Option<Box<Vec<InitiativeHistory>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<InitiativeHistoryEdge>>,
+    pub nodes: Option<Vec<InitiativeHistory>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for InitiativeHistoryConnection {
     type FullType = Self;
@@ -3752,7 +3752,7 @@ impl GraphQLFields for InitiativeHistoryConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeHistoryEdge {
-    pub node: Option<Box<InitiativeHistory>>,
+    pub node: Option<InitiativeHistory>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3784,11 +3784,11 @@ pub struct InitiativeNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -3827,21 +3827,21 @@ pub struct InitiativeNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related initiative ID.
     pub initiative_id: Option<String>,
     /// Related initiative update ID.
     pub initiative_update_id: Option<String>,
     /// The initiative related to the notification.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The document related to the notification.
-    pub document: Option<Box<Document>>,
+    pub document: Option<Document>,
     /// The initiative update related to the notification.
-    pub initiative_update: Option<Box<InitiativeUpdate>>,
+    pub initiative_update: Option<InitiativeUpdate>,
     /// The comment related to the notification.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// The parent comment related to the notification, if a notification is a reply comment notification.
-    pub parent_comment: Option<Box<Comment>>,
+    pub parent_comment: Option<Comment>,
 }
 impl GraphQLFields for InitiativeNotification {
     type FullType = Self;
@@ -3864,23 +3864,23 @@ pub struct InitiativeNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The initiative subscribed to.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -3904,7 +3904,7 @@ pub struct InitiativePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The initiative that was created or updated.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3928,11 +3928,11 @@ pub struct InitiativeRelation {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The parent initiative.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The child initiative.
-    pub related_initiative: Option<Box<Initiative>>,
+    pub related_initiative: Option<Initiative>,
     /// The last user who created or modified the relation.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The sort order of the relation within the initiative.
     pub sort_order: Option<f64>,
 }
@@ -3945,9 +3945,9 @@ impl GraphQLFields for InitiativeRelation {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeRelationConnection {
-    pub edges: Option<Box<Vec<InitiativeRelationEdge>>>,
-    pub nodes: Option<Box<Vec<InitiativeRelation>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<InitiativeRelationEdge>>,
+    pub nodes: Option<Vec<InitiativeRelation>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for InitiativeRelationConnection {
     type FullType = Self;
@@ -3958,7 +3958,7 @@ impl GraphQLFields for InitiativeRelationConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeRelationEdge {
-    pub node: Option<Box<InitiativeRelation>>,
+    pub node: Option<InitiativeRelation>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -3974,7 +3974,7 @@ pub struct InitiativeRelationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The initiative relation that was created or updated.
-    pub initiative_relation: Option<Box<InitiativeRelation>>,
+    pub initiative_relation: Option<InitiativeRelation>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -3998,9 +3998,9 @@ pub struct InitiativeToProject {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The project that the initiative is associated with.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The initiative that the project is associated with.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The sort order of the project within the initiative.
     pub sort_order: Option<String>,
 }
@@ -4013,9 +4013,9 @@ impl GraphQLFields for InitiativeToProject {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeToProjectConnection {
-    pub edges: Option<Box<Vec<InitiativeToProjectEdge>>>,
-    pub nodes: Option<Box<Vec<InitiativeToProject>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<InitiativeToProjectEdge>>,
+    pub nodes: Option<Vec<InitiativeToProject>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for InitiativeToProjectConnection {
     type FullType = Self;
@@ -4026,7 +4026,7 @@ impl GraphQLFields for InitiativeToProjectConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeToProjectEdge {
-    pub node: Option<Box<InitiativeToProject>>,
+    pub node: Option<InitiativeToProject>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4043,7 +4043,7 @@ pub struct InitiativeToProjectPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The initiativeToProject that was created or updated.
-    pub initiative_to_project: Option<Box<InitiativeToProject>>,
+    pub initiative_to_project: Option<InitiativeToProject>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4095,9 +4095,9 @@ pub struct InitiativeUpdate {
     /// The diff between the current update and the previous one, formatted as markdown.
     pub diff_markdown: Option<String>,
     /// Reactions associated with the initiative update.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// Comments associated with the initiative update.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// Number of comments associated with the initiative update.
     pub comment_count: Option<i64>,
 }
@@ -4117,7 +4117,7 @@ pub struct InitiativeUpdateArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<InitiativeUpdate>>,
+    pub entity: Option<InitiativeUpdate>,
 }
 impl GraphQLFields for InitiativeUpdateArchivePayload {
     type FullType = Self;
@@ -4128,9 +4128,9 @@ impl GraphQLFields for InitiativeUpdateArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeUpdateConnection {
-    pub edges: Option<Box<Vec<InitiativeUpdateEdge>>>,
-    pub nodes: Option<Box<Vec<InitiativeUpdate>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<InitiativeUpdateEdge>>,
+    pub nodes: Option<Vec<InitiativeUpdate>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for InitiativeUpdateConnection {
     type FullType = Self;
@@ -4141,7 +4141,7 @@ impl GraphQLFields for InitiativeUpdateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct InitiativeUpdateEdge {
-    pub node: Option<Box<InitiativeUpdate>>,
+    pub node: Option<InitiativeUpdate>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4157,7 +4157,7 @@ pub struct InitiativeUpdatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The initiative update that was created.
-    pub initiative_update: Option<Box<InitiativeUpdate>>,
+    pub initiative_update: Option<InitiativeUpdate>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4212,9 +4212,9 @@ impl GraphQLFields for Integration {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IntegrationConnection {
-    pub edges: Option<Box<Vec<IntegrationEdge>>>,
-    pub nodes: Option<Box<Vec<Integration>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IntegrationEdge>>,
+    pub nodes: Option<Vec<Integration>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IntegrationConnection {
     type FullType = Self;
@@ -4225,7 +4225,7 @@ impl GraphQLFields for IntegrationConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IntegrationEdge {
-    pub node: Option<Box<Integration>>,
+    pub node: Option<Integration>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4255,7 +4255,7 @@ pub struct IntegrationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4305,9 +4305,9 @@ pub struct IntegrationTemplate {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The template that the integration is associated with.
-    pub template: Option<Box<Template>>,
+    pub template: Option<Template>,
     /// The integration that the template is associated with.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// ID of the foreign entity in the external integration this template is for, e.g., Slack channel ID.
     pub foreign_entity_id: Option<String>,
 }
@@ -4320,9 +4320,9 @@ impl GraphQLFields for IntegrationTemplate {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IntegrationTemplateConnection {
-    pub edges: Option<Box<Vec<IntegrationTemplateEdge>>>,
-    pub nodes: Option<Box<Vec<IntegrationTemplate>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IntegrationTemplateEdge>>,
+    pub nodes: Option<Vec<IntegrationTemplate>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IntegrationTemplateConnection {
     type FullType = Self;
@@ -4333,7 +4333,7 @@ impl GraphQLFields for IntegrationTemplateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IntegrationTemplateEdge {
-    pub node: Option<Box<IntegrationTemplate>>,
+    pub node: Option<IntegrationTemplate>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4349,7 +4349,7 @@ pub struct IntegrationTemplatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The IntegrationTemplate that was created or updated.
-    pub integration_template: Option<Box<IntegrationTemplate>>,
+    pub integration_template: Option<IntegrationTemplate>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4418,7 +4418,7 @@ pub struct IntegrationsSettingsPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The settings that were created or updated.
-    pub integrations_settings: Option<Box<IntegrationsSettings>>,
+    pub integrations_settings: Option<IntegrationsSettings>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4536,9 +4536,9 @@ pub struct Issue {
     /// Integration type that created this issue, if applicable.
     pub integration_source_type: Option<IntegrationService>,
     /// Documents associated with the issue.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// The bot that created the issue, if applicable.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// The users favorite associated with this issue.
     pub favorite: Option<Box<Favorite>>,
     /// Issue's human readable identifier (e.g. ENG-123).
@@ -4548,29 +4548,29 @@ pub struct Issue {
     /// Suggested branch name for the issue.
     pub branch_name: Option<String>,
     /// Shared access metadata for this issue.
-    pub shared_access: Option<Box<IssueSharedAccess>>,
+    pub shared_access: Option<IssueSharedAccess>,
     /// Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk).
     pub customer_ticket_count: Option<i64>,
     /// Users who are subscribed to the issue.
-    pub subscribers: Option<Box<UserConnection>>,
+    pub subscribers: Option<UserConnection>,
     /// The parent of the issue.
     pub parent: Option<Box<Issue>>,
     /// Children of the issue.
-    pub children: Option<Box<IssueConnection>>,
+    pub children: Option<IssueConnection>,
     /// Comments associated with the issue.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// History entries associated with the issue.
-    pub history: Option<Box<IssueHistoryConnection>>,
+    pub history: Option<IssueHistoryConnection>,
     /// Labels associated with this issue.
-    pub labels: Option<Box<IssueLabelConnection>>,
+    pub labels: Option<IssueLabelConnection>,
     /// Relations associated with this issue.
-    pub relations: Option<Box<IssueRelationConnection>>,
+    pub relations: Option<IssueRelationConnection>,
     /// Inverse relations associated with this issue.
-    pub inverse_relations: Option<Box<IssueRelationConnection>>,
+    pub inverse_relations: Option<IssueRelationConnection>,
     /// Attachments associated with the issue.
-    pub attachments: Option<Box<AttachmentConnection>>,
+    pub attachments: Option<AttachmentConnection>,
     /// Attachments previously associated with the issue before being moved to another issue.
-    pub former_attachments: Option<Box<AttachmentConnection>>,
+    pub former_attachments: Option<AttachmentConnection>,
     /// The issue's description in markdown format.
     pub description: Option<String>,
     /// `Internal` The issue's description content as YJS state.
@@ -4578,23 +4578,23 @@ pub struct Issue {
     /// `ALPHA` The document content representing this issue description.
     pub document_content: Option<Box<DocumentContent>>,
     /// Reactions associated with the issue.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// Customer needs associated with the issue.
-    pub needs: Option<Box<CustomerNeedConnection>>,
+    pub needs: Option<CustomerNeedConnection>,
     /// Customer needs previously associated with the issue before being moved to another issue.
-    pub former_needs: Option<Box<CustomerNeedConnection>>,
+    pub former_needs: Option<CustomerNeedConnection>,
     /// The external services the issue is synced with.
-    pub synced_with: Option<Box<Vec<ExternalEntityInfo>>>,
+    pub synced_with: Option<Vec<ExternalEntityInfo>>,
     /// `Internal` Product Intelligence suggestions for the issue.
-    pub suggestions: Option<Box<IssueSuggestionConnection>>,
+    pub suggestions: Option<IssueSuggestionConnection>,
     /// `Internal` Incoming product intelligence relation suggestions for the issue.
-    pub incoming_suggestions: Option<Box<IssueSuggestionConnection>>,
+    pub incoming_suggestions: Option<IssueSuggestionConnection>,
     /// The internal user who requested creation of the Asks issue on behalf of the creator.
     pub asks_requester: Option<Box<User>>,
     /// The external user who requested creation of the Asks issue on behalf of the creator.
     pub asks_external_user_requester: Option<Box<ExternalUser>>,
     /// The issue's workflow states over time.
-    pub state_history: Option<Box<IssueStateSpanConnection>>,
+    pub state_history: Option<IssueStateSpanConnection>,
 }
 impl GraphQLFields for Issue {
     type FullType = Self;
@@ -4612,7 +4612,7 @@ pub struct IssueArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Issue>>,
+    pub entity: Option<Issue>,
 }
 impl GraphQLFields for IssueArchivePayload {
     type FullType = Self;
@@ -4626,7 +4626,7 @@ pub struct IssueBatchPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issues that were updated.
-    pub issues: Option<Box<Vec<Issue>>>,
+    pub issues: Option<Vec<Issue>>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -4639,9 +4639,9 @@ impl GraphQLFields for IssueBatchPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueConnection {
-    pub edges: Option<Box<Vec<IssueEdge>>>,
-    pub nodes: Option<Box<Vec<Issue>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueEdge>>,
+    pub nodes: Option<Vec<Issue>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueConnection {
     type FullType = Self;
@@ -4683,7 +4683,7 @@ pub struct IssueDraft {
     /// The project milestone associated with the draft.
     pub project_milestone_id: Option<String>,
     /// The user who created the draft.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The user assigned to the draft.
     pub assignee_id: Option<String>,
     /// The agent user delegated to work on the issue being drafted.
@@ -4697,7 +4697,7 @@ pub struct IssueDraft {
     /// The ID of the comment that the draft was created from.
     pub source_comment_id: Option<String>,
     /// The parent issue of the draft.
-    pub parent_issue: Option<Box<Issue>>,
+    pub parent_issue: Option<Issue>,
     /// The ID of the parent issue, if any.
     pub parent_issue_id: Option<String>,
     /// The order of items in the sub-draft list. Only set if the draft has `parent` set.
@@ -4712,7 +4712,7 @@ pub struct IssueDraft {
     pub needs: Option<serde_json::Value>,
     /// Serialized array of JSONs representing the recurring issue's schedule.
     pub schedule: Option<serde_json::Value>,
-    pub labels: Option<Box<IssueLabelConnection>>,
+    pub labels: Option<IssueLabelConnection>,
 }
 impl GraphQLFields for IssueDraft {
     type FullType = Self;
@@ -4724,9 +4724,9 @@ impl GraphQLFields for IssueDraft {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueDraftConnection {
-    pub edges: Option<Box<Vec<IssueDraftEdge>>>,
-    pub nodes: Option<Box<Vec<IssueDraft>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueDraftEdge>>,
+    pub nodes: Option<Vec<IssueDraft>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueDraftConnection {
     type FullType = Self;
@@ -4737,7 +4737,7 @@ impl GraphQLFields for IssueDraftConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueDraftEdge {
-    pub node: Option<Box<IssueDraft>>,
+    pub node: Option<IssueDraft>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4750,7 +4750,7 @@ impl GraphQLFields for IssueDraftEdge {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueEdge {
-    pub node: Option<Box<Issue>>,
+    pub node: Option<Issue>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4788,7 +4788,7 @@ pub struct IssueHistory {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The issue that was changed.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The id of user who made these changes. If null, possibly means that the change made by an integration.
     pub actor_id: Option<String>,
     /// Whether the issue's description was updated.
@@ -4846,7 +4846,7 @@ pub struct IssueHistory {
     /// `ALPHA` ID's of releases that the issue was removed from.
     pub removed_from_release_ids: Option<Vec<String>>,
     /// Changed issue relationships.
-    pub relation_changes: Option<Box<Vec<IssueRelationHistoryPayload>>>,
+    pub relation_changes: Option<Vec<IssueRelationHistoryPayload>>,
     /// Whether the issue was auto-closed.
     pub auto_closed: Option<bool>,
     /// Whether the issue was auto-archived.
@@ -4860,55 +4860,55 @@ pub struct IssueHistory {
     /// `Internal` Serialized JSON representing changes for certain non-relational properties.
     pub changes: Option<serde_json::Value>,
     /// The actor that performed the actions. This field may be empty in the case of integrations or automations.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The actors that performed the actions. This field may be empty in the case of integrations or automations.
-    pub actors: Option<Box<Vec<User>>>,
+    pub actors: Option<Vec<User>>,
     /// The actors that edited the description of the issue, if any.
-    pub description_updated_by: Option<Box<Vec<User>>>,
+    pub description_updated_by: Option<Vec<User>>,
     /// The user that was unassigned from the issue.
-    pub from_assignee: Option<Box<User>>,
+    pub from_assignee: Option<User>,
     /// The user that was assigned to the issue.
-    pub to_assignee: Option<Box<User>>,
+    pub to_assignee: Option<User>,
     /// The cycle that the issue was moved from.
-    pub from_cycle: Option<Box<Cycle>>,
+    pub from_cycle: Option<Cycle>,
     /// The cycle that the issue was moved to.
-    pub to_cycle: Option<Box<Cycle>>,
+    pub to_cycle: Option<Cycle>,
     /// The new project created from the issue.
-    pub to_converted_project: Option<Box<Project>>,
+    pub to_converted_project: Option<Project>,
     /// The app user from whom the issue delegation was transferred.
-    pub from_delegate: Option<Box<User>>,
+    pub from_delegate: Option<User>,
     /// The app user to whom the issue delegation was transferred.
-    pub to_delegate: Option<Box<User>>,
+    pub to_delegate: Option<User>,
     /// The project that the issue was moved from.
-    pub from_project: Option<Box<Project>>,
+    pub from_project: Option<Project>,
     /// The project that the issue was moved to.
-    pub to_project: Option<Box<Project>>,
+    pub to_project: Option<Project>,
     /// The state that the issue was moved from.
-    pub from_state: Option<Box<WorkflowState>>,
+    pub from_state: Option<WorkflowState>,
     /// The state that the issue was moved to.
-    pub to_state: Option<Box<WorkflowState>>,
+    pub to_state: Option<WorkflowState>,
     /// The team that the issue was moved from.
-    pub from_team: Option<Box<Team>>,
+    pub from_team: Option<Team>,
     /// The team that the issue was moved to.
-    pub to_team: Option<Box<Team>>,
+    pub to_team: Option<Team>,
     /// The parent issue that the issue was moved from.
-    pub from_parent: Option<Box<Issue>>,
+    pub from_parent: Option<Issue>,
     /// The parent issue that the issue was moved to.
-    pub to_parent: Option<Box<Issue>>,
+    pub to_parent: Option<Issue>,
     /// The linked attachment.
-    pub attachment: Option<Box<Attachment>>,
+    pub attachment: Option<Attachment>,
     /// The import record.
-    pub issue_import: Option<Box<IssueImport>>,
+    pub issue_import: Option<IssueImport>,
     /// The users that were notified of the issue.
-    pub triage_responsibility_notified_users: Option<Box<Vec<User>>>,
+    pub triage_responsibility_notified_users: Option<Vec<User>>,
     /// Boolean indicating if the issue was auto-assigned using the triage responsibility feature.
     pub triage_responsibility_auto_assigned: Option<bool>,
     /// The team that triggered the triage responsibility action.
-    pub triage_responsibility_team: Option<Box<Team>>,
+    pub triage_responsibility_team: Option<Team>,
     /// The project milestone that the issue was moved from.
-    pub from_project_milestone: Option<Box<ProjectMilestone>>,
+    pub from_project_milestone: Option<ProjectMilestone>,
     /// The project milestone that the issue was moved to.
-    pub to_project_milestone: Option<Box<ProjectMilestone>>,
+    pub to_project_milestone: Option<ProjectMilestone>,
     /// The time at which the issue's SLA was previously started.
     pub from_sla_started_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at which the issue's SLA is now started.
@@ -4926,17 +4926,17 @@ pub struct IssueHistory {
     /// The type of SLA that is now set on the issue.
     pub to_sla_type: Option<String>,
     /// The bot that performed the action.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// The labels that were added to the issue.
-    pub added_labels: Option<Box<Vec<IssueLabel>>>,
+    pub added_labels: Option<Vec<IssueLabel>>,
     /// The labels that were removed from the issue.
-    pub removed_labels: Option<Box<Vec<IssueLabel>>>,
+    pub removed_labels: Option<Vec<IssueLabel>>,
     /// The releases that the issue was added to.
-    pub added_to_releases: Option<Box<Vec<Release>>>,
+    pub added_to_releases: Option<Vec<Release>>,
     /// The releases that the issue was removed from.
-    pub removed_from_releases: Option<Box<Vec<Release>>>,
+    pub removed_from_releases: Option<Vec<Release>>,
     /// `INTERNAL` Metadata about the triage rule that made changes to the issue.
-    pub triage_rule_metadata: Option<Box<IssueHistoryTriageRuleMetadata>>,
+    pub triage_rule_metadata: Option<IssueHistoryTriageRuleMetadata>,
 }
 impl GraphQLFields for IssueHistory {
     type FullType = Self;
@@ -4948,9 +4948,9 @@ impl GraphQLFields for IssueHistory {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueHistoryConnection {
-    pub edges: Option<Box<Vec<IssueHistoryEdge>>>,
-    pub nodes: Option<Box<Vec<IssueHistory>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueHistoryEdge>>,
+    pub nodes: Option<Vec<IssueHistory>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueHistoryConnection {
     type FullType = Self;
@@ -4961,7 +4961,7 @@ impl GraphQLFields for IssueHistoryConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueHistoryEdge {
-    pub node: Option<Box<IssueHistory>>,
+    pub node: Option<IssueHistory>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -4982,11 +4982,11 @@ pub struct IssueHistoryTriageRuleError {
     /// Whether the conflict was for the same child label.
     pub conflict_for_same_child_label: Option<bool>,
     /// The team the issue was being moved from.
-    pub from_team: Option<Box<Team>>,
+    pub from_team: Option<Team>,
     /// The team the issue was being moved to.
-    pub to_team: Option<Box<Team>>,
+    pub to_team: Option<Team>,
     /// The conflicting labels.
-    pub conflicting_labels: Option<Box<Vec<IssueLabel>>>,
+    pub conflicting_labels: Option<Vec<IssueLabel>>,
 }
 impl GraphQLFields for IssueHistoryTriageRuleError {
     type FullType = Self;
@@ -4999,9 +4999,9 @@ impl GraphQLFields for IssueHistoryTriageRuleError {
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueHistoryTriageRuleMetadata {
     /// The error that occurred, if any.
-    pub triage_rule_error: Option<Box<IssueHistoryTriageRuleError>>,
+    pub triage_rule_error: Option<IssueHistoryTriageRuleError>,
     /// The triage rule that triggered the issue update.
-    pub updated_by_triage_rule: Option<Box<WorkflowDefinition>>,
+    pub updated_by_triage_rule: Option<WorkflowDefinition>,
 }
 impl GraphQLFields for IssueHistoryTriageRuleMetadata {
     type FullType = Self;
@@ -5070,7 +5070,7 @@ pub struct IssueImportDeletePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The import job that was deleted.
-    pub issue_import: Option<Box<IssueImport>>,
+    pub issue_import: Option<IssueImport>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5103,7 +5103,7 @@ pub struct IssueImportPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The import job that was created or updated.
-    pub issue_import: Option<Box<IssueImport>>,
+    pub issue_import: Option<IssueImport>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5165,9 +5165,9 @@ pub struct IssueLabel {
     /// The original label inherited from.
     pub inherited_from: Option<Box<IssueLabel>>,
     /// Issues associated with the label.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// Children of the label.
-    pub children: Option<Box<IssueLabelConnection>>,
+    pub children: Option<IssueLabelConnection>,
 }
 impl GraphQLFields for IssueLabel {
     type FullType = Self;
@@ -5179,9 +5179,9 @@ impl GraphQLFields for IssueLabel {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueLabelConnection {
-    pub edges: Option<Box<Vec<IssueLabelEdge>>>,
-    pub nodes: Option<Box<Vec<IssueLabel>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueLabelEdge>>,
+    pub nodes: Option<Vec<IssueLabel>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueLabelConnection {
     type FullType = Self;
@@ -5192,7 +5192,7 @@ impl GraphQLFields for IssueLabelConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueLabelEdge {
-    pub node: Option<Box<IssueLabel>>,
+    pub node: Option<IssueLabel>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5208,7 +5208,7 @@ pub struct IssueLabelPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The label that was created or updated.
-    pub issue_label: Option<Box<IssueLabel>>,
+    pub issue_label: Option<IssueLabel>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5240,11 +5240,11 @@ pub struct IssueNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -5283,17 +5283,17 @@ pub struct IssueNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related issue ID.
     pub issue_id: Option<String>,
     /// The issue related to the notification.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The comment related to the notification.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// The parent comment related to the notification, if a notification is a reply comment notification.
-    pub parent_comment: Option<Box<Comment>>,
+    pub parent_comment: Option<Comment>,
     /// The team related to the issue notification.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
 }
 impl GraphQLFields for IssueNotification {
     type FullType = Self;
@@ -5308,7 +5308,7 @@ pub struct IssuePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issue that was created or updated.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5348,9 +5348,9 @@ pub struct IssueRelation {
     /// The relationship of the issue with the related issue.
     pub r#type: Option<String>,
     /// The issue whose relationship is being described.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The related issue.
-    pub related_issue: Option<Box<Issue>>,
+    pub related_issue: Option<Issue>,
 }
 impl GraphQLFields for IssueRelation {
     type FullType = Self;
@@ -5361,9 +5361,9 @@ impl GraphQLFields for IssueRelation {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueRelationConnection {
-    pub edges: Option<Box<Vec<IssueRelationEdge>>>,
-    pub nodes: Option<Box<Vec<IssueRelation>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueRelationEdge>>,
+    pub nodes: Option<Vec<IssueRelation>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueRelationConnection {
     type FullType = Self;
@@ -5374,7 +5374,7 @@ impl GraphQLFields for IssueRelationConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueRelationEdge {
-    pub node: Option<Box<IssueRelation>>,
+    pub node: Option<IssueRelation>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5405,7 +5405,7 @@ pub struct IssueRelationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issue relation that was created or updated.
-    pub issue_relation: Option<Box<IssueRelation>>,
+    pub issue_relation: Option<IssueRelation>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5418,11 +5418,11 @@ impl GraphQLFields for IssueRelationPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueSearchPayload {
-    pub edges: Option<Box<Vec<IssueSearchResultEdge>>>,
-    pub nodes: Option<Box<Vec<IssueSearchResult>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueSearchResultEdge>>,
+    pub nodes: Option<Vec<IssueSearchResult>>,
+    pub page_info: Option<PageInfo>,
     /// Archived entities matching the search term along with all their dependencies.
-    pub archive_payload: Option<Box<ArchiveResponse>>,
+    pub archive_payload: Option<ArchiveResponse>,
     /// Total number of results for query without filters applied.
     pub total_count: Option<f64>,
 }
@@ -5499,35 +5499,35 @@ pub struct IssueSearchResult {
     /// `Internal` The activity summary information for this issue.
     pub activity_summary: Option<serde_json::Value>,
     /// `Internal` AI-generated activity summary for this issue.
-    pub summary: Option<Box<Summary>>,
+    pub summary: Option<Summary>,
     /// Id of the labels associated with this issue.
     pub label_ids: Option<Vec<String>>,
     /// The team that the issue is associated with.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The cycle that the issue is associated with.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The project that the issue is associated with.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The projectMilestone that the issue is associated with.
-    pub project_milestone: Option<Box<ProjectMilestone>>,
+    pub project_milestone: Option<ProjectMilestone>,
     /// The last template that was applied to this issue.
-    pub last_applied_template: Option<Box<Template>>,
+    pub last_applied_template: Option<Template>,
     /// The recurring issue template that created this issue.
-    pub recurring_issue_template: Option<Box<Template>>,
+    pub recurring_issue_template: Option<Template>,
     /// Previous identifiers of the issue if it has been moved between teams.
     pub previous_identifiers: Option<Vec<String>>,
     /// The user who created the issue.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The external user who created the issue.
-    pub external_user_creator: Option<Box<ExternalUser>>,
+    pub external_user_creator: Option<ExternalUser>,
     /// The user to whom the issue is assigned to.
-    pub assignee: Option<Box<User>>,
+    pub assignee: Option<User>,
     /// The agent user that is delegated to work on this issue.
-    pub delegate: Option<Box<User>>,
+    pub delegate: Option<User>,
     /// The user who snoozed the issue.
-    pub snoozed_by: Option<Box<User>>,
+    pub snoozed_by: Option<User>,
     /// The workflow state that the issue is associated with.
-    pub state: Option<Box<WorkflowState>>,
+    pub state: Option<WorkflowState>,
     /// The order of the item in the sub-issue list. Only set if the issue has a parent.
     pub sub_issue_sort_order: Option<f64>,
     /// Emoji reaction summary, grouped by emoji type.
@@ -5535,15 +5535,15 @@ pub struct IssueSearchResult {
     /// Label for the priority.
     pub priority_label: Option<String>,
     /// The comment that this issue was created from.
-    pub source_comment: Option<Box<Comment>>,
+    pub source_comment: Option<Comment>,
     /// Integration type that created this issue, if applicable.
     pub integration_source_type: Option<IntegrationService>,
     /// Documents associated with the issue.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// The bot that created the issue, if applicable.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// The users favorite associated with this issue.
-    pub favorite: Option<Box<Favorite>>,
+    pub favorite: Option<Favorite>,
     /// Issue's human readable identifier (e.g. ENG-123).
     pub identifier: Option<String>,
     /// Issue URL.
@@ -5551,53 +5551,53 @@ pub struct IssueSearchResult {
     /// Suggested branch name for the issue.
     pub branch_name: Option<String>,
     /// Shared access metadata for this issue.
-    pub shared_access: Option<Box<IssueSharedAccess>>,
+    pub shared_access: Option<IssueSharedAccess>,
     /// Returns the number of Attachment resources which are created by customer support ticketing systems (e.g. Zendesk).
     pub customer_ticket_count: Option<i64>,
     /// Users who are subscribed to the issue.
-    pub subscribers: Option<Box<UserConnection>>,
+    pub subscribers: Option<UserConnection>,
     /// The parent of the issue.
-    pub parent: Option<Box<Issue>>,
+    pub parent: Option<Issue>,
     /// Children of the issue.
-    pub children: Option<Box<IssueConnection>>,
+    pub children: Option<IssueConnection>,
     /// Comments associated with the issue.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// History entries associated with the issue.
-    pub history: Option<Box<IssueHistoryConnection>>,
+    pub history: Option<IssueHistoryConnection>,
     /// Labels associated with this issue.
-    pub labels: Option<Box<IssueLabelConnection>>,
+    pub labels: Option<IssueLabelConnection>,
     /// Relations associated with this issue.
-    pub relations: Option<Box<IssueRelationConnection>>,
+    pub relations: Option<IssueRelationConnection>,
     /// Inverse relations associated with this issue.
-    pub inverse_relations: Option<Box<IssueRelationConnection>>,
+    pub inverse_relations: Option<IssueRelationConnection>,
     /// Attachments associated with the issue.
-    pub attachments: Option<Box<AttachmentConnection>>,
+    pub attachments: Option<AttachmentConnection>,
     /// Attachments previously associated with the issue before being moved to another issue.
-    pub former_attachments: Option<Box<AttachmentConnection>>,
+    pub former_attachments: Option<AttachmentConnection>,
     /// The issue's description in markdown format.
     pub description: Option<String>,
     /// `Internal` The issue's description content as YJS state.
     pub description_state: Option<String>,
     /// `ALPHA` The document content representing this issue description.
-    pub document_content: Option<Box<DocumentContent>>,
+    pub document_content: Option<DocumentContent>,
     /// Reactions associated with the issue.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// Customer needs associated with the issue.
-    pub needs: Option<Box<CustomerNeedConnection>>,
+    pub needs: Option<CustomerNeedConnection>,
     /// Customer needs previously associated with the issue before being moved to another issue.
-    pub former_needs: Option<Box<CustomerNeedConnection>>,
+    pub former_needs: Option<CustomerNeedConnection>,
     /// The external services the issue is synced with.
-    pub synced_with: Option<Box<Vec<ExternalEntityInfo>>>,
+    pub synced_with: Option<Vec<ExternalEntityInfo>>,
     /// `Internal` Product Intelligence suggestions for the issue.
-    pub suggestions: Option<Box<IssueSuggestionConnection>>,
+    pub suggestions: Option<IssueSuggestionConnection>,
     /// `Internal` Incoming product intelligence relation suggestions for the issue.
-    pub incoming_suggestions: Option<Box<IssueSuggestionConnection>>,
+    pub incoming_suggestions: Option<IssueSuggestionConnection>,
     /// The internal user who requested creation of the Asks issue on behalf of the creator.
-    pub asks_requester: Option<Box<User>>,
+    pub asks_requester: Option<User>,
     /// The external user who requested creation of the Asks issue on behalf of the creator.
-    pub asks_external_user_requester: Option<Box<ExternalUser>>,
+    pub asks_external_user_requester: Option<ExternalUser>,
     /// The issue's workflow states over time.
-    pub state_history: Option<Box<IssueStateSpanConnection>>,
+    pub state_history: Option<IssueStateSpanConnection>,
     /// Metadata related to search result.
     pub metadata: Option<serde_json::Value>,
 }
@@ -5611,7 +5611,7 @@ impl GraphQLFields for IssueSearchResult {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueSearchResultEdge {
-    pub node: Option<Box<IssueSearchResult>>,
+    pub node: Option<IssueSearchResult>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5631,7 +5631,7 @@ pub struct IssueSharedAccess {
     /// The number of users this issue is shared with.
     pub shared_with_count: Option<i64>,
     /// Users this issue is shared with.
-    pub shared_with_users: Option<Box<Vec<User>>>,
+    pub shared_with_users: Option<Vec<User>>,
 }
 impl GraphQLFields for IssueSharedAccess {
     type FullType = Self;
@@ -5652,7 +5652,7 @@ pub struct IssueStateSpan {
     /// The timestamp when the issue left this state. Null if the issue is currently in this state.
     pub ended_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The workflow state for this span.
-    pub state: Option<Box<WorkflowState>>,
+    pub state: Option<WorkflowState>,
 }
 impl GraphQLFields for IssueStateSpan {
     type FullType = Self;
@@ -5663,9 +5663,9 @@ impl GraphQLFields for IssueStateSpan {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueStateSpanConnection {
-    pub edges: Option<Box<Vec<IssueStateSpanEdge>>>,
-    pub nodes: Option<Box<Vec<IssueStateSpan>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueStateSpanEdge>>,
+    pub nodes: Option<Vec<IssueStateSpan>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueStateSpanConnection {
     type FullType = Self;
@@ -5676,7 +5676,7 @@ impl GraphQLFields for IssueStateSpanConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueStateSpanEdge {
-    pub node: Option<Box<IssueStateSpan>>,
+    pub node: Option<IssueStateSpan>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5698,20 +5698,20 @@ pub struct IssueSuggestion {
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     pub issue_id: Option<String>,
     pub r#type: Option<IssueSuggestionType>,
     pub state: Option<IssueSuggestionState>,
     pub state_changed_at: Option<chrono::DateTime<chrono::Utc>>,
     pub dismissal_reason: Option<String>,
-    pub metadata: Option<Box<IssueSuggestionMetadata>>,
-    pub suggested_issue: Option<Box<Issue>>,
+    pub metadata: Option<IssueSuggestionMetadata>,
+    pub suggested_issue: Option<Issue>,
     pub suggested_issue_id: Option<String>,
-    pub suggested_team: Option<Box<Team>>,
-    pub suggested_project: Option<Box<Project>>,
-    pub suggested_user: Option<Box<User>>,
+    pub suggested_team: Option<Team>,
+    pub suggested_project: Option<Project>,
+    pub suggested_user: Option<User>,
     pub suggested_user_id: Option<String>,
-    pub suggested_label: Option<Box<IssueLabel>>,
+    pub suggested_label: Option<IssueLabel>,
     pub suggested_label_id: Option<String>,
     /// The reasons for the suggestion.
     pub reasons: Option<Vec<String>>,
@@ -5728,9 +5728,9 @@ impl GraphQLFields for IssueSuggestion {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueSuggestionConnection {
-    pub edges: Option<Box<Vec<IssueSuggestionEdge>>>,
-    pub nodes: Option<Box<Vec<IssueSuggestion>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueSuggestionEdge>>,
+    pub nodes: Option<Vec<IssueSuggestion>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueSuggestionConnection {
     type FullType = Self;
@@ -5741,7 +5741,7 @@ impl GraphQLFields for IssueSuggestionConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueSuggestionEdge {
-    pub node: Option<Box<IssueSuggestion>>,
+    pub node: Option<IssueSuggestion>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5798,11 +5798,11 @@ pub struct IssueToRelease {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The issue associated with the release.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The release associated with the issue.
-    pub release: Option<Box<Release>>,
+    pub release: Option<Release>,
     /// The pull request that linked this issue to the release.
-    pub pull_request: Option<Box<PullRequest>>,
+    pub pull_request: Option<PullRequest>,
 }
 impl GraphQLFields for IssueToRelease {
     type FullType = Self;
@@ -5813,9 +5813,9 @@ impl GraphQLFields for IssueToRelease {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueToReleaseConnection {
-    pub edges: Option<Box<Vec<IssueToReleaseEdge>>>,
-    pub nodes: Option<Box<Vec<IssueToRelease>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<IssueToReleaseEdge>>,
+    pub nodes: Option<Vec<IssueToRelease>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for IssueToReleaseConnection {
     type FullType = Self;
@@ -5826,7 +5826,7 @@ impl GraphQLFields for IssueToReleaseConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IssueToReleaseEdge {
-    pub node: Option<Box<IssueToRelease>>,
+    pub node: Option<IssueToRelease>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -5843,7 +5843,7 @@ pub struct IssueToReleasePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The issueToRelease that was created or updated.
-    pub issue_to_release: Option<Box<IssueToRelease>>,
+    pub issue_to_release: Option<IssueToRelease>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -5867,23 +5867,23 @@ pub struct LabelNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The label subscribed to.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -5946,35 +5946,35 @@ impl GraphQLFields for NotificationBatchActionPayload {
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationCategoryPreferences {
     /// The preferences for notifications about assignments.
-    pub assignments: Option<Box<NotificationChannelPreferences>>,
+    pub assignments: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about status changes.
-    pub status_changes: Option<Box<NotificationChannelPreferences>>,
+    pub status_changes: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about comments and replies.
-    pub comments_and_replies: Option<Box<NotificationChannelPreferences>>,
+    pub comments_and_replies: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about mentions.
-    pub mentions: Option<Box<NotificationChannelPreferences>>,
+    pub mentions: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about reactions.
-    pub reactions: Option<Box<NotificationChannelPreferences>>,
+    pub reactions: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about subscriptions.
-    pub subscriptions: Option<Box<NotificationChannelPreferences>>,
+    pub subscriptions: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about document changes.
-    pub document_changes: Option<Box<NotificationChannelPreferences>>,
+    pub document_changes: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about posts and updates.
-    pub posts_and_updates: Option<Box<NotificationChannelPreferences>>,
+    pub posts_and_updates: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about reminders.
-    pub reminders: Option<Box<NotificationChannelPreferences>>,
+    pub reminders: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about reviews.
-    pub reviews: Option<Box<NotificationChannelPreferences>>,
+    pub reviews: Option<NotificationChannelPreferences>,
     /// The preferences for notifications about apps and integrations.
-    pub apps_and_integrations: Option<Box<NotificationChannelPreferences>>,
+    pub apps_and_integrations: Option<NotificationChannelPreferences>,
     /// The preferences for system notifications.
-    pub system: Option<Box<NotificationChannelPreferences>>,
+    pub system: Option<NotificationChannelPreferences>,
     /// The preferences for triage notifications.
-    pub triage: Option<Box<NotificationChannelPreferences>>,
+    pub triage: Option<NotificationChannelPreferences>,
     /// The preferences for customer notifications.
-    pub customers: Option<Box<NotificationChannelPreferences>>,
+    pub customers: Option<NotificationChannelPreferences>,
     /// The preferences for feed summary notifications.
-    pub feed: Option<Box<NotificationChannelPreferences>>,
+    pub feed: Option<NotificationChannelPreferences>,
 }
 impl GraphQLFields for NotificationCategoryPreferences {
     type FullType = Self;
@@ -6004,8 +6004,8 @@ impl GraphQLFields for NotificationChannelPreferences {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationConnection {
-    pub edges: Option<Box<Vec<NotificationEdge>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<NotificationEdge>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for NotificationConnection {
     type FullType = Self;
@@ -6018,7 +6018,7 @@ impl GraphQLFields for NotificationConnection {
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationDeliveryPreferences {
     /// The delivery preferences for the mobile channel.
-    pub mobile: Option<Box<NotificationDeliveryPreferencesChannel>>,
+    pub mobile: Option<NotificationDeliveryPreferencesChannel>,
 }
 impl GraphQLFields for NotificationDeliveryPreferences {
     type FullType = Self;
@@ -6033,7 +6033,7 @@ pub struct NotificationDeliveryPreferencesChannel {
     /// `DEPRECATED` Whether notifications are enabled for this channel. Use notificationChannelPreferences instead.
     pub notifications_disabled: Option<bool>,
     /// The schedule for notifications on this channel.
-    pub schedule: Option<Box<NotificationDeliveryPreferencesSchedule>>,
+    pub schedule: Option<NotificationDeliveryPreferencesSchedule>,
 }
 impl GraphQLFields for NotificationDeliveryPreferencesChannel {
     type FullType = Self;
@@ -6063,19 +6063,19 @@ pub struct NotificationDeliveryPreferencesSchedule {
     /// Whether the schedule is disabled.
     pub disabled: Option<bool>,
     /// Delivery preferences for Sunday.
-    pub sunday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub sunday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Monday.
-    pub monday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub monday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Tuesday.
-    pub tuesday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub tuesday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Wednesday.
-    pub wednesday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub wednesday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Thursday.
-    pub thursday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub thursday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Friday.
-    pub friday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub friday: Option<NotificationDeliveryPreferencesDay>,
     /// Delivery preferences for Saturday.
-    pub saturday: Option<Box<NotificationDeliveryPreferencesDay>>,
+    pub saturday: Option<NotificationDeliveryPreferencesDay>,
 }
 impl GraphQLFields for NotificationDeliveryPreferencesSchedule {
     type FullType = Self;
@@ -6112,8 +6112,8 @@ impl GraphQLFields for NotificationPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationSubscriptionConnection {
-    pub edges: Option<Box<Vec<NotificationSubscriptionEdge>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<NotificationSubscriptionEdge>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for NotificationSubscriptionConnection {
     type FullType = Self;
@@ -6200,11 +6200,11 @@ pub struct OauthClientApprovalNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -6243,11 +6243,11 @@ pub struct OauthClientApprovalNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related OAuth client approval request ID.
     pub oauth_client_approval_id: Option<String>,
     /// The OAuth client approval request related to the notification.
-    pub oauth_client_approval: Option<Box<OauthClientApproval>>,
+    pub oauth_client_approval: Option<OauthClientApproval>,
 }
 impl GraphQLFields for OauthClientApprovalNotification {
     type FullType = Self;
@@ -6278,7 +6278,7 @@ pub struct Organization {
     /// Rolling 30-day total upload volume for the organization, in megabytes.
     pub period_upload_volume: Option<f64>,
     /// `Internal` Facets associated with the organization.
-    pub facets: Option<Box<Vec<Facet>>>,
+    pub facets: Option<Vec<Facet>>,
     /// How git branches are formatted. If null, default formatting will be used.
     pub git_branch_format: Option<String>,
     /// Whether the Git integration linkback messages should be sent to private repositories.
@@ -6320,7 +6320,7 @@ pub struct Organization {
     /// Allowed file upload content types
     pub allowed_file_upload_content_types: Option<Vec<String>>,
     /// IP restriction configurations.
-    pub ip_restrictions: Option<Box<Vec<OrganizationIpRestriction>>>,
+    pub ip_restrictions: Option<Vec<OrganizationIpRestriction>>,
     /// The time at which deletion of the organization was requested.
     pub deletion_requested_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at which the trial will end.
@@ -6366,13 +6366,13 @@ pub struct Organization {
     /// `INTERNAL` Permitted AI providers.
     pub allowed_ai_providers: Option<Vec<String>>,
     /// Users associated with the organization.
-    pub users: Option<Box<UserConnection>>,
+    pub users: Option<UserConnection>,
     /// Teams associated with the organization.
-    pub teams: Option<Box<TeamConnection>>,
+    pub teams: Option<TeamConnection>,
     /// The organization's project statuses.
-    pub project_statuses: Option<Box<Vec<ProjectStatus>>>,
+    pub project_statuses: Option<Vec<ProjectStatus>>,
     /// Integrations associated with the organization.
-    pub integrations: Option<Box<IntegrationConnection>>,
+    pub integrations: Option<IntegrationConnection>,
     /// The Slack integration used for auto-creating project channels.
     pub slack_project_channel_integration: Option<Box<Integration>>,
     /// The prefix used for auto-created Slack project channels.
@@ -6384,11 +6384,11 @@ pub struct Organization {
     /// Aproximate number of issues in the organization, including archived ones.
     pub created_issue_count: Option<i64>,
     /// Templates associated with the organization.
-    pub templates: Option<Box<TemplateConnection>>,
+    pub templates: Option<TemplateConnection>,
     /// Labels associated with the organization.
-    pub labels: Option<Box<IssueLabelConnection>>,
+    pub labels: Option<IssueLabelConnection>,
     /// Project labels associated with the organization.
-    pub project_labels: Option<Box<ProjectLabelConnection>>,
+    pub project_labels: Option<ProjectLabelConnection>,
     /// Number of customers in the organization.
     pub customer_count: Option<i64>,
     /// Whether the organization is using Customers.
@@ -6457,7 +6457,7 @@ pub struct OrganizationDomain {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The identity provider the domain belongs to.
-    pub identity_provider: Option<Box<IdentityProvider>>,
+    pub identity_provider: Option<IdentityProvider>,
     /// Domain name.
     pub name: Option<String>,
     /// Is this domain verified.
@@ -6465,7 +6465,7 @@ pub struct OrganizationDomain {
     /// E-mail used to verify this domain.
     pub verification_email: Option<String>,
     /// The user who added the domain.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// What type of auth is the domain used for.
     pub auth_type: Option<OrganizationDomainAuthType>,
     /// Whether the domains was claimed by the organization through DNS verification.
@@ -6500,7 +6500,7 @@ pub struct OrganizationDomainPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The organization domain that was created or updated.
-    pub organization_domain: Option<Box<OrganizationDomain>>,
+    pub organization_domain: Option<OrganizationDomain>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -6563,11 +6563,11 @@ pub struct OrganizationInvite {
     /// Extra metadata associated with the organization invite.
     pub metadata: Option<serde_json::Value>,
     /// The user who created the invitation.
-    pub inviter: Option<Box<User>>,
+    pub inviter: Option<User>,
     /// The user who has accepted the invite. Null, if the invite hasn't been accepted.
-    pub invitee: Option<Box<User>>,
+    pub invitee: Option<User>,
     /// The organization that the invite is associated with.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
 }
 impl GraphQLFields for OrganizationInvite {
     type FullType = Self;
@@ -6578,9 +6578,9 @@ impl GraphQLFields for OrganizationInvite {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct OrganizationInviteConnection {
-    pub edges: Option<Box<Vec<OrganizationInviteEdge>>>,
-    pub nodes: Option<Box<Vec<OrganizationInvite>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<OrganizationInviteEdge>>,
+    pub nodes: Option<Vec<OrganizationInvite>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for OrganizationInviteConnection {
     type FullType = Self;
@@ -6591,7 +6591,7 @@ impl GraphQLFields for OrganizationInviteConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct OrganizationInviteEdge {
-    pub node: Option<Box<OrganizationInvite>>,
+    pub node: Option<OrganizationInvite>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -6640,7 +6640,7 @@ pub struct OrganizationInvitePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The organization invite that was created or updated.
-    pub organization_invite: Option<Box<OrganizationInvite>>,
+    pub organization_invite: Option<OrganizationInvite>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -6688,7 +6688,7 @@ pub struct OrganizationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The organization that was created or updated.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -6827,9 +6827,9 @@ pub struct Post {
     /// Schedule used to create a post summary.
     pub feed_summary_schedule_at_create: Option<FeedSummarySchedule>,
     /// Reactions associated with the post.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// Comments associated with the post.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// A URL to the generated audio for the Post.
     pub audio_summary_url: Option<String>,
     /// Number of comments associated with the post.
@@ -6864,11 +6864,11 @@ pub struct PostNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -6907,7 +6907,7 @@ pub struct PostNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related post ID.
     pub post_id: Option<String>,
 }
@@ -6952,13 +6952,13 @@ pub struct Project {
     /// The project's color.
     pub color: Option<String>,
     /// The status that the project is associated with.
-    pub status: Option<Box<ProjectStatus>>,
+    pub status: Option<ProjectStatus>,
     /// The user who created the project.
     pub creator: Option<Box<User>>,
     /// The project lead.
     pub lead: Option<Box<User>>,
     /// `Internal` Facets associated with the project.
-    pub facets: Option<Box<Vec<Facet>>>,
+    pub facets: Option<Vec<Facet>>,
     /// The time until which project update reminders are paused.
     pub project_update_reminders_paused_until_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The estimated start date of the project.
@@ -7022,29 +7022,29 @@ pub struct Project {
     /// Project URL.
     pub url: Option<String>,
     /// Initiatives that this project belongs to.
-    pub initiatives: Option<Box<InitiativeConnection>>,
+    pub initiatives: Option<InitiativeConnection>,
     /// Associations of this project to parent initiatives.
-    pub initiative_to_projects: Option<Box<InitiativeToProjectConnection>>,
+    pub initiative_to_projects: Option<InitiativeToProjectConnection>,
     /// Teams associated with this project.
-    pub teams: Option<Box<TeamConnection>>,
+    pub teams: Option<TeamConnection>,
     /// Users that are members of the project.
-    pub members: Option<Box<UserConnection>>,
+    pub members: Option<UserConnection>,
     /// Project updates associated with the project.
-    pub project_updates: Option<Box<ProjectUpdateConnection>>,
+    pub project_updates: Option<ProjectUpdateConnection>,
     /// Documents associated with the project.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// Milestones associated with the project.
-    pub project_milestones: Option<Box<ProjectMilestoneConnection>>,
+    pub project_milestones: Option<ProjectMilestoneConnection>,
     /// Issues associated with the project.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// External links associated with the project.
-    pub external_links: Option<Box<EntityExternalLinkConnection>>,
+    pub external_links: Option<EntityExternalLinkConnection>,
     /// Attachments associated with the project.
-    pub attachments: Option<Box<ProjectAttachmentConnection>>,
+    pub attachments: Option<ProjectAttachmentConnection>,
     /// History entries associated with the project.
-    pub history: Option<Box<ProjectHistoryConnection>>,
+    pub history: Option<ProjectHistoryConnection>,
     /// Labels associated with this project.
-    pub labels: Option<Box<ProjectLabelConnection>>,
+    pub labels: Option<ProjectLabelConnection>,
     /// The overall progress of the project. This is the (completed estimate points + 0.25 * in progress estimate points) / total estimate points.
     pub progress: Option<f64>,
     /// The overall scope (total estimate points) of the project.
@@ -7058,13 +7058,13 @@ pub struct Project {
     /// The content of the project description.
     pub document_content: Option<Box<DocumentContent>>,
     /// Comments associated with the project overview.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// Relations associated with this project.
-    pub relations: Option<Box<ProjectRelationConnection>>,
+    pub relations: Option<ProjectRelationConnection>,
     /// Inverse relations associated with this project.
-    pub inverse_relations: Option<Box<ProjectRelationConnection>>,
+    pub inverse_relations: Option<ProjectRelationConnection>,
     /// Customer needs associated with the project.
-    pub needs: Option<Box<CustomerNeedConnection>>,
+    pub needs: Option<CustomerNeedConnection>,
     /// `DEPRECATED` The type of the state.
     pub state: Option<String>,
     /// The priority of the project as a label.
@@ -7086,7 +7086,7 @@ pub struct ProjectArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Project>>,
+    pub entity: Option<Project>,
 }
 impl GraphQLFields for ProjectArchivePayload {
     type FullType = Self;
@@ -7114,7 +7114,7 @@ pub struct ProjectAttachment {
     /// URL of the attachment.
     pub url: Option<String>,
     /// The creator of the attachment.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// Custom metadata related to the attachment.
     pub metadata: Option<serde_json::Value>,
     /// Information about the external source which created the attachment.
@@ -7122,7 +7122,7 @@ pub struct ProjectAttachment {
     /// An accessor helper to source.type, defines the source type of the attachment.
     pub source_type: Option<String>,
     /// The project this attachment belongs to.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The body data of the attachment, if any.
     pub body_data: Option<String>,
 }
@@ -7136,9 +7136,9 @@ impl GraphQLFields for ProjectAttachment {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectAttachmentConnection {
-    pub edges: Option<Box<Vec<ProjectAttachmentEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectAttachment>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectAttachmentEdge>>,
+    pub nodes: Option<Vec<ProjectAttachment>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectAttachmentConnection {
     type FullType = Self;
@@ -7149,7 +7149,7 @@ impl GraphQLFields for ProjectAttachmentConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectAttachmentEdge {
-    pub node: Option<Box<ProjectAttachment>>,
+    pub node: Option<ProjectAttachment>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7162,9 +7162,9 @@ impl GraphQLFields for ProjectAttachmentEdge {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectConnection {
-    pub edges: Option<Box<Vec<ProjectEdge>>>,
-    pub nodes: Option<Box<Vec<Project>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectEdge>>,
+    pub nodes: Option<Vec<Project>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectConnection {
     type FullType = Self;
@@ -7175,7 +7175,7 @@ impl GraphQLFields for ProjectConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectEdge {
-    pub node: Option<Box<Project>>,
+    pub node: Option<Project>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7215,7 +7215,7 @@ pub struct ProjectHistory {
     /// The events that happened while recording that history.
     pub entries: Option<serde_json::Value>,
     /// The project that the history is associated with.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
 }
 impl GraphQLFields for ProjectHistory {
     type FullType = Self;
@@ -7226,9 +7226,9 @@ impl GraphQLFields for ProjectHistory {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectHistoryConnection {
-    pub edges: Option<Box<Vec<ProjectHistoryEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectHistory>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectHistoryEdge>>,
+    pub nodes: Option<Vec<ProjectHistory>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectHistoryConnection {
     type FullType = Self;
@@ -7239,7 +7239,7 @@ impl GraphQLFields for ProjectHistoryConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectHistoryEdge {
-    pub node: Option<Box<ProjectHistory>>,
+    pub node: Option<ProjectHistory>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7282,9 +7282,9 @@ pub struct ProjectLabel {
     /// The parent label.
     pub parent: Option<Box<ProjectLabel>>,
     /// Projects associated with the label.
-    pub projects: Option<Box<ProjectConnection>>,
+    pub projects: Option<ProjectConnection>,
     /// Children of the label.
-    pub children: Option<Box<ProjectLabelConnection>>,
+    pub children: Option<ProjectLabelConnection>,
 }
 impl GraphQLFields for ProjectLabel {
     type FullType = Self;
@@ -7296,9 +7296,9 @@ impl GraphQLFields for ProjectLabel {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectLabelConnection {
-    pub edges: Option<Box<Vec<ProjectLabelEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectLabel>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectLabelEdge>>,
+    pub nodes: Option<Vec<ProjectLabel>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectLabelConnection {
     type FullType = Self;
@@ -7309,7 +7309,7 @@ impl GraphQLFields for ProjectLabelConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectLabelEdge {
-    pub node: Option<Box<ProjectLabel>>,
+    pub node: Option<ProjectLabel>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7325,7 +7325,7 @@ pub struct ProjectLabelPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The label that was created or updated.
-    pub project_label: Option<Box<ProjectLabel>>,
+    pub project_label: Option<ProjectLabel>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -7371,7 +7371,7 @@ pub struct ProjectMilestone {
     /// `Internal` The project milestone's description as YJS state.
     pub description_state: Option<String>,
     /// Issues associated with the project milestone.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
 }
 impl GraphQLFields for ProjectMilestone {
     type FullType = Self;
@@ -7383,9 +7383,9 @@ impl GraphQLFields for ProjectMilestone {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectMilestoneConnection {
-    pub edges: Option<Box<Vec<ProjectMilestoneEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectMilestone>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectMilestoneEdge>>,
+    pub nodes: Option<Vec<ProjectMilestone>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectMilestoneConnection {
     type FullType = Self;
@@ -7396,7 +7396,7 @@ impl GraphQLFields for ProjectMilestoneConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectMilestoneEdge {
-    pub node: Option<Box<ProjectMilestone>>,
+    pub node: Option<ProjectMilestone>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7426,13 +7426,13 @@ pub struct ProjectMilestoneMovePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project milestone that was created or updated.
-    pub project_milestone: Option<Box<ProjectMilestone>>,
+    pub project_milestone: Option<ProjectMilestone>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// A snapshot of the issues that were moved to new teams, if the user selected to do it, containing an array of mappings between an issue and its previous team. Store on the client to use for undoing a previous milestone move.
-    pub previous_issue_team_ids: Option<Box<Vec<ProjectMilestoneMoveIssueToTeam>>>,
+    pub previous_issue_team_ids: Option<Vec<ProjectMilestoneMoveIssueToTeam>>,
     /// A snapshot of the project that had new teams added to it, if the user selected to do it, containing an array of mappings between a project and its previous teams. Store on the client to use for undoing a previous milestone move.
-    pub previous_project_team_ids: Option<Box<ProjectMilestoneMoveProjectTeams>>,
+    pub previous_project_team_ids: Option<ProjectMilestoneMoveProjectTeams>,
 }
 impl GraphQLFields for ProjectMilestoneMovePayload {
     type FullType = Self;
@@ -7460,7 +7460,7 @@ pub struct ProjectMilestonePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project milestone that was created or updated.
-    pub project_milestone: Option<Box<ProjectMilestone>>,
+    pub project_milestone: Option<ProjectMilestone>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -7492,11 +7492,11 @@ pub struct ProjectNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -7535,7 +7535,7 @@ pub struct ProjectNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related project ID.
     pub project_id: Option<String>,
     /// Related project milestone ID.
@@ -7543,15 +7543,15 @@ pub struct ProjectNotification {
     /// Related project update ID.
     pub project_update_id: Option<String>,
     /// The project related to the notification.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The document related to the notification.
-    pub document: Option<Box<Document>>,
+    pub document: Option<Document>,
     /// The project update related to the notification.
-    pub project_update: Option<Box<ProjectUpdate>>,
+    pub project_update: Option<ProjectUpdate>,
     /// The comment related to the notification.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// The parent comment related to the notification, if a notification is a reply comment notification.
-    pub parent_comment: Option<Box<Comment>>,
+    pub parent_comment: Option<Comment>,
 }
 impl GraphQLFields for ProjectNotification {
     type FullType = Self;
@@ -7574,23 +7574,23 @@ pub struct ProjectNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The project subscribed to.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -7613,7 +7613,7 @@ pub struct ProjectPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project that was created or updated.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -7639,19 +7639,19 @@ pub struct ProjectRelation {
     /// The relationship of the project with the related project.
     pub r#type: Option<String>,
     /// The project whose relationship is being described.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The milestone within the project whose relationship is being described.
-    pub project_milestone: Option<Box<ProjectMilestone>>,
+    pub project_milestone: Option<ProjectMilestone>,
     /// The type of anchor on the project end of the relation.
     pub anchor_type: Option<String>,
     /// The related project.
-    pub related_project: Option<Box<Project>>,
+    pub related_project: Option<Project>,
     /// The milestone within the related project whose relationship is being described.
-    pub related_project_milestone: Option<Box<ProjectMilestone>>,
+    pub related_project_milestone: Option<ProjectMilestone>,
     /// The type of anchor on the relatedProject end of the relation.
     pub related_anchor_type: Option<String>,
     /// The last user who created or modified the relation.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
 }
 impl GraphQLFields for ProjectRelation {
     type FullType = Self;
@@ -7662,9 +7662,9 @@ impl GraphQLFields for ProjectRelation {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectRelationConnection {
-    pub edges: Option<Box<Vec<ProjectRelationEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectRelation>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectRelationEdge>>,
+    pub nodes: Option<Vec<ProjectRelation>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectRelationConnection {
     type FullType = Self;
@@ -7675,7 +7675,7 @@ impl GraphQLFields for ProjectRelationConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectRelationEdge {
-    pub node: Option<Box<ProjectRelation>>,
+    pub node: Option<ProjectRelation>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7691,7 +7691,7 @@ pub struct ProjectRelationPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project relation that was created or updated.
-    pub project_relation: Option<Box<ProjectRelation>>,
+    pub project_relation: Option<ProjectRelation>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -7704,11 +7704,11 @@ impl GraphQLFields for ProjectRelationPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectSearchPayload {
-    pub edges: Option<Box<Vec<ProjectSearchResultEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectSearchResult>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectSearchResultEdge>>,
+    pub nodes: Option<Vec<ProjectSearchResult>>,
+    pub page_info: Option<PageInfo>,
     /// Archived entities matching the search term along with all their dependencies.
-    pub archive_payload: Option<Box<ArchiveResponse>>,
+    pub archive_payload: Option<ArchiveResponse>,
     /// Total number of results for query without filters applied.
     pub total_count: Option<f64>,
 }
@@ -7751,13 +7751,13 @@ pub struct ProjectSearchResult {
     /// The project's color.
     pub color: Option<String>,
     /// The status that the project is associated with.
-    pub status: Option<Box<ProjectStatus>>,
+    pub status: Option<ProjectStatus>,
     /// The user who created the project.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The project lead.
-    pub lead: Option<Box<User>>,
+    pub lead: Option<User>,
     /// `Internal` Facets associated with the project.
-    pub facets: Option<Box<Vec<Facet>>>,
+    pub facets: Option<Vec<Facet>>,
     /// The time until which project update reminders are paused.
     pub project_update_reminders_paused_until_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The estimated start date of the project.
@@ -7783,13 +7783,13 @@ pub struct ProjectSearchResult {
     /// The sort order for the project within the organization, when ordered by priority.
     pub priority_sort_order: Option<f64>,
     /// The project was created based on this issue.
-    pub converted_from_issue: Option<Box<Issue>>,
+    pub converted_from_issue: Option<Issue>,
     /// The last template that was applied to this project.
-    pub last_applied_template: Option<Box<Template>>,
+    pub last_applied_template: Option<Template>,
     /// The priority of the project. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low.
     pub priority: Option<i64>,
     /// The last project update posted for this project.
-    pub last_update: Option<Box<ProjectUpdate>>,
+    pub last_update: Option<ProjectUpdate>,
     /// The health of the project.
     pub health: Option<ProjectUpdateHealthType>,
     /// The time at which the project health was updated.
@@ -7817,53 +7817,53 @@ pub struct ProjectSearchResult {
     /// Id of the labels associated with this project.
     pub label_ids: Option<Vec<String>>,
     /// The user's favorite associated with this project.
-    pub favorite: Option<Box<Favorite>>,
+    pub favorite: Option<Favorite>,
     /// Project URL.
     pub url: Option<String>,
     /// Initiatives that this project belongs to.
-    pub initiatives: Option<Box<InitiativeConnection>>,
+    pub initiatives: Option<InitiativeConnection>,
     /// Associations of this project to parent initiatives.
-    pub initiative_to_projects: Option<Box<InitiativeToProjectConnection>>,
+    pub initiative_to_projects: Option<InitiativeToProjectConnection>,
     /// Teams associated with this project.
-    pub teams: Option<Box<TeamConnection>>,
+    pub teams: Option<TeamConnection>,
     /// Users that are members of the project.
-    pub members: Option<Box<UserConnection>>,
+    pub members: Option<UserConnection>,
     /// Project updates associated with the project.
-    pub project_updates: Option<Box<ProjectUpdateConnection>>,
+    pub project_updates: Option<ProjectUpdateConnection>,
     /// Documents associated with the project.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// Milestones associated with the project.
-    pub project_milestones: Option<Box<ProjectMilestoneConnection>>,
+    pub project_milestones: Option<ProjectMilestoneConnection>,
     /// Issues associated with the project.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// External links associated with the project.
-    pub external_links: Option<Box<EntityExternalLinkConnection>>,
+    pub external_links: Option<EntityExternalLinkConnection>,
     /// Attachments associated with the project.
-    pub attachments: Option<Box<ProjectAttachmentConnection>>,
+    pub attachments: Option<ProjectAttachmentConnection>,
     /// History entries associated with the project.
-    pub history: Option<Box<ProjectHistoryConnection>>,
+    pub history: Option<ProjectHistoryConnection>,
     /// Labels associated with this project.
-    pub labels: Option<Box<ProjectLabelConnection>>,
+    pub labels: Option<ProjectLabelConnection>,
     /// The overall progress of the project. This is the (completed estimate points + 0.25 * in progress estimate points) / total estimate points.
     pub progress: Option<f64>,
     /// The overall scope (total estimate points) of the project.
     pub scope: Option<f64>,
     /// Settings for all integrations associated with that project.
-    pub integrations_settings: Option<Box<IntegrationsSettings>>,
+    pub integrations_settings: Option<IntegrationsSettings>,
     /// The project's content in markdown format.
     pub content: Option<String>,
     /// `Internal` The project's content as YJS state.
     pub content_state: Option<String>,
     /// The content of the project description.
-    pub document_content: Option<Box<DocumentContent>>,
+    pub document_content: Option<DocumentContent>,
     /// Comments associated with the project overview.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// Relations associated with this project.
-    pub relations: Option<Box<ProjectRelationConnection>>,
+    pub relations: Option<ProjectRelationConnection>,
     /// Inverse relations associated with this project.
-    pub inverse_relations: Option<Box<ProjectRelationConnection>>,
+    pub inverse_relations: Option<ProjectRelationConnection>,
     /// Customer needs associated with the project.
-    pub needs: Option<Box<CustomerNeedConnection>>,
+    pub needs: Option<CustomerNeedConnection>,
     /// `DEPRECATED` The type of the state.
     pub state: Option<String>,
     /// The priority of the project as a label.
@@ -7881,7 +7881,7 @@ impl GraphQLFields for ProjectSearchResult {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectSearchResultEdge {
-    pub node: Option<Box<ProjectSearchResult>>,
+    pub node: Option<ProjectSearchResult>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7932,7 +7932,7 @@ pub struct ProjectStatusArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<ProjectStatus>>,
+    pub entity: Option<ProjectStatus>,
 }
 impl GraphQLFields for ProjectStatusArchivePayload {
     type FullType = Self;
@@ -7943,9 +7943,9 @@ impl GraphQLFields for ProjectStatusArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectStatusConnection {
-    pub edges: Option<Box<Vec<ProjectStatusEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectStatus>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectStatusEdge>>,
+    pub nodes: Option<Vec<ProjectStatus>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectStatusConnection {
     type FullType = Self;
@@ -7972,7 +7972,7 @@ impl GraphQLFields for ProjectStatusCountPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectStatusEdge {
-    pub node: Option<Box<ProjectStatus>>,
+    pub node: Option<ProjectStatus>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -7988,7 +7988,7 @@ pub struct ProjectStatusPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project status that was created or updated.
-    pub status: Option<Box<ProjectStatus>>,
+    pub status: Option<ProjectStatus>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8040,9 +8040,9 @@ pub struct ProjectUpdate {
     /// The diff between the current update and the previous one, formatted as markdown.
     pub diff_markdown: Option<String>,
     /// Reactions associated with the project update.
-    pub reactions: Option<Box<Vec<Reaction>>>,
+    pub reactions: Option<Vec<Reaction>>,
     /// Comments associated with the project update.
-    pub comments: Option<Box<CommentConnection>>,
+    pub comments: Option<CommentConnection>,
     /// Number of comments associated with the project update.
     pub comment_count: Option<i64>,
 }
@@ -8062,7 +8062,7 @@ pub struct ProjectUpdateArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<ProjectUpdate>>,
+    pub entity: Option<ProjectUpdate>,
 }
 impl GraphQLFields for ProjectUpdateArchivePayload {
     type FullType = Self;
@@ -8073,9 +8073,9 @@ impl GraphQLFields for ProjectUpdateArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectUpdateConnection {
-    pub edges: Option<Box<Vec<ProjectUpdateEdge>>>,
-    pub nodes: Option<Box<Vec<ProjectUpdate>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ProjectUpdateEdge>>,
+    pub nodes: Option<Vec<ProjectUpdate>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ProjectUpdateConnection {
     type FullType = Self;
@@ -8086,7 +8086,7 @@ impl GraphQLFields for ProjectUpdateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectUpdateEdge {
-    pub node: Option<Box<ProjectUpdate>>,
+    pub node: Option<ProjectUpdate>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8102,7 +8102,7 @@ pub struct ProjectUpdatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The project update that was created or updated.
-    pub project_update: Option<Box<ProjectUpdate>>,
+    pub project_update: Option<ProjectUpdate>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8154,17 +8154,17 @@ pub struct PullRequest {
     /// The status of the pull request.
     pub status: Option<PullRequestStatus>,
     /// Merge settings for this pull request.
-    pub merge_settings: Option<Box<PullRequestMergeSettings>>,
+    pub merge_settings: Option<PullRequestMergeSettings>,
     /// The merge commit created when the PR was merged.
-    pub merge_commit: Option<Box<PullRequestCommit>>,
+    pub merge_commit: Option<PullRequestCommit>,
     /// `Internal` The checks associated with the pull request.
-    pub checks: Option<Box<Vec<PullRequestCheck>>>,
+    pub checks: Option<Vec<PullRequestCheck>>,
     /// `ALPHA` The commits associated with the pull request.
-    pub commits: Option<Box<Vec<PullRequestCommit>>>,
+    pub commits: Option<Vec<PullRequestCommit>>,
     /// `Internal` The user who created the pull request.
     pub creator: Option<Box<User>>,
     /// Agent sessions associated with this pull request.
-    pub agent_sessions: Option<Box<AgentSessionToPullRequestConnection>>,
+    pub agent_sessions: Option<AgentSessionToPullRequestConnection>,
     /// Pull request URL to the Linear app
     pub app_url: Option<String>,
     /// The pull request's description in markdown format.
@@ -8174,7 +8174,7 @@ pub struct PullRequest {
     /// Integration type that created this pull request, if applicable.
     pub integration_source_type: Option<IntegrationService>,
     /// Diff statistics for the pull request including file count, additions, deletions, and changes.
-    pub diff_stats: Option<Box<PullRequestDiffStats>>,
+    pub diff_stats: Option<PullRequestDiffStats>,
 }
 impl GraphQLFields for PullRequest {
     type FullType = Self;
@@ -8297,11 +8297,11 @@ pub struct PullRequestNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -8340,13 +8340,13 @@ pub struct PullRequestNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related pull request.
     pub pull_request_id: Option<String>,
     /// Related pull request comment ID. Null if the notification is not related to a pull request comment.
     pub pull_request_comment_id: Option<String>,
     /// The pull request related to the notification.
-    pub pull_request: Option<Box<PullRequest>>,
+    pub pull_request: Option<PullRequest>,
 }
 impl GraphQLFields for PullRequestNotification {
     type FullType = Self;
@@ -8381,7 +8381,7 @@ pub struct PushSubscriptionPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The push subscription that was created or updated.
-    pub entity: Option<Box<PushSubscription>>,
+    pub entity: Option<PushSubscription>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8411,7 +8411,7 @@ pub struct RateLimitPayload {
     /// The kind of rate limit selected for this request.
     pub kind: Option<String>,
     /// The state of the rate limit.
-    pub limits: Option<Box<Vec<RateLimitResultPayload>>>,
+    pub limits: Option<Vec<RateLimitResultPayload>>,
 }
 impl GraphQLFields for RateLimitPayload {
     type FullType = Self;
@@ -8457,19 +8457,19 @@ pub struct Reaction {
     /// Name of the reaction's emoji.
     pub emoji: Option<String>,
     /// The issue that the reaction is associated with.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The comment that the reaction is associated with.
-    pub comment: Option<Box<Comment>>,
+    pub comment: Option<Comment>,
     /// The project update that the reaction is associated with.
-    pub project_update: Option<Box<ProjectUpdate>>,
+    pub project_update: Option<ProjectUpdate>,
     /// The initiative update that the reaction is associated with.
-    pub initiative_update: Option<Box<InitiativeUpdate>>,
+    pub initiative_update: Option<InitiativeUpdate>,
     /// The post that the reaction is associated with.
-    pub post: Option<Box<Post>>,
+    pub post: Option<Post>,
     /// The user that created the reaction.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The external user that created the reaction.
-    pub external_user: Option<Box<ExternalUser>>,
+    pub external_user: Option<ExternalUser>,
 }
 impl GraphQLFields for Reaction {
     type FullType = Self;
@@ -8482,7 +8482,7 @@ impl GraphQLFields for Reaction {
 pub struct ReactionPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
-    pub reaction: Option<Box<Reaction>>,
+    pub reaction: Option<Reaction>,
     pub success: Option<bool>,
 }
 impl GraphQLFields for ReactionPayload {
@@ -8531,9 +8531,9 @@ pub struct Release {
     /// Release URL.
     pub url: Option<String>,
     /// `Internal` Documents associated with the release.
-    pub documents: Option<Box<DocumentConnection>>,
+    pub documents: Option<DocumentConnection>,
     /// `Internal` Links associated with the release.
-    pub links: Option<Box<EntityExternalLinkConnection>>,
+    pub links: Option<EntityExternalLinkConnection>,
 }
 impl GraphQLFields for Release {
     type FullType = Self;
@@ -8551,7 +8551,7 @@ pub struct ReleaseArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Release>>,
+    pub entity: Option<Release>,
 }
 impl GraphQLFields for ReleaseArchivePayload {
     type FullType = Self;
@@ -8562,9 +8562,9 @@ impl GraphQLFields for ReleaseArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleaseConnection {
-    pub edges: Option<Box<Vec<ReleaseEdge>>>,
-    pub nodes: Option<Box<Vec<Release>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ReleaseEdge>>,
+    pub nodes: Option<Vec<Release>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ReleaseConnection {
     type FullType = Self;
@@ -8575,7 +8575,7 @@ impl GraphQLFields for ReleaseConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleaseEdge {
-    pub node: Option<Box<Release>>,
+    pub node: Option<Release>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8591,7 +8591,7 @@ pub struct ReleasePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The release that was created or updated.
-    pub release: Option<Box<Release>>,
+    pub release: Option<Release>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8625,9 +8625,9 @@ pub struct ReleasePipeline {
     /// `ALPHA` The active access key for this pipeline.
     pub access_key: Option<Box<AccessKey>>,
     /// `ALPHA` Stages associated with this pipeline.
-    pub stages: Option<Box<ReleaseStageConnection>>,
+    pub stages: Option<ReleaseStageConnection>,
     /// `ALPHA` Releases associated with this pipeline.
-    pub releases: Option<Box<ReleaseConnection>>,
+    pub releases: Option<ReleaseConnection>,
 }
 impl GraphQLFields for ReleasePipeline {
     type FullType = Self;
@@ -8644,7 +8644,7 @@ pub struct ReleasePipelineArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<ReleasePipeline>>,
+    pub entity: Option<ReleasePipeline>,
 }
 impl GraphQLFields for ReleasePipelineArchivePayload {
     type FullType = Self;
@@ -8655,9 +8655,9 @@ impl GraphQLFields for ReleasePipelineArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleasePipelineConnection {
-    pub edges: Option<Box<Vec<ReleasePipelineEdge>>>,
-    pub nodes: Option<Box<Vec<ReleasePipeline>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ReleasePipelineEdge>>,
+    pub nodes: Option<Vec<ReleasePipeline>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ReleasePipelineConnection {
     type FullType = Self;
@@ -8668,7 +8668,7 @@ impl GraphQLFields for ReleasePipelineConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleasePipelineEdge {
-    pub node: Option<Box<ReleasePipeline>>,
+    pub node: Option<ReleasePipeline>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8684,7 +8684,7 @@ pub struct ReleasePipelinePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The release pipeline that was created or updated.
-    pub release_pipeline: Option<Box<ReleasePipeline>>,
+    pub release_pipeline: Option<ReleasePipeline>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8720,7 +8720,7 @@ pub struct ReleaseStage {
     /// The pipeline this stage belongs to.
     pub pipeline: Option<Box<ReleasePipeline>>,
     /// `ALPHA` Releases associated with this stage.
-    pub releases: Option<Box<ReleaseConnection>>,
+    pub releases: Option<ReleaseConnection>,
 }
 impl GraphQLFields for ReleaseStage {
     type FullType = Self;
@@ -8737,7 +8737,7 @@ pub struct ReleaseStageArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<ReleaseStage>>,
+    pub entity: Option<ReleaseStage>,
 }
 impl GraphQLFields for ReleaseStageArchivePayload {
     type FullType = Self;
@@ -8748,9 +8748,9 @@ impl GraphQLFields for ReleaseStageArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleaseStageConnection {
-    pub edges: Option<Box<Vec<ReleaseStageEdge>>>,
-    pub nodes: Option<Box<Vec<ReleaseStage>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<ReleaseStageEdge>>,
+    pub nodes: Option<Vec<ReleaseStage>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for ReleaseStageConnection {
     type FullType = Self;
@@ -8761,7 +8761,7 @@ impl GraphQLFields for ReleaseStageConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ReleaseStageEdge {
-    pub node: Option<Box<ReleaseStage>>,
+    pub node: Option<ReleaseStage>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8777,7 +8777,7 @@ pub struct ReleaseStagePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The release stage that was created or updated.
-    pub release_stage: Option<Box<ReleaseStage>>,
+    pub release_stage: Option<ReleaseStage>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8807,7 +8807,7 @@ impl GraphQLFields for RepositorySuggestion {
 #[serde(rename_all = "camelCase", default)]
 pub struct RepositorySuggestionsPayload {
     /// The suggested repositories.
-    pub suggestions: Option<Box<Vec<RepositorySuggestion>>>,
+    pub suggestions: Option<Vec<RepositorySuggestion>>,
 }
 impl GraphQLFields for RepositorySuggestionsPayload {
     type FullType = Self;
@@ -8833,11 +8833,11 @@ pub struct Roadmap {
     /// The description of the roadmap.
     pub description: Option<String>,
     /// The organization of the roadmap.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The user who created the roadmap.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// The user who owns the roadmap.
-    pub owner: Option<Box<User>>,
+    pub owner: Option<User>,
     /// The roadmap's unique URL slug.
     pub slug_id: Option<String>,
     /// The sort order of the roadmap within the organization.
@@ -8845,7 +8845,7 @@ pub struct Roadmap {
     /// The roadmap's color.
     pub color: Option<String>,
     /// Projects associated with the roadmap.
-    pub projects: Option<Box<ProjectConnection>>,
+    pub projects: Option<ProjectConnection>,
     /// The canonical url for the roadmap.
     pub url: Option<String>,
 }
@@ -8864,7 +8864,7 @@ pub struct RoadmapArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Roadmap>>,
+    pub entity: Option<Roadmap>,
 }
 impl GraphQLFields for RoadmapArchivePayload {
     type FullType = Self;
@@ -8875,9 +8875,9 @@ impl GraphQLFields for RoadmapArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RoadmapConnection {
-    pub edges: Option<Box<Vec<RoadmapEdge>>>,
-    pub nodes: Option<Box<Vec<Roadmap>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<RoadmapEdge>>,
+    pub nodes: Option<Vec<Roadmap>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for RoadmapConnection {
     type FullType = Self;
@@ -8888,7 +8888,7 @@ impl GraphQLFields for RoadmapConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RoadmapEdge {
-    pub node: Option<Box<Roadmap>>,
+    pub node: Option<Roadmap>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8904,7 +8904,7 @@ pub struct RoadmapPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The roadmap that was created or updated.
-    pub roadmap: Option<Box<Roadmap>>,
+    pub roadmap: Option<Roadmap>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8928,9 +8928,9 @@ pub struct RoadmapToProject {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The project that the roadmap is associated with.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The roadmap that the project is associated with.
-    pub roadmap: Option<Box<Roadmap>>,
+    pub roadmap: Option<Roadmap>,
     /// The sort order of the project within the roadmap.
     pub sort_order: Option<String>,
 }
@@ -8943,9 +8943,9 @@ impl GraphQLFields for RoadmapToProject {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RoadmapToProjectConnection {
-    pub edges: Option<Box<Vec<RoadmapToProjectEdge>>>,
-    pub nodes: Option<Box<Vec<RoadmapToProject>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<RoadmapToProjectEdge>>,
+    pub nodes: Option<Vec<RoadmapToProject>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for RoadmapToProjectConnection {
     type FullType = Self;
@@ -8956,7 +8956,7 @@ impl GraphQLFields for RoadmapToProjectConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RoadmapToProjectEdge {
-    pub node: Option<Box<RoadmapToProject>>,
+    pub node: Option<RoadmapToProject>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -8972,7 +8972,7 @@ pub struct RoadmapToProjectPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The roadmapToProject that was created or updated.
-    pub roadmap_to_project: Option<Box<RoadmapToProject>>,
+    pub roadmap_to_project: Option<RoadmapToProject>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -8988,7 +8988,7 @@ impl GraphQLFields for RoadmapToProjectPayload {
 pub struct SemanticSearchPayload {
     /// Whether the semantic search is enabled.
     pub enabled: Option<bool>,
-    pub results: Option<Box<Vec<SemanticSearchResult>>>,
+    pub results: Option<Vec<SemanticSearchResult>>,
 }
 impl GraphQLFields for SemanticSearchPayload {
     type FullType = Self;
@@ -9005,13 +9005,13 @@ pub struct SemanticSearchResult {
     /// The type of the semantic search result.
     pub r#type: Option<SemanticSearchResultType>,
     /// The issue related to the semantic search result.
-    pub issue: Option<Box<Issue>>,
+    pub issue: Option<Issue>,
     /// The project related to the semantic search result.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The initiative related to the semantic search result.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The document related to the semantic search result.
-    pub document: Option<Box<Document>>,
+    pub document: Option<Document>,
 }
 impl GraphQLFields for SemanticSearchResult {
     type FullType = Self;
@@ -9037,13 +9037,13 @@ pub struct SesDomainIdentity {
     /// The AWS region of the SES domain identity.
     pub region: Option<String>,
     /// The organization of the SES domain identity.
-    pub organization: Option<Box<Organization>>,
+    pub organization: Option<Organization>,
     /// The user who created the SES domain identity.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// Whether the domain is fully verified and can be used for sending emails.
     pub can_send_from_custom_domain: Option<bool>,
     /// The DNS records for the SES domain identity.
-    pub dns_records: Option<Box<Vec<SesDomainIdentityDnsRecord>>>,
+    pub dns_records: Option<Vec<SesDomainIdentityDnsRecord>>,
 }
 impl GraphQLFields for SesDomainIdentity {
     type FullType = Self;
@@ -9091,7 +9091,7 @@ pub struct SlackChannelConnectPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The integration that was created or updated.
-    pub integration: Option<Box<Integration>>,
+    pub integration: Option<Integration>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// Whether the bot needs to be manually added to the channel.
@@ -9123,7 +9123,7 @@ pub struct SlackChannelNameMapping {
     /// Whether or not the Linear Asks bot has been added to this Slack channel.
     pub bot_added: Option<bool>,
     /// Which teams are connected to the channel and settings for those teams.
-    pub teams: Option<Box<Vec<SlackAsksTeamSettings>>>,
+    pub teams: Option<Vec<SlackAsksTeamSettings>>,
     /// Whether or not top-level messages in this channel should automatically create Asks.
     pub auto_create_on_message: Option<bool>,
     /// Whether or not using the :ticket: emoji in this channel should automatically create Asks.
@@ -9265,7 +9265,7 @@ pub struct Team {
     /// `Internal` The team's parent team.
     pub parent: Option<Box<Team>>,
     /// `Internal` The team's sub-teams.
-    pub children: Option<Box<Vec<Team>>>,
+    pub children: Option<Vec<Team>>,
     /// Whether the team uses cycles.
     pub cycles_enabled: Option<bool>,
     /// The day of the week that a new cycle starts.
@@ -9325,9 +9325,9 @@ pub struct Team {
     /// Security settings for the team.
     pub security_settings: Option<serde_json::Value>,
     /// `Internal` Facets associated with the team.
-    pub facets: Option<Box<Vec<Facet>>>,
+    pub facets: Option<Vec<Facet>>,
     /// `Internal` Posts associated with the team.
-    pub posts: Option<Box<Vec<Post>>>,
+    pub posts: Option<Vec<Post>>,
     /// Whether the team is managed by SCIM integration.
     pub scim_managed: Option<bool>,
     /// The SCIM group name for the team.
@@ -9377,33 +9377,33 @@ pub struct Team {
     /// The name of the team including its parent team name if it has one.
     pub display_name: Option<String>,
     /// Issues associated with the team.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
     /// Number of issues in the team.
     pub issue_count: Option<i64>,
     /// Cycles associated with the team.
-    pub cycles: Option<Box<CycleConnection>>,
+    pub cycles: Option<CycleConnection>,
     /// Team's currently active cycle.
     pub active_cycle: Option<Box<Cycle>>,
     /// Team's triage responsibility.
     pub triage_responsibility: Option<Box<TriageResponsibility>>,
     /// Users who are members of this team.
-    pub members: Option<Box<UserConnection>>,
+    pub members: Option<UserConnection>,
     /// `ALPHA` The membership of the given user in the team.
     pub membership: Option<Box<TeamMembership>>,
     /// Memberships associated with the team. For easier access of the same data, use `members` query.
-    pub memberships: Option<Box<TeamMembershipConnection>>,
+    pub memberships: Option<TeamMembershipConnection>,
     /// Projects associated with the team.
-    pub projects: Option<Box<ProjectConnection>>,
+    pub projects: Option<ProjectConnection>,
     /// The states that define the workflow associated with the team.
-    pub states: Option<Box<WorkflowStateConnection>>,
+    pub states: Option<WorkflowStateConnection>,
     /// The Git automation states for the team.
-    pub git_automation_states: Option<Box<GitAutomationStateConnection>>,
+    pub git_automation_states: Option<GitAutomationStateConnection>,
     /// Templates associated with the team.
-    pub templates: Option<Box<TemplateConnection>>,
+    pub templates: Option<TemplateConnection>,
     /// Labels associated with the team.
-    pub labels: Option<Box<IssueLabelConnection>>,
+    pub labels: Option<IssueLabelConnection>,
     /// Webhooks associated with the team.
-    pub webhooks: Option<Box<WebhookConnection>>,
+    pub webhooks: Option<WebhookConnection>,
     /// Settings for all integrations associated with that team.
     pub integrations_settings: Option<Box<IntegrationsSettings>>,
     /// `DEPRECATED` Whether to move issues to bottom of the column when changing state.
@@ -9427,7 +9427,7 @@ pub struct TeamArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<Team>>,
+    pub entity: Option<Team>,
 }
 impl GraphQLFields for TeamArchivePayload {
     type FullType = Self;
@@ -9438,9 +9438,9 @@ impl GraphQLFields for TeamArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TeamConnection {
-    pub edges: Option<Box<Vec<TeamEdge>>>,
-    pub nodes: Option<Box<Vec<Team>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<TeamEdge>>,
+    pub nodes: Option<Vec<Team>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for TeamConnection {
     type FullType = Self;
@@ -9451,7 +9451,7 @@ impl GraphQLFields for TeamConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TeamEdge {
-    pub node: Option<Box<Team>>,
+    pub node: Option<Team>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -9492,9 +9492,9 @@ impl GraphQLFields for TeamMembership {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TeamMembershipConnection {
-    pub edges: Option<Box<Vec<TeamMembershipEdge>>>,
-    pub nodes: Option<Box<Vec<TeamMembership>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<TeamMembershipEdge>>,
+    pub nodes: Option<Vec<TeamMembership>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for TeamMembershipConnection {
     type FullType = Self;
@@ -9505,7 +9505,7 @@ impl GraphQLFields for TeamMembershipConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TeamMembershipEdge {
-    pub node: Option<Box<TeamMembership>>,
+    pub node: Option<TeamMembership>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -9521,7 +9521,7 @@ pub struct TeamMembershipPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The team membership that was created or updated.
-    pub team_membership: Option<Box<TeamMembership>>,
+    pub team_membership: Option<TeamMembership>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9545,23 +9545,23 @@ pub struct TeamNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team subscribed to.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user view associated with the notification subscription.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -9584,7 +9584,7 @@ pub struct TeamPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The team that was created or updated.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9642,9 +9642,9 @@ impl GraphQLFields for Template {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TemplateConnection {
-    pub edges: Option<Box<Vec<TemplateEdge>>>,
-    pub nodes: Option<Box<Vec<Template>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<TemplateEdge>>,
+    pub nodes: Option<Vec<Template>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for TemplateConnection {
     type FullType = Self;
@@ -9655,7 +9655,7 @@ impl GraphQLFields for TemplateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TemplateEdge {
-    pub node: Option<Box<Template>>,
+    pub node: Option<Template>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -9671,7 +9671,7 @@ pub struct TemplatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The template that was created or updated.
-    pub template: Option<Box<Template>>,
+    pub template: Option<Template>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9697,7 +9697,7 @@ pub struct TimeSchedule {
     /// The name of the schedule.
     pub name: Option<String>,
     /// The schedule entries.
-    pub entries: Option<Box<Vec<TimeScheduleEntry>>>,
+    pub entries: Option<Vec<TimeScheduleEntry>>,
     /// The identifier of the external schedule.
     pub external_id: Option<String>,
     /// The URL to the external schedule.
@@ -9716,9 +9716,9 @@ impl GraphQLFields for TimeSchedule {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TimeScheduleConnection {
-    pub edges: Option<Box<Vec<TimeScheduleEdge>>>,
-    pub nodes: Option<Box<Vec<TimeSchedule>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<TimeScheduleEdge>>,
+    pub nodes: Option<Vec<TimeSchedule>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for TimeScheduleConnection {
     type FullType = Self;
@@ -9729,7 +9729,7 @@ impl GraphQLFields for TimeScheduleConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TimeScheduleEdge {
-    pub node: Option<Box<TimeSchedule>>,
+    pub node: Option<TimeSchedule>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -9762,7 +9762,7 @@ impl GraphQLFields for TimeScheduleEntry {
 pub struct TimeSchedulePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
-    pub time_schedule: Option<Box<TimeSchedule>>,
+    pub time_schedule: Option<TimeSchedule>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9788,7 +9788,7 @@ pub struct TriageResponsibility {
     /// The action to take when an issue is added to triage.
     pub action: Option<TriageResponsibilityAction>,
     /// Set of users used for triage responsibility.
-    pub manual_selection: Option<Box<TriageResponsibilityManualSelection>>,
+    pub manual_selection: Option<TriageResponsibilityManualSelection>,
     /// The team to which the triage responsibility belongs to.
     pub team: Option<Box<Team>>,
     /// The time schedule used for scheduling.
@@ -9805,9 +9805,9 @@ impl GraphQLFields for TriageResponsibility {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TriageResponsibilityConnection {
-    pub edges: Option<Box<Vec<TriageResponsibilityEdge>>>,
-    pub nodes: Option<Box<Vec<TriageResponsibility>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<TriageResponsibilityEdge>>,
+    pub nodes: Option<Vec<TriageResponsibility>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for TriageResponsibilityConnection {
     type FullType = Self;
@@ -9818,7 +9818,7 @@ impl GraphQLFields for TriageResponsibilityConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TriageResponsibilityEdge {
-    pub node: Option<Box<TriageResponsibility>>,
+    pub node: Option<TriageResponsibility>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -9847,7 +9847,7 @@ impl GraphQLFields for TriageResponsibilityManualSelection {
 pub struct TriageResponsibilityPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
-    pub triage_responsibility: Option<Box<TriageResponsibility>>,
+    pub triage_responsibility: Option<TriageResponsibility>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9872,7 +9872,7 @@ pub struct UploadFile {
     /// The asset URL for the uploaded file. (assigned automatically).
     pub asset_url: Option<String>,
     pub meta_data: Option<serde_json::Value>,
-    pub headers: Option<Box<Vec<UploadFileHeader>>>,
+    pub headers: Option<Vec<UploadFileHeader>>,
 }
 impl GraphQLFields for UploadFile {
     type FullType = Self;
@@ -9900,7 +9900,7 @@ pub struct UploadPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// Object describing the file to be uploaded.
-    pub upload_file: Option<Box<UploadFile>>,
+    pub upload_file: Option<UploadFile>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -9950,7 +9950,7 @@ pub struct User {
     /// The last time the user was seen online.
     pub last_seen: Option<chrono::DateTime<chrono::Utc>>,
     /// `INTERNAL` Identity provider the user is managed by.
-    pub identity_provider: Option<Box<IdentityProvider>>,
+    pub identity_provider: Option<IdentityProvider>,
     /// The initials of the user.
     pub initials: Option<String>,
     /// The background color of the avatar for users without set avatar.
@@ -9968,25 +9968,25 @@ pub struct User {
     /// Enabled feature flags for the user.
     pub feature_flags: Option<Vec<String>>,
     /// The user's issue drafts
-    pub issue_drafts: Option<Box<IssueDraftConnection>>,
+    pub issue_drafts: Option<IssueDraftConnection>,
     /// The user's drafts
-    pub drafts: Option<Box<DraftConnection>>,
+    pub drafts: Option<DraftConnection>,
     /// User's profile URL.
     pub url: Option<String>,
     /// Issues assigned to the user.
-    pub assigned_issues: Option<Box<IssueConnection>>,
+    pub assigned_issues: Option<IssueConnection>,
     /// Issues delegated to this user.
-    pub delegated_issues: Option<Box<IssueConnection>>,
+    pub delegated_issues: Option<IssueConnection>,
     /// Issues created by the user.
-    pub created_issues: Option<Box<IssueConnection>>,
+    pub created_issues: Option<IssueConnection>,
     /// Number of issues created.
     pub created_issue_count: Option<i64>,
     /// Teams the user is part of.
-    pub teams: Option<Box<TeamConnection>>,
+    pub teams: Option<TeamConnection>,
     /// Memberships associated with the user. For easier access of the same data, use `teams` query.
-    pub team_memberships: Option<Box<TeamMembershipConnection>>,
+    pub team_memberships: Option<TeamMembershipConnection>,
     /// `INTERNAL` The user's pinned feeds.
-    pub feed_facets: Option<Box<FacetConnection>>,
+    pub feed_facets: Option<FacetConnection>,
     /// Whether this user can access any public team in the organization.
     pub can_access_any_public_team: Option<bool>,
     /// Whether the user is the currently authenticated user.
@@ -10024,9 +10024,9 @@ impl GraphQLFields for UserAdminPayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UserConnection {
-    pub edges: Option<Box<Vec<UserEdge>>>,
-    pub nodes: Option<Box<Vec<User>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<UserEdge>>,
+    pub nodes: Option<Vec<User>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for UserConnection {
     type FullType = Self;
@@ -10037,7 +10037,7 @@ impl GraphQLFields for UserConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UserEdge {
-    pub node: Option<Box<User>>,
+    pub node: Option<User>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -10061,23 +10061,23 @@ pub struct UserNotificationSubscription {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user that subscribed to receive notifications.
-    pub subscriber: Option<Box<User>>,
+    pub subscriber: Option<User>,
     /// The customer associated with the notification subscription.
-    pub customer: Option<Box<Customer>>,
+    pub customer: Option<Customer>,
     /// The contextual custom view associated with the notification subscription.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The contextual cycle view associated with the notification subscription.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual label view associated with the notification subscription.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual project view associated with the notification subscription.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the notification subscription.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The team associated with the notification subscription.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user subscribed to.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The type of view to which the notification subscription context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which the notification subscription context is associated with.
@@ -10100,7 +10100,7 @@ pub struct UserPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The user that was created or updated.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -10124,11 +10124,11 @@ pub struct UserSettings {
     /// The time at which the entity was archived. Null if the entity has not been archived.
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The notification delivery preferences for the user. Note: notificationDisabled field is deprecated in favor of notificationChannelPreferences.
-    pub notification_delivery_preferences: Option<Box<NotificationDeliveryPreferences>>,
+    pub notification_delivery_preferences: Option<NotificationDeliveryPreferences>,
     /// The email types the user has unsubscribed from.
     pub unsubscribed_from: Option<Vec<String>>,
     /// The user associated with these settings.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// Hash for the user to be used in calendar URLs.
     pub calendar_hash: Option<String>,
     /// Whether this user is subscribed to changelog email or not.
@@ -10148,11 +10148,11 @@ pub struct UserSettings {
     /// Whether to auto-assign newly created issues to the current user by default.
     pub auto_assign_to_self: Option<bool>,
     /// The user's notification category preferences.
-    pub notification_category_preferences: Option<Box<NotificationCategoryPreferences>>,
+    pub notification_category_preferences: Option<NotificationCategoryPreferences>,
     /// The user's notification channel preferences.
-    pub notification_channel_preferences: Option<Box<NotificationChannelPreferences>>,
+    pub notification_channel_preferences: Option<NotificationChannelPreferences>,
     /// The user's theme for a given mode and device type.
-    pub theme: Option<Box<UserSettingsTheme>>,
+    pub theme: Option<UserSettingsTheme>,
 }
 impl GraphQLFields for UserSettings {
     type FullType = Self;
@@ -10187,7 +10187,7 @@ pub struct UserSettingsCustomTheme {
     /// The contrast value.
     pub contrast: Option<i64>,
     /// Optional sidebar theme colors.
-    pub sidebar: Option<Box<UserSettingsCustomSidebarTheme>>,
+    pub sidebar: Option<UserSettingsCustomSidebarTheme>,
 }
 impl GraphQLFields for UserSettingsCustomTheme {
     type FullType = Self;
@@ -10233,7 +10233,7 @@ pub struct UserSettingsPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The user's settings.
-    pub user_settings: Option<Box<UserSettings>>,
+    pub user_settings: Option<UserSettings>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -10249,7 +10249,7 @@ pub struct UserSettingsTheme {
     /// The theme preset.
     pub preset: Option<UserSettingsThemePreset>,
     /// The custom theme definition, only present when preset is 'custom'.
-    pub custom: Option<Box<UserSettingsCustomTheme>>,
+    pub custom: Option<UserSettingsCustomTheme>,
 }
 impl GraphQLFields for UserSettingsTheme {
     type FullType = Self;
@@ -10275,7 +10275,7 @@ pub struct ViewPreferences {
     /// The view type.
     pub view_type: Option<String>,
     /// The view preferences
-    pub preferences: Option<Box<ViewPreferencesValues>>,
+    pub preferences: Option<ViewPreferencesValues>,
 }
 impl GraphQLFields for ViewPreferences {
     type FullType = Self;
@@ -10289,7 +10289,7 @@ pub struct ViewPreferencesPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The view preferences entity being mutated.
-    pub view_preferences: Option<Box<ViewPreferences>>,
+    pub view_preferences: Option<ViewPreferences>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -10337,19 +10337,19 @@ pub struct Webhook {
     /// Whether the Webhook is enabled.
     pub enabled: Option<bool>,
     /// The team that the webhook is associated with. If null, the webhook is associated with all public teams of the organization or multiple teams.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// `INTERNAL` The teams that the webhook is associated with. Used to represent a webhook that targets multiple teams, potentially in addition to all public teams of the organization.
     pub team_ids: Option<Vec<String>>,
     /// Whether the Webhook is enabled for all public teams, including teams created after the webhook was created.
     pub all_public_teams: Option<bool>,
     /// The user who created the webhook.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// Secret token for verifying the origin on the recipient side.
     pub secret: Option<String>,
     /// The resource types this webhook is subscribed to.
     pub resource_types: Option<Vec<String>>,
     /// `INTERNAL` Webhook failure events associated with the webhook (last 50).
-    pub failures: Option<Box<Vec<WebhookFailureEvent>>>,
+    pub failures: Option<Vec<WebhookFailureEvent>>,
 }
 impl GraphQLFields for Webhook {
     type FullType = Self;
@@ -10361,9 +10361,9 @@ impl GraphQLFields for Webhook {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WebhookConnection {
-    pub edges: Option<Box<Vec<WebhookEdge>>>,
-    pub nodes: Option<Box<Vec<Webhook>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<WebhookEdge>>,
+    pub nodes: Option<Vec<Webhook>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for WebhookConnection {
     type FullType = Self;
@@ -10374,7 +10374,7 @@ impl GraphQLFields for WebhookConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WebhookEdge {
-    pub node: Option<Box<Webhook>>,
+    pub node: Option<Webhook>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -10393,7 +10393,7 @@ pub struct WebhookFailureEvent {
     /// The time at which the entity was created.
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The webhook that this failure event is associated with.
-    pub webhook: Option<Box<Webhook>>,
+    pub webhook: Option<Webhook>,
     /// The URL that the webhook was trying to push to.
     pub url: Option<String>,
     /// The HTTP status code returned by the recipient.
@@ -10415,7 +10415,7 @@ pub struct WebhookPayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The webhook entity being mutated.
-    pub webhook: Option<Box<Webhook>>,
+    pub webhook: Option<Webhook>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }
@@ -10483,11 +10483,11 @@ pub struct WelcomeMessageNotification {
     /// Notification type.
     pub r#type: Option<String>,
     /// The user that caused the notification.
-    pub actor: Option<Box<User>>,
+    pub actor: Option<User>,
     /// The external user that caused the notification.
-    pub external_user_actor: Option<Box<ExternalUser>>,
+    pub external_user_actor: Option<ExternalUser>,
     /// The user that received the notification.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
     pub read_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The time at when an email reminder for this notification was sent to the user. Null, if no email
@@ -10526,7 +10526,7 @@ pub struct WelcomeMessageNotification {
     /// `Internal` Priority of the notification with the same grouping key. Higher number means higher priority. If priority is the same, notifications should be sorted by `createdAt`.
     pub grouping_priority: Option<f64>,
     /// The bot that caused the notification.
-    pub bot_actor: Option<Box<ActorBot>>,
+    pub bot_actor: Option<ActorBot>,
     /// Related welcome message.
     pub welcome_message_id: Option<String>,
 }
@@ -10565,9 +10565,9 @@ pub struct WorkflowDefinition {
     pub conditions: Option<serde_json::Value>,
     pub enabled: Option<bool>,
     /// The team associated with the workflow. If not set, the workflow is associated with the entire organization.
-    pub team: Option<Box<Team>>,
+    pub team: Option<Team>,
     /// The user who created the workflow.
-    pub creator: Option<Box<User>>,
+    pub creator: Option<User>,
     /// An array of activities that will be executed as part of the workflow.
     pub activities: Option<serde_json::Value>,
     /// The sort order of the workflow definition within its siblings.
@@ -10575,19 +10575,19 @@ pub struct WorkflowDefinition {
     /// The date when the workflow was last executed.
     pub last_executed_at: Option<chrono::DateTime<chrono::Utc>>,
     /// The user who last updated the workflow.
-    pub last_updated_by: Option<Box<User>>,
+    pub last_updated_by: Option<User>,
     /// The contextual label view associated with the workflow.
-    pub label: Option<Box<IssueLabel>>,
+    pub label: Option<IssueLabel>,
     /// The contextual cycle view associated with the workflow.
-    pub cycle: Option<Box<Cycle>>,
+    pub cycle: Option<Cycle>,
     /// The contextual user view associated with the workflow.
-    pub user: Option<Box<User>>,
+    pub user: Option<User>,
     /// The contextual project view associated with the workflow.
-    pub project: Option<Box<Project>>,
+    pub project: Option<Project>,
     /// The contextual initiative view associated with the workflow.
-    pub initiative: Option<Box<Initiative>>,
+    pub initiative: Option<Initiative>,
     /// The context custom view associated with the workflow.
-    pub custom_view: Option<Box<CustomView>>,
+    pub custom_view: Option<CustomView>,
     /// The type of view to which this workflow's context is associated with.
     pub context_view_type: Option<ContextViewType>,
     /// The type of user view to which this workflow's context is associated with.
@@ -10628,7 +10628,7 @@ pub struct WorkflowState {
     /// The state inherited from
     pub inherited_from: Option<Box<WorkflowState>>,
     /// Issues belonging in this state.
-    pub issues: Option<Box<IssueConnection>>,
+    pub issues: Option<IssueConnection>,
 }
 impl GraphQLFields for WorkflowState {
     type FullType = Self;
@@ -10645,7 +10645,7 @@ pub struct WorkflowStateArchivePayload {
     /// Whether the operation was successful.
     pub success: Option<bool>,
     /// The archived/unarchived entity. Null if entity was deleted.
-    pub entity: Option<Box<WorkflowState>>,
+    pub entity: Option<WorkflowState>,
 }
 impl GraphQLFields for WorkflowStateArchivePayload {
     type FullType = Self;
@@ -10656,9 +10656,9 @@ impl GraphQLFields for WorkflowStateArchivePayload {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WorkflowStateConnection {
-    pub edges: Option<Box<Vec<WorkflowStateEdge>>>,
-    pub nodes: Option<Box<Vec<WorkflowState>>>,
-    pub page_info: Option<Box<PageInfo>>,
+    pub edges: Option<Vec<WorkflowStateEdge>>,
+    pub nodes: Option<Vec<WorkflowState>>,
+    pub page_info: Option<PageInfo>,
 }
 impl GraphQLFields for WorkflowStateConnection {
     type FullType = Self;
@@ -10669,7 +10669,7 @@ impl GraphQLFields for WorkflowStateConnection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WorkflowStateEdge {
-    pub node: Option<Box<WorkflowState>>,
+    pub node: Option<WorkflowState>,
     /// Used in `before` and `after` args
     pub cursor: Option<String>,
 }
@@ -10685,7 +10685,7 @@ pub struct WorkflowStatePayload {
     /// The identifier of the last sync operation.
     pub last_sync_id: Option<f64>,
     /// The state that was created or updated.
-    pub workflow_state: Option<Box<WorkflowState>>,
+    pub workflow_state: Option<WorkflowState>,
     /// Whether the operation was successful.
     pub success: Option<bool>,
 }

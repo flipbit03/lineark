@@ -1,3 +1,4 @@
+mod dep_graph;
 mod emit_enums;
 mod emit_inputs;
 mod emit_mutations;
