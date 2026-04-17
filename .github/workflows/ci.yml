@@ -109,30 +109,12 @@ jobs:
       - name: Run online tests
         # Linear's API has a known transient failure mode on `*Create`
         # mutations (returns "conflict on insert" with a phantom UUID — see
-        # the helper docs in crates/lineark/tests/online.rs). The per-call
-        # retry there handles most cases, but the cold-start window is
-        # occasionally longer than its budget. Wrap the whole suite in a 3x
-        # retry with a workspace clean between attempts.
-        #
-        # `continue-on-error: true` keeps a bad Linear day from sinking the
-        # whole CI check — the job still runs and failures are visible in
-        # this log for triage, but they don't gate the PR. Revisit once
-        # Linear's API stabilizes (or move online tests to a separate
-        # non-required workflow).
-        continue-on-error: true
-        run: |
-          for attempt in 1 2 3; do
-            echo ">>> online attempt $attempt/3"
-            if cargo test --workspace --test online -- --test-threads=1; then
-              echo ">>> online passed on attempt $attempt"
-              exit 0
-            fi
-            echo ">>> online attempt $attempt failed; cleaning workspace before retry"
-            cargo run -p lineark-test-utils --bin cleanup-test-workspace || true
-            sleep 30
-          done
-          echo ">>> online failed after 3 attempts"
-          exit 1
+        # the `run_lineark_with_retry` helper docs in
+        # `crates/lineark/tests/online.rs`). That per-call helper retries up
+        # to 15 times with body mutation, persistent enough to ride out the
+        # cold-start window without needing a suite-level wrapper that would
+        # waste cycles re-running the 60+ tests that already passed.
+        run: cargo test --workspace --test online -- --test-threads=1
 
       - name: Clean test workspace (post)
         if: always()

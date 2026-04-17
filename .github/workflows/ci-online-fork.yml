@@ -53,23 +53,10 @@ jobs:
 
       - name: Run online tests
         # See ci.yml comment — Linear's API has a transient cold-start
-        # failure on `*Create` mutations; wrap in 3x retry to absorb it.
-        # `continue-on-error: true` keeps a bad Linear day from blocking
-        # fork PRs; failures are still visible in the job log.
-        continue-on-error: true
-        run: |
-          for attempt in 1 2 3; do
-            echo ">>> online attempt $attempt/3"
-            if cargo test --workspace --test online -- --test-threads=1; then
-              echo ">>> online passed on attempt $attempt"
-              exit 0
-            fi
-            echo ">>> online attempt $attempt failed; cleaning workspace before retry"
-            cargo run -p lineark-test-utils --bin cleanup-test-workspace || true
-            sleep 30
-          done
-          echo ">>> online failed after 3 attempts"
-          exit 1
+        # failure on `*Create` mutations; the per-call retry helper in
+        # crates/lineark/tests/online.rs absorbs it (15 attempts with body
+        # mutation, ~9 min worst case per call).
+        run: cargo test --workspace --test online -- --test-threads=1
 
       - name: Clean test workspace (post)
         if: always()

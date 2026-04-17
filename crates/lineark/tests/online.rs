@@ -16,7 +16,7 @@ fn lineark() -> Command {
 }
 
 /// Run a lineark CLI command with retry logic.
-/// Run `lineark <args>` with retry on Linear's "conflict on insert" failure.
+/// Run `lineark <args>` with persistent retry on Linear's "conflict on insert" failure.
 ///
 /// The conflict is a transient Linear API bug: `*Create` returns
 /// "Entity X with id <UUID> already exists" for a UUID that doesn't
@@ -27,9 +27,12 @@ fn lineark() -> Command {
 /// failures followed by 7 successes in a row.
 ///
 /// The fix:
-/// 1. **Retry persistently** — up to 8 attempts with `[0, 2, 5, 10, 20,
-///    30, 45, 60]` second backoffs (~172 s worst case) so we ride out
-///    the cold window.
+/// 1. **Retry persistently inside the test** — up to 15 attempts with
+///    backoffs `[0, 2, 5, 10, 20, 30, 60, 60, 60, 60, 60, 60, 60, 60, 60]`
+///    seconds (~9 min worst case). Per-test persistence beats
+///    suite-level retry: if 1 of 67 tests can't get past Linear's
+///    cold window, retrying that one test internally is much cheaper
+///    than re-running the whole suite.
 /// 2. **Mutate the request body each retry** by appending a fresh suffix
 ///    to the `<name>` positional. Linear's stuck UUIDs are keyed on body
 ///    content, so a different body avoids the cached state on retry.
@@ -40,18 +43,27 @@ fn lineark() -> Command {
 /// name **must** use this value, not their original `unique_name`, or
 /// they'll drift from server state.
 fn run_lineark_with_retry(args: &[&str]) -> (std::process::Output, String) {
-    // Locate the `<resource> create <name>` triple once so each retry can
-    // swap a fresh suffix into the same arg slot.
+    // Decide whether we can safely mutate the request body between retries.
+    //
+    // Most `<resource> create <name>` subcommands take a text name positional
+    // (labels/issues/teams/projects/milestones), where mutating the name
+    // with a fresh suffix is exactly the trick that dodges Linear's phantom
+    // UUID conflicts. But `comments create <issue-uuid>` and
+    // `relations create <issue-uuid>` take a UUID positional — mutating
+    // that would corrupt the request and the mutation would definitely
+    // fail. Gate mutation on the `[test]` prefix our test naming
+    // convention uses, so we only rewrite text we know is ours.
     let name_idx = args.iter().position(|&a| a == "create").map(|p| p + 1);
-    let original_name = name_idx
+    let original_positional = name_idx
         .and_then(|i| args.get(i).copied())
         .unwrap_or("")
         .to_string();
+    let mutable_name = original_positional.starts_with("[test]");
 
     let mut owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-    let mut current_name = original_name.clone();
+    let mut current_name = original_positional.clone();
 
-    const BACKOFFS: &[u64] = &[0, 2, 5, 10, 20, 30, 45, 60];
+    const BACKOFFS: &[u64] = &[0, 2, 5, 10, 20, 30, 60, 60, 60, 60, 60, 60, 60, 60, 60];
 
     let mut last_output = lineark()
         .args(args)
@@ -71,13 +83,15 @@ fn run_lineark_with_retry(args: &[&str]) -> (std::process::Output, String) {
 
         // Mutate the name with a fresh suffix so the next request body
         // differs from the previous one — Linear's stuck UUID is keyed on
-        // body content.
-        if let Some(idx) = name_idx {
-            current_name = format!(
-                "{original_name} retry-{}",
-                &uuid::Uuid::new_v4().to_string()[..6]
-            );
-            owned[idx] = current_name.clone();
+        // body content. Only safe for text names we own (`[test] ...`).
+        if mutable_name {
+            if let Some(idx) = name_idx {
+                current_name = format!(
+                    "{original_positional} retry-{}",
+                    &uuid::Uuid::new_v4().to_string()[..6]
+                );
+                owned[idx] = current_name.clone();
+            }
         }
 
         let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
@@ -216,20 +230,17 @@ mod online {
 
         // Create a workspace-level label.
         let unique_name = format!("[test] lbl-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "labels",
-                "create",
-                &unique_name,
-                "--color",
-                "#eb5757",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, unique_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "labels",
+            "create",
+            &unique_name,
+            "--color",
+            "#eb5757",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -300,21 +311,18 @@ mod online {
 
         // 1. Create a group label with --group.
         let group_name = format!("[test] Group {uid}");
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "labels",
-                "create",
-                &group_name,
-                "--color",
-                "#000000",
-                "--make-label-group",
-            ])
-            .output()
-            .unwrap();
+        let (output, group_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "labels",
+            "create",
+            &group_name,
+            "--color",
+            "#000000",
+            "--make-label-group",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -330,22 +338,19 @@ mod online {
 
         // 2. Create a child label under the group.
         let child_name = format!("[test] Child {uid}");
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "labels",
-                "create",
-                &child_name,
-                "--color",
-                "#ffffff",
-                "--parent-label-group",
-                &group_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, child_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "labels",
+            "create",
+            &child_name,
+            "--color",
+            "#ffffff",
+            "--parent-label-group",
+            &group_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -477,20 +482,17 @@ mod online {
         // Create a label with a space in the name.
         let uid = &uuid::Uuid::new_v4().to_string()[..8];
         let label_name = format!("[test] Tech Debt {uid}");
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "labels",
-                "create",
-                &label_name,
-                "--color",
-                "#eb5757",
-            ])
-            .output()
-            .unwrap();
+        let (output, label_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "labels",
+            "create",
+            &label_name,
+            "--color",
+            "#eb5757",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -506,22 +508,19 @@ mod online {
 
         // Create an issue with the spaced label.
         let issue_title = format!("[test] spaced label {uid}");
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &issue_title,
-                "--team",
-                &team_id,
-                "--labels",
-                &label_name,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &issue_title,
+            "--team",
+            &team_id,
+            "--labels",
+            &label_name,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -758,24 +757,21 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-                "--description",
-                "Automated CLI test — will be archived.",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, unique_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+            "--description",
+            "Automated CLI test — will be archived.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -988,23 +984,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success(), "issue creation should succeed");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"]
             .as_str()
@@ -1139,23 +1137,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success(), "issue creation should succeed");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"].as_str().unwrap().to_string();
         let _issue_guard = IssueGuard {
@@ -1237,23 +1237,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue to delete.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success(), "issue creation should succeed");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"]
             .as_str()
@@ -1304,23 +1306,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"]
             .as_str()
@@ -1393,22 +1397,19 @@ mod online {
         let team = create_test_team();
         let team_key = team.key.clone();
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &issue_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &issue_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
         assert!(output.status.success(), "issue creation should succeed");
         let issue: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = issue["id"].as_str().unwrap().to_string();
@@ -1418,23 +1419,20 @@ mod online {
         };
 
         // Create a document associated with the issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "documents",
-                "create",
-                "--title",
-                &doc_name,
-                "--content",
-                "Automated CLI test document.",
-                "--issue",
-                &issue_id,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "documents",
+            "create",
+            "--title",
+            &doc_name,
+            "--content",
+            "Automated CLI test document.",
+            "--issue",
+            &issue_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -1852,23 +1850,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create two issues.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] relation parent {suffix}"),
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] relation parent {suffix}"),
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let issue_a: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_a_id = issue_a["id"].as_str().unwrap().to_string();
         let _issue_a_guard = IssueGuard {
@@ -1876,23 +1876,25 @@ mod online {
             id: issue_a_id.clone(),
         };
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] relation child {suffix}"),
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] relation child {suffix}"),
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let issue_b: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_b_id = issue_b["id"].as_str().unwrap().to_string();
         let _issue_b_guard = IssueGuard {
@@ -1979,22 +1981,19 @@ mod online {
         let team_key = team.key.clone();
 
         // Create a parent issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] parent with children {suffix}"),
-                "--team",
-                &team_key,
-                "-p",
-                "4",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] parent with children {suffix}"),
+            "--team",
+            &team_key,
+            "-p",
+            "4",
+        ]);
         assert!(
             output.status.success(),
             "parent issue creation should succeed"
@@ -2007,24 +2006,21 @@ mod online {
         };
 
         // Create a child issue with --parent.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] child issue {suffix}"),
-                "--team",
-                &team_key,
-                "-p",
-                "4",
-                "--parent",
-                &parent_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] child issue {suffix}"),
+            "--team",
+            &team_key,
+            "-p",
+            "4",
+            "--parent",
+            &parent_id,
+        ]);
         assert!(
             output.status.success(),
             "child issue creation should succeed"
@@ -2037,20 +2033,17 @@ mod online {
         };
 
         // Add a comment on the parent.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "comments",
-                "create",
-                &parent_id,
-                "--body",
-                "Test comment for children+comments test",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "comments",
+            "create",
+            &parent_id,
+            "--body",
+            "Test comment for children+comments test",
+        ]);
         assert!(output.status.success(), "comment creation should succeed");
 
         // Read the parent — should include children and comments.
@@ -2199,23 +2192,25 @@ mod online {
         let team_key = team.key.clone();
 
         // Create parent.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] clear-parent parent {suffix}"),
-                "--team",
-                &team_key,
-                "-p",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] clear-parent parent {suffix}"),
+            "--team",
+            &team_key,
+            "-p",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let parent: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let parent_id = parent["id"].as_str().unwrap().to_string();
         let _parent_guard = IssueGuard {
@@ -2224,25 +2219,27 @@ mod online {
         };
 
         // Create child with --parent.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] clear-parent child {suffix}"),
-                "--team",
-                &team_key,
-                "-p",
-                "4",
-                "--parent",
-                &parent_id,
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] clear-parent child {suffix}"),
+            "--team",
+            &team_key,
+            "-p",
+            "4",
+            "--parent",
+            &parent_id,
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let child: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let child_id = child["id"].as_str().unwrap().to_string();
         let _child_guard = IssueGuard {
@@ -2333,24 +2330,21 @@ mod online {
         };
 
         // Create a milestone via CLI (use project_id to avoid ambiguity with stale data).
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "project-milestones",
-                "create",
-                &milestone_name,
-                "--project",
-                &project_id,
-                "--target-date",
-                "2026-12-31",
-                "--description",
-                "Test milestone for CLI CRUD.",
-            ])
-            .output()
-            .unwrap();
+        let (output, milestone_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "project-milestones",
+            "create",
+            &milestone_name,
+            "--project",
+            &project_id,
+            "--target-date",
+            "2026-12-31",
+            "--description",
+            "Test milestone for CLI CRUD.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3053,24 +3047,21 @@ mod online {
         let my_name = whoami["name"].as_str().unwrap_or("").to_string();
 
         // Create an issue with --assignee me.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--assignee",
-                "me",
-                "--priority",
-                "4",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--assignee",
+            "me",
+            "--priority",
+            "4",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3130,23 +3121,25 @@ mod online {
         let my_name = whoami["name"].as_str().unwrap_or("").to_string();
 
         // Create an unassigned issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(output.status.success());
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"].as_str().unwrap().to_string();
         let _issue_guard = IssueGuard {
@@ -3224,22 +3217,19 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue to comment on.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
         assert!(output.status.success(), "issue creation should succeed");
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"]
@@ -3251,20 +3241,17 @@ mod online {
         };
 
         // Create a comment (use UUID to avoid search index lag).
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "comments",
-                "create",
-                issue_id,
-                "--body",
-                "Automated CLI test comment.",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "comments",
+            "create",
+            issue_id,
+            "--body",
+            "Automated CLI test comment.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3293,22 +3280,19 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue to comment on.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
         assert!(output.status.success(), "issue creation should succeed");
         let created: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         let issue_id = created["id"]
@@ -3321,20 +3305,17 @@ mod online {
         };
 
         // Create a comment.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "comments",
-                "create",
-                &issue_id,
-                "--body",
-                "Comment that will be deleted.",
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "comments",
+            "create",
+            &issue_id,
+            "--body",
+            "Comment that will be deleted.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3426,18 +3407,15 @@ mod online {
             "[test] tm-create {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "teams",
-                "create",
-                &unique_name,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "teams",
+            "create",
+            &unique_name,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3489,20 +3467,17 @@ mod online {
 
         // Create a team.
         let unique_name = format!("[test] tm-crud {}", &uuid::Uuid::new_v4().to_string()[..8]);
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "teams",
-                "create",
-                &unique_name,
-                "--description",
-                "Original description.",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "teams",
+            "create",
+            &unique_name,
+            "--description",
+            "Original description.",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3595,18 +3570,15 @@ mod online {
             "[test] tm-members {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "teams",
-                "create",
-                &unique_name,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "teams",
+            "create",
+            &unique_name,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3736,23 +3708,26 @@ mod online {
         team_key: &str,
     ) -> ((String, IssueGuard), (String, IssueGuard)) {
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
-        let out1 = lineark()
-            .args([
-                "--api-token",
-                token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] relation issue A {suffix}"),
-                "--team",
-                team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(out1.status.success(), "issue A creation should succeed");
+        let name_a = format!("[test] relation issue A {suffix}");
+        let (out1, _) = run_lineark_with_retry(&[
+            "--api-token",
+            token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &name_a,
+            "--team",
+            team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&out1.stdout);
+        let stderr = String::from_utf8_lossy(&out1.stderr);
+        assert!(
+            out1.status.success(),
+            "issue A creation should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let a: serde_json::Value = serde_json::from_slice(&out1.stdout).unwrap();
         let a_id = a["id"].as_str().unwrap().to_string();
         let a_guard = IssueGuard {
@@ -3760,23 +3735,26 @@ mod online {
             id: a_id.clone(),
         };
 
-        let out2 = lineark()
-            .args([
-                "--api-token",
-                token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!("[test] relation issue B {suffix}"),
-                "--team",
-                team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .unwrap();
-        assert!(out2.status.success(), "issue B creation should succeed");
+        let name_b = format!("[test] relation issue B {suffix}");
+        let (out2, _) = run_lineark_with_retry(&[
+            "--api-token",
+            token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &name_b,
+            "--team",
+            team_key,
+            "--priority",
+            "4",
+        ]);
+        let stdout = String::from_utf8_lossy(&out2.stdout);
+        let stderr = String::from_utf8_lossy(&out2.stderr);
+        assert!(
+            out2.status.success(),
+            "issue B creation should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
         let b: serde_json::Value = serde_json::from_slice(&out2.stdout).unwrap();
         let b_id = b["id"].as_str().unwrap().to_string();
         let b_guard = IssueGuard {
@@ -3794,20 +3772,17 @@ mod online {
         let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--blocks",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--blocks",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3827,20 +3802,17 @@ mod online {
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // "A --blocked-by B" means B blocks A.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--blocked-by",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--blocked-by",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3859,20 +3831,17 @@ mod online {
         let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--related",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--related",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3891,20 +3860,17 @@ mod online {
         let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--duplicate",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--duplicate",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3923,20 +3889,17 @@ mod online {
         let team_key = team.key.clone();
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--similar",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--similar",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -3956,20 +3919,17 @@ mod online {
         let ((a_id, _ga), (b_id, _gb)) = create_two_issues(&token, &team_key);
 
         // Create a relation.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "relations",
-                "create",
-                &a_id,
-                "--blocks",
-                &b_id,
-            ])
-            .output()
-            .unwrap();
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "relations",
+            "create",
+            &a_id,
+            "--blocks",
+            &b_id,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -4038,20 +3998,17 @@ mod online {
 
         // Create a comment (retry to allow issue propagation).
         let comment_id = retry_with_backoff(8, || {
-            let output = lineark()
-                .args([
-                    "--api-token",
-                    &token,
-                    "--format",
-                    "json",
-                    "comments",
-                    "create",
-                    &issue_id,
-                    "--body",
-                    "Original body",
-                ])
-                .output()
-                .unwrap();
+            let (output, _) = run_lineark_with_retry(&[
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "create",
+                &issue_id,
+                "--body",
+                "Original body",
+            ]);
             if !output.status.success() {
                 return Err(String::from_utf8_lossy(&output.stderr).to_string());
             }
@@ -4196,20 +4153,17 @@ mod online {
 
         // Create a parent comment via CLI (retry to allow issue propagation).
         let parent_id = retry_with_backoff(8, || {
-            let output = lineark()
-                .args([
-                    "--api-token",
-                    &token,
-                    "--format",
-                    "json",
-                    "comments",
-                    "create",
-                    &issue_id,
-                    "--body",
-                    "Parent comment thread",
-                ])
-                .output()
-                .unwrap();
+            let (output, _) = run_lineark_with_retry(&[
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "comments",
+                "create",
+                &issue_id,
+                "--body",
+                "Parent comment thread",
+            ]);
             if !output.status.success() {
                 return Err(String::from_utf8_lossy(&output.stderr).to_string());
             }
@@ -4394,25 +4348,22 @@ mod online {
         };
 
         // Create an issue inside that project.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &format!(
-                    "[test] project filter issue {}",
-                    &uuid::Uuid::new_v4().to_string()[..8]
-                ),
-                "--team",
-                &team_key,
-                "--project",
-                &project_name,
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!(
+                "[test] project filter issue {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            ),
+            "--team",
+            &team_key,
+            "--project",
+            &project_name,
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -4486,24 +4437,21 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue with --estimate.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-                "--estimate",
-                "3",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+            "--estimate",
+            "3",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
@@ -4614,22 +4562,19 @@ mod online {
         let team_key = team.key.clone();
 
         // Create an issue.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "--format",
-                "json",
-                "issues",
-                "create",
-                &unique_name,
-                "--team",
-                &team_key,
-                "--priority",
-                "4",
-            ])
-            .output()
-            .expect("failed to execute lineark");
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &unique_name,
+            "--team",
+            &team_key,
+            "--priority",
+            "4",
+        ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(

@@ -6,16 +6,33 @@ pub async fn settle() {
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 }
 
-/// Retry a create operation up to 3 times with backoff on transient errors.
-/// Retries on "conflict on insert" or "already exists" errors from the Linear API.
+/// Retry a create operation persistently on Linear's transient "conflict on
+/// insert" / "already exists" errors.
+///
+/// Linear's API has a known cold-start failure mode where freshly-generated
+/// UUIDs spuriously collide for the first several attempts of a fresh test
+/// process, then abruptly start working. Per-test persistence (rather than
+/// a suite-level retry that would waste cycles re-running passing tests)
+/// is the right answer.
+///
+/// 15 attempts with backoffs `[0, 2, 5, 10, 20, 30, 60, 60, 60, 60, 60, 60,
+/// 60, 60, 60]` seconds (~9 min worst case). Mirrors the CLI helper
+/// `run_lineark_with_retry` in `crates/lineark/tests/online.rs`.
+///
+/// Note: unlike the CLI helper, this can't mutate the request body between
+/// attempts (the closure captures input by reference). Callers that
+/// generate input bodies inside the closure can vary the body themselves
+/// for finer control; otherwise we're relying on persistence alone.
 pub async fn retry_create<T, F, Fut>(mut f: F) -> T
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, lineark_sdk::LinearError>>,
 {
-    for attempt in 0..3u32 {
-        if attempt > 0 {
-            tokio::time::sleep(std::time::Duration::from_secs(1u64 << attempt)).await;
+    const BACKOFFS: &[u64] = &[0, 2, 5, 10, 20, 30, 60, 60, 60, 60, 60, 60, 60, 60, 60];
+    let mut last_msg = String::new();
+    for (attempt, &wait) in BACKOFFS.iter().enumerate() {
+        if wait > 0 {
+            tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
         }
         match f().await {
             Ok(val) => return val,
@@ -24,16 +41,14 @@ where
                 if !msg.contains("conflict on insert") && !msg.contains("already exists") {
                     panic!("create failed with non-transient error: {msg}");
                 }
-                if attempt == 2 {
-                    panic!("create failed after 3 retries: {msg}");
-                }
+                last_msg = msg;
                 eprintln!(
-                    "retry_create: attempt {attempt} failed with transient error, retrying: {msg}"
+                    "retry_create: attempt {attempt} failed with transient error, retrying"
                 );
             }
         }
     }
-    unreachable!()
+    panic!("create failed after {} retries: {last_msg}", BACKOFFS.len());
 }
 
 /// Retry a search operation with generous backoff for Linear's eventually-consistent search index.
