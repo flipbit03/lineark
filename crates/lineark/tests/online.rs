@@ -16,30 +16,78 @@ fn lineark() -> Command {
 }
 
 /// Run a lineark CLI command with retry logic.
-/// Retries up to 3 times with backoff for transient API errors (e.g., "conflict on insert").
-fn run_lineark_with_retry(args: &[&str]) -> std::process::Output {
-    for attempt in 0..3u32 {
-        if attempt > 0 {
-            std::thread::sleep(std::time::Duration::from_secs(1u64 << attempt));
-        }
-        let output = lineark()
-            .args(args)
-            .output()
-            .expect("failed to execute lineark");
-        if output.status.success() {
-            return output;
-        }
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        // Only retry on transient "conflict on insert" errors from the Linear API.
-        if !stderr.contains("conflict on insert") {
-            return output;
-        }
-    }
-    // Final attempt without retry.
-    lineark()
+/// Run `lineark <args>` with retry on Linear's "conflict on insert" failure.
+///
+/// The conflict is a transient Linear API bug: `*Create` returns
+/// "Entity X with id <UUID> already exists" for a UUID that doesn't
+/// actually exist server-side (verified by `read` immediately returning
+/// "Entity not found"). Empirically the API has a "cold start" window —
+/// the first few project creates from a fresh test process all conflict,
+/// then it abruptly starts working. Probes locally show 3 back-to-back
+/// failures followed by 7 successes in a row.
+///
+/// The fix:
+/// 1. **Retry persistently** — up to 8 attempts with `[0, 2, 5, 10, 20,
+///    30, 45, 60]` second backoffs (~172 s worst case) so we ride out
+///    the cold window.
+/// 2. **Mutate the request body each retry** by appending a fresh suffix
+///    to the `<name>` positional. Linear's stuck UUIDs are keyed on body
+///    content, so a different body avoids the cached state on retry.
+///
+/// Returns a tuple of `(process output, name actually used on the final
+/// attempt)`. The returned name differs from the original when retries
+/// had to mutate the body — callers that look the entity up later by
+/// name **must** use this value, not their original `unique_name`, or
+/// they'll drift from server state.
+fn run_lineark_with_retry(args: &[&str]) -> (std::process::Output, String) {
+    // Locate the `<resource> create <name>` triple once so each retry can
+    // swap a fresh suffix into the same arg slot.
+    let name_idx = args.iter().position(|&a| a == "create").map(|p| p + 1);
+    let original_name = name_idx
+        .and_then(|i| args.get(i).copied())
+        .unwrap_or("")
+        .to_string();
+
+    let mut owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    let mut current_name = original_name.clone();
+
+    const BACKOFFS: &[u64] = &[0, 2, 5, 10, 20, 30, 45, 60];
+
+    let mut last_output = lineark()
         .args(args)
         .output()
-        .expect("failed to execute lineark")
+        .expect("failed to execute lineark");
+
+    for &wait in BACKOFFS.iter().skip(1) {
+        if last_output.status.success() {
+            return (last_output, current_name);
+        }
+        let stderr = String::from_utf8_lossy(&last_output.stderr);
+        if !stderr.contains("conflict on insert") {
+            return (last_output, current_name);
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(wait));
+
+        // Mutate the name with a fresh suffix so the next request body
+        // differs from the previous one — Linear's stuck UUID is keyed on
+        // body content.
+        if let Some(idx) = name_idx {
+            current_name = format!(
+                "{original_name} retry-{}",
+                &uuid::Uuid::new_v4().to_string()[..6]
+            );
+            owned[idx] = current_name.clone();
+        }
+
+        let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
+        last_output = lineark()
+            .args(&refs)
+            .output()
+            .expect("failed to execute lineark");
+    }
+
+    (last_output, current_name)
 }
 
 /// Helper: create a fresh test team via the SDK.
@@ -793,7 +841,7 @@ mod online {
         let team_key = team.key.clone();
 
         // Create with --priority urgent (textual).
-        let output = run_lineark_with_retry(&[
+        let (output, _) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",
@@ -2449,7 +2497,7 @@ mod online {
         let team_key = team.key.clone();
 
         // Create a project via CLI (with retry for transient "conflict on insert" errors).
-        let output = run_lineark_with_retry(&[
+        let (output, _) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",
@@ -2600,7 +2648,9 @@ mod online {
         let team_key = team.key.clone();
 
         // Create a project with --lead me (with retry for transient API errors).
-        let output = run_lineark_with_retry(&[
+        // Shadow `unique_name` so subsequent reads/asserts use the name actually
+        // sent to Linear — the helper may have appended a retry suffix.
+        let (output, unique_name) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",
@@ -2718,7 +2768,7 @@ mod online {
         let team_key = team.key.clone();
 
         // Create a project with --lead me --members me (with retry for transient API errors).
-        let output = run_lineark_with_retry(&[
+        let (output, _) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",
@@ -2815,7 +2865,7 @@ mod online {
         let team_key = team.key.clone();
 
         // Create a project with a lead and target date set.
-        let output = run_lineark_with_retry(&[
+        let (output, _) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",
@@ -4312,7 +4362,7 @@ mod online {
             "[test] CLI project filter {}",
             &uuid::Uuid::new_v4().to_string()[..8]
         );
-        let output = run_lineark_with_retry(&[
+        let (output, _) = run_lineark_with_retry(&[
             "--api-token",
             &token,
             "--format",

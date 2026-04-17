@@ -107,7 +107,25 @@ jobs:
         run: cargo run -p lineark-test-utils --bin cleanup-test-workspace
 
       - name: Run online tests
-        run: cargo test --workspace --test online -- --test-threads=1
+        # Linear's API has a known transient failure mode on `*Create`
+        # mutations (returns "conflict on insert" with a phantom UUID — see
+        # the helper docs in crates/lineark/tests/online.rs). The per-call
+        # retry there handles most cases, but the cold-start window is
+        # occasionally longer than its budget. Wrap the whole suite in a 3x
+        # retry with a workspace clean between attempts.
+        run: |
+          for attempt in 1 2 3; do
+            echo ">>> online attempt $attempt/3"
+            if cargo test --workspace --test online -- --test-threads=1; then
+              echo ">>> online passed on attempt $attempt"
+              exit 0
+            fi
+            echo ">>> online attempt $attempt failed; cleaning workspace before retry"
+            cargo run -p lineark-test-utils --bin cleanup-test-workspace || true
+            sleep 30
+          done
+          echo ">>> online failed after 3 attempts"
+          exit 1
 
       - name: Clean test workspace (post)
         if: always()
