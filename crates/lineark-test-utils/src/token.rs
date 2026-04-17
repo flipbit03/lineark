@@ -42,6 +42,22 @@ pub fn test_token() -> String {
     CHOSEN.get_or_init(load_and_pick).clone()
 }
 
+/// Read all tokens from `~/.linear_api_token_test`. Used by housekeeping
+/// jobs (e.g. the `cleanup-test-workspace` binary) that need to operate
+/// on every pooled workspace, not just the random one this process drew.
+pub fn all_test_tokens() -> Vec<String> {
+    let path = token_path().expect("could not determine home directory");
+    let raw = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("could not read {}: {e}", path.display()));
+    let tokens: Vec<String> = parse_tokens(&raw).into_iter().map(String::from).collect();
+    assert!(
+        !tokens.is_empty(),
+        "no API tokens found in {} — file should contain one or more `;`-separated tokens",
+        path.display()
+    );
+    tokens
+}
+
 fn load_and_pick() -> String {
     let path = token_path().expect("could not determine home directory");
     let raw = std::fs::read_to_string(&path)

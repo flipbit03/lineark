@@ -13,4 +13,4 @@ pub use cleanup::{cleanup_workspace, cleanup_zombies};
 pub use guards::*;
 pub use retry::{retry_create, retry_search, retry_with_backoff, settle};
 pub use team::{create_test_team, TestTeam};
-pub use token::{no_online_test_token, test_token};
+pub use token::{all_test_tokens, no_online_test_token, test_token};
