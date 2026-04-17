@@ -1,17 +1,20 @@
+use crate::dep_graph::{self, reaches};
 use crate::emit_queries::{has_required_arguments, EXCLUDED_FIELDS};
 use crate::emit_scalars::graphql_type_to_rust;
 use crate::parser::{self, GqlType, ObjectDef, TypeKind};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub fn emit(objects: &[ObjectDef], type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    let reach = compute_object_reachability(objects, type_kind_map);
+
     let items: Vec<TokenStream> = objects
         .iter()
         .filter(|o| !o.name.is_empty())
         .map(|o| {
-            let struct_tokens = emit_struct(o, type_kind_map);
+            let struct_tokens = emit_struct(o, type_kind_map, &reach);
             let trait_tokens = emit_graphql_fields_impl(o, type_kind_map);
             quote! { #struct_tokens #trait_tokens }
         })
@@ -30,7 +33,56 @@ pub fn emit(objects: &[ObjectDef], type_kind_map: &HashMap<String, TypeKind>) ->
     }
 }
 
-fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Build the Object dependency graph (edges through direct, non-list field
+/// references only) and compute transitive reachability. The result is used to
+/// decide on a per-field basis whether `Box<T>` is needed.
+fn compute_object_reachability(
+    objects: &[ObjectDef],
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> HashMap<String, HashSet<String>> {
+    let mut edges: HashMap<String, Vec<String>> = HashMap::with_capacity(objects.len());
+    for obj in objects {
+        if obj.name.is_empty() {
+            continue;
+        }
+        // Dedupe: multiple fields can target the same Object type, and duplicate
+        // edges would just expand the DFS stack without changing reachability.
+        let mut deps: HashSet<String> = HashSet::new();
+        for field in &obj.fields {
+            if let Some(target) = direct_object_target(&field.ty, type_kind_map) {
+                deps.insert(target.to_string());
+            }
+        }
+        edges.insert(obj.name.clone(), deps.into_iter().collect());
+    }
+    dep_graph::reachability(&edges)
+}
+
+/// If `ty` is a direct (non-list) reference to an Object type, return that
+/// type's name. Lists return `None` because `Vec<T>` already breaks size
+/// cycles, so list-wrapped references aren't size-relevant edges.
+fn direct_object_target<'a>(
+    ty: &'a GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> Option<&'a str> {
+    match ty {
+        GqlType::NonNull(inner) => direct_object_target(inner, type_kind_map),
+        GqlType::Named(name) => {
+            if matches!(type_kind_map.get(name.as_str()), Some(TypeKind::Object)) {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        }
+        GqlType::List(_) => None,
+    }
+}
+
+fn emit_struct(
+    obj: &ObjectDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
     let name = quote::format_ident!("{}", obj.name);
     let doc = parser::doc_comment_tokens(&obj.description);
 
@@ -48,7 +100,7 @@ fn emit_struct(obj: &ObjectDef, type_kind_map: &HashMap<String, TypeKind>) -> To
                 let ident = quote::format_ident!("{}", safe_name);
                 quote! { #ident }
             };
-            let rust_type = resolve_type(&f.ty, type_kind_map);
+            let rust_type = resolve_type(&f.ty, type_kind_map, &obj.name, reach);
             let fdoc = parser::doc_comment_tokens(&f.description);
             quote! {
                 #fdoc
@@ -78,37 +130,68 @@ fn is_includable_field(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) 
     )
 }
 
-/// Resolve a GraphQL type to its Rust type tokens.
-/// All output type fields are wrapped in `Option<T>`.
-/// Uses `Box<T>` for Object-typed fields to avoid infinite-size types
-/// from mutual recursion (e.g., Integration <-> Organization).
-fn resolve_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
-    let inner = resolve_inner_type(ty, type_kind_map);
-    let base = ty.base_name();
-    if matches!(type_kind_map.get(base), Some(TypeKind::Object)) {
+/// Resolve a GraphQL output field type to its Rust type tokens.
+///
+/// **Outermost** is always wrapped in `Option<T>` regardless of the schema's
+/// required marker — this lets consumers define lean structs via
+/// `#[derive(GraphQLFields)]` that omit fields they don't select, with the
+/// missing field deserializing as `None`.
+///
+/// **`Box<T>`** is added only when actually required for sizedness: when the
+/// field is a direct (non-list) reference to an Object that can transitively
+/// reach `container` in the schema's reference graph. Non-cyclic Object
+/// references emit as `Option<T>` directly, saving a heap allocation per
+/// instance. List-wrapped Object references never need `Box` because `Vec<T>`
+/// is already heap-allocated and sized.
+///
+/// **Inside lists**, nullability is honored faithfully: nullable elements
+/// become `Option<T>`, required elements stay bare `T`. GraphQL list slots
+/// are always materialized on the wire, so there's no "field omitted"
+/// concept inside a list — `Option` is the right shape.
+fn resolve_type(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
+    let inner = resolve_required(ty, type_kind_map);
+    let needs_box = direct_object_target(ty, type_kind_map)
+        .is_some_and(|target| reaches(target, container, reach));
+    if needs_box {
         quote! { Option<Box<#inner>> }
     } else {
         quote! { Option<#inner> }
     }
 }
 
-/// Resolve the inner type (without the outer Option wrapper).
-fn resolve_inner_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Resolve a type as if it were required at its current position. Strips
+/// outer `NonNull` markers, recurses into lists via [`resolve_list_element`].
+fn resolve_required(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
     match ty {
-        GqlType::Named(name) => {
-            let base = name.as_str();
-            match type_kind_map.get(base) {
-                Some(TypeKind::Object) => {
-                    let ident = quote::format_ident!("{}", name);
-                    quote! { #ident }
-                }
-                _ => graphql_type_to_rust(name),
+        GqlType::Named(name) => match type_kind_map.get(name.as_str()) {
+            Some(TypeKind::Object) => {
+                let ident = quote::format_ident!("{}", name);
+                quote! { #ident }
             }
-        }
-        GqlType::NonNull(inner) => resolve_inner_type(inner, type_kind_map),
+            _ => graphql_type_to_rust(name),
+        },
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map),
         GqlType::List(inner) => {
-            let elem = resolve_inner_type(inner, type_kind_map);
+            let elem = resolve_list_element(inner, type_kind_map);
             quote! { Vec<#elem> }
+        }
+    }
+}
+
+/// Resolve a single list element. Nullable elements wrap in `Option<T>`,
+/// required elements stay bare. Mutually recurses with [`resolve_required`]
+/// to handle nested lists.
+fn resolve_list_element(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    match ty {
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map),
+        other => {
+            let payload = resolve_required(other, type_kind_map);
+            quote! { Option<#payload> }
         }
     }
 }
@@ -203,7 +286,9 @@ mod tests {
     }
 
     #[test]
-    fn emit_includes_object_fields_with_box() {
+    fn emit_includes_object_fields_without_unnecessary_box() {
+        // Single Issue type with a Team field. Team has no schema definition
+        // here, so it cannot reach back to Issue → no cycle, no Box.
         let type_kind_map = make_type_kind_map();
         let objects = vec![ObjectDef {
             name: "Issue".to_string(),
@@ -225,9 +310,12 @@ mod tests {
         }];
         let output = emit(&objects, &type_kind_map).to_string();
         assert!(output.contains("pub id"));
-        // Object fields are included and wrapped in Box to prevent infinite-size types
         assert!(output.contains("pub team"));
-        assert!(output.contains("Box"));
+        // No cycle in the graph → no Box wrapping.
+        assert!(
+            !output.contains("Box"),
+            "no Box should be emitted when there is no size cycle: {output}"
+        );
     }
 
     #[test]
@@ -321,6 +409,172 @@ mod tests {
         let output = emit(&objects, &type_kind_map).to_string();
         assert!(output.contains("Vec"));
         assert!(output.contains("label_ids"));
+    }
+
+    /// Render a single field's type for `output_field_shapes` — there is no
+    /// container to reach back to, so cycles are impossible and `Box` never
+    /// applies. This isolates the list/nullability rules from the Box rules.
+    fn rendered_output(ty: GqlType) -> String {
+        let map = make_type_kind_map();
+        let reach: HashMap<String, HashSet<String>> = HashMap::new();
+        resolve_type(&ty, &map, "Container", &reach)
+            .to_string()
+            .split_whitespace()
+            .collect::<String>()
+    }
+
+    fn n(t: GqlType) -> GqlType {
+        GqlType::NonNull(Box::new(t))
+    }
+    fn l(t: GqlType) -> GqlType {
+        GqlType::List(Box::new(t))
+    }
+    fn s() -> GqlType {
+        GqlType::Named("String".to_string())
+    }
+
+    /// Output convention: outermost is **always** wrapped in `Option<>`
+    /// (lean-struct selection allows any field to be missing). Inside lists,
+    /// element nullability is honored faithfully.
+    #[test]
+    fn output_field_shapes() {
+        // Outer wrap is Option regardless of `!` — this is the lean-struct convention.
+        assert_eq!(rendered_output(n(s())), "Option<String>", "T!");
+        assert_eq!(rendered_output(s()), "Option<String>", "T");
+
+        // First-level lists
+        assert_eq!(
+            rendered_output(n(l(n(s())))),
+            "Option<Vec<String>>",
+            "[T!]!"
+        );
+        assert_eq!(rendered_output(l(n(s()))), "Option<Vec<String>>", "[T!]");
+        assert_eq!(
+            rendered_output(n(l(s()))),
+            "Option<Vec<Option<String>>>",
+            "[T]!"
+        );
+        assert_eq!(
+            rendered_output(l(s())),
+            "Option<Vec<Option<String>>>",
+            "[T]"
+        );
+
+        // Nested lists
+        assert_eq!(
+            rendered_output(n(l(n(l(n(s())))))),
+            "Option<Vec<Vec<String>>>",
+            "[[T!]!]!"
+        );
+        assert_eq!(
+            rendered_output(l(n(l(s())))),
+            "Option<Vec<Vec<Option<String>>>>",
+            "[[T]!]"
+        );
+        assert_eq!(
+            rendered_output(n(l(l(n(s()))))),
+            "Option<Vec<Option<Vec<String>>>>",
+            "[[T!]]!"
+        );
+    }
+
+    /// Box is only emitted when the field would otherwise create an infinite-size
+    /// Rust struct: target must be a *direct* (non-list) Object reference whose
+    /// type can transitively reach the containing struct. Everything else gets a
+    /// plain `Option<T>`.
+    #[test]
+    fn box_only_when_field_creates_size_cycle() {
+        // Schema:
+        //   Container { team: Team }       // direct ref
+        //   Container { teams: [Team!]! }  // list-wrapped — Vec breaks cycles
+        //   Team { container: Container }  // closes the cycle Container ↔ Team
+        //   Loner { name: String }         // unrelated, never referenced back
+        let mut map = make_type_kind_map();
+        map.insert("Container".to_string(), TypeKind::Object);
+        map.insert("Loner".to_string(), TypeKind::Object);
+
+        let objects = vec![
+            ObjectDef {
+                name: "Container".to_string(),
+                description: None,
+                fields: vec![
+                    FieldDef {
+                        name: "team".to_string(),
+                        description: None,
+                        ty: GqlType::Named("Team".to_string()),
+                        arguments: vec![],
+                    },
+                    FieldDef {
+                        name: "teams".to_string(),
+                        description: None,
+                        ty: n(l(n(GqlType::Named("Team".to_string())))),
+                        arguments: vec![],
+                    },
+                    FieldDef {
+                        name: "loner".to_string(),
+                        description: None,
+                        ty: GqlType::Named("Loner".to_string()),
+                        arguments: vec![],
+                    },
+                ],
+            },
+            ObjectDef {
+                name: "Team".to_string(),
+                description: None,
+                fields: vec![FieldDef {
+                    name: "container".to_string(),
+                    description: None,
+                    ty: GqlType::Named("Container".to_string()),
+                    arguments: vec![],
+                }],
+            },
+            ObjectDef {
+                name: "Loner".to_string(),
+                description: None,
+                fields: vec![FieldDef {
+                    name: "name".to_string(),
+                    description: None,
+                    ty: GqlType::Named("String".to_string()),
+                    arguments: vec![],
+                }],
+            },
+        ];
+
+        let output: String = emit(&objects, &map)
+            .to_string()
+            .split_whitespace()
+            .collect();
+
+        // Container.team is in a cycle (Container → Team → Container) → Box.
+        assert!(
+            output.contains("pubteam:Option<Box<Team>>,"),
+            "Container.team should be Boxed (cycle): {output}"
+        );
+        // Container.teams uses a Vec → Vec breaks the size cycle, no Box.
+        assert!(
+            output.contains("pubteams:Option<Vec<Team>>,"),
+            "Container.teams should not be Boxed (Vec breaks cycle): {output}"
+        );
+        // Container.loner: Loner has no path back to Container → no Box.
+        assert!(
+            output.contains("publoner:Option<Loner>,"),
+            "Container.loner should not be Boxed (no cycle): {output}"
+        );
+        // Team.container closes the cycle from the other side → Box.
+        assert!(
+            output.contains("pubcontainer:Option<Box<Container>>,"),
+            "Team.container should be Boxed (cycle): {output}"
+        );
+        // Loner.name is a scalar → no Box.
+        assert!(
+            output.contains("pubname:Option<String>,"),
+            "Loner.name should be plain Option<String>: {output}"
+        );
+
+        let pretty = emit(&objects, &map).to_string();
+        if let Err(e) = syn::parse_file(&pretty) {
+            panic!("emitted code must be valid Rust: {e}\n\n{pretty}");
+        }
     }
 
     #[test]

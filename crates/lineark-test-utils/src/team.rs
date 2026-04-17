@@ -20,8 +20,8 @@ pub async fn create_test_team(client: &Client) -> TestTeam {
     let unique = format!("[test] sdk {suffix}");
     let key = format!("T{}", &suffix[..5]).to_uppercase();
     let input = TeamCreateInput {
-        name: Some(unique),
-        key: Some(key),
+        name: unique,
+        key: key.into(),
         ..Default::default()
     };
     let team = retry_create(|| {

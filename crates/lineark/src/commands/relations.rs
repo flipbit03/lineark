@@ -2,7 +2,7 @@ use clap::Args;
 use lineark_sdk::generated::enums::IssueRelationType;
 use lineark_sdk::generated::inputs::IssueRelationCreateInput;
 use lineark_sdk::generated::types::IssueRelation;
-use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::{Client, GraphQLFields, MaybeUndefined};
 use serde::{Deserialize, Serialize};
 
 use super::helpers::resolve_issue_id;
@@ -98,10 +98,10 @@ pub async fn run(cmd: RelationsCmd, client: &Client, format: Format) -> anyhow::
             let target_id = resolve_issue_id(client, target).await?;
 
             let input = IssueRelationCreateInput {
-                issue_id: Some(source_id),
-                related_issue_id: Some(target_id),
-                r#type: Some(relation_type),
-                ..Default::default()
+                id: MaybeUndefined::Undefined,
+                r#type: relation_type,
+                issue_id: source_id,
+                related_issue_id: target_id,
             };
 
             let relation = client

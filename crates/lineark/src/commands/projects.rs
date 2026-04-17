@@ -3,7 +3,7 @@ use lineark_sdk::generated::inputs::{ProjectCreateInput, ProjectFilter, ProjectU
 use lineark_sdk::generated::types::{
     Project, ProjectStatus, Team, TeamConnection, User, UserConnection,
 };
-use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::{Client, GraphQLFields, MaybeUndefined};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
@@ -336,17 +336,17 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
                 .map_err(|e| anyhow::anyhow!("Invalid target-date (expected YYYY-MM-DD): {}", e))?;
 
             let input = ProjectCreateInput {
-                name: Some(name),
-                team_ids: Some(team_ids),
-                description,
-                lead_id,
-                member_ids,
-                start_date,
-                target_date,
-                priority,
-                content,
-                icon,
-                color,
+                name,
+                team_ids,
+                description: description.into(),
+                lead_id: lead_id.into(),
+                member_ids: member_ids.into(),
+                start_date: start_date.into(),
+                target_date: target_date.into(),
+                priority: priority.into(),
+                content: content.into(),
+                icon: icon.into(),
+                color: color.into(),
                 ..Default::default()
             };
 
@@ -435,56 +435,43 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
                 .transpose()
                 .map_err(|e| anyhow::anyhow!("Invalid target-date (expected YYYY-MM-DD): {}", e))?;
 
+            let lead_id = if clear_lead {
+                MaybeUndefined::Null
+            } else {
+                lead_id.into()
+            };
+            let start_date = if clear_start_date {
+                MaybeUndefined::Null
+            } else {
+                start_date.into()
+            };
+            let target_date = if clear_target_date {
+                MaybeUndefined::Null
+            } else {
+                target_date.into()
+            };
+
             let input = ProjectUpdateInput {
-                name,
-                description,
-                content,
+                name: name.into(),
+                description: description.into(),
+                content: content.into(),
                 lead_id,
-                member_ids,
-                team_ids,
+                member_ids: member_ids.into(),
+                team_ids: team_ids.into(),
                 start_date,
                 target_date,
-                priority,
-                status_id,
-                icon,
-                color,
-                label_ids,
+                priority: priority.into(),
+                status_id: status_id.into(),
+                icon: icon.into(),
+                color: color.into(),
+                label_ids: label_ids.into(),
                 ..Default::default()
             };
 
-            // When --clear-* flags are used, we need to send `null` for the
-            // relevant field. ProjectUpdateInput uses skip_serializing_if so
-            // None omits the field (no-op). We serialize to Value and inject null.
-            let project = if clear_lead || clear_start_date || clear_target_date {
-                let mut input_val = serde_json::to_value(&input)?;
-                let obj = input_val.as_object_mut().unwrap();
-                if clear_lead {
-                    obj.insert("leadId".to_string(), serde_json::Value::Null);
-                }
-                if clear_start_date {
-                    obj.insert("startDate".to_string(), serde_json::Value::Null);
-                }
-                if clear_target_date {
-                    obj.insert("targetDate".to_string(), serde_json::Value::Null);
-                }
-                let variables = serde_json::json!({ "input": input_val, "id": project_id });
-                let sel = <ProjectRef as GraphQLFields>::selection();
-                let query = format!(
-                    "mutation($input: ProjectUpdateInput!, $id: String!) {{ projectUpdate(input: $input, id: $id) {{ success project {{ {sel} }} }} }}"
-                );
-                let payload: serde_json::Value = client
-                    .execute(&query, variables, "projectUpdate")
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-                serde_json::from_value::<ProjectRef>(
-                    payload.get("project").cloned().unwrap_or_default(),
-                )?
-            } else {
-                client
-                    .project_update::<ProjectRef>(input, project_id)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?
-            };
+            let project = client
+                .project_update::<ProjectRef>(input, project_id)
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             output::print_one(&project, format);
         }

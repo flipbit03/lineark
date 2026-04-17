@@ -1858,10 +1858,10 @@ mod online {
             use lineark_sdk::generated::inputs::IssueRelationCreateInput;
             let client = Client::from_token(test_token()).unwrap();
             let input = IssueRelationCreateInput {
-                issue_id: Some(issue_a_id.clone()),
-                related_issue_id: Some(issue_b_id.clone()),
-                r#type: Some(IssueRelationType::Blocks),
-                ..Default::default()
+                id: lineark_sdk::MaybeUndefined::Undefined,
+                issue_id: issue_a_id.clone(),
+                related_issue_id: issue_b_id.clone(),
+                r#type: IssueRelationType::Blocks,
             };
             tokio::runtime::Runtime::new().unwrap().block_on(async {
                 client
@@ -2268,8 +2268,8 @@ mod online {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let project: Project = rt.block_on(async {
             let input = ProjectCreateInput {
-                name: Some(project_label.clone()),
-                team_ids: Some(vec![team_id]),
+                name: project_label.clone(),
+                team_ids: vec![team_id],
                 ..Default::default()
             };
             retry_create(|| {
@@ -3971,9 +3971,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI comments_lifecycle {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id,
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await
@@ -4128,9 +4129,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI comments_resolve_with_resolving_comment {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id,
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await
@@ -4171,9 +4173,9 @@ mod online {
         let reply = tokio::runtime::Runtime::new().unwrap().block_on(async {
             client
                 .comment_create::<Comment>(CommentCreateInput {
-                    body: Some("Reply that resolves thread".to_string()),
-                    issue_id: Some(issue_id.clone()),
-                    parent_id: Some(parent_id.clone()),
+                    body: Some("Reply that resolves thread".to_string()).into(),
+                    issue_id: Some(issue_id.clone()).into(),
+                    parent_id: Some(parent_id.clone()).into(),
                     ..Default::default()
                 })
                 .await
@@ -4230,9 +4232,10 @@ mod online {
                 title: Some(format!(
                     "[test] CLI find-branch {}",
                     &uuid::Uuid::new_v4().to_string()[..8]
-                )),
-                team_id: Some(team_id),
-                priority: Some(4),
+                ))
+                .into(),
+                team_id,
+                priority: Some(4).into(),
                 ..Default::default()
             };
             let entity = retry_create(|| {
@@ -4639,9 +4642,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI batch-update A {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id.clone()),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id: team_id.clone(),
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await
@@ -4659,9 +4663,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI batch-update B {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id,
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await
@@ -4717,9 +4722,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI batch-update status A {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id.clone()),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id: team_id.clone(),
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await
@@ -4737,9 +4743,10 @@ mod online {
                     title: Some(format!(
                         "[test] CLI batch-update status B {}",
                         &uuid::Uuid::new_v4().to_string()[..8]
-                    )),
-                    team_id: Some(team_id),
-                    priority: Some(4),
+                    ))
+                    .into(),
+                    team_id,
+                    priority: Some(4).into(),
                     ..Default::default()
                 })
                 .await

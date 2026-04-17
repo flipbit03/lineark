@@ -64,6 +64,249 @@ pub enum AgentSessionType {
     #[serde(other)]
     Unknown,
 }
+/// The action performed on the entity (leave empty if just found)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationEntityCardWidgetArgsAction {
+    #[serde(rename = "created")]
+    Created,
+    #[serde(rename = "updated")]
+    Updated,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// `Internal` The entity type
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationEntityCardWidgetArgsType {
+    Issue,
+    Project,
+    Initiative,
+    InitiativeUpdate,
+    ProjectUpdate,
+    WorkflowDefinition,
+    Team,
+    Template,
+    Customer,
+    CustomerNeed,
+    Document,
+    CustomView,
+    Dashboard,
+    PullRequest,
+    Release,
+    ReleasePipeline,
+    AiPrompt,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The action performed on the entities (leave empty if just found)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationEntityListWidgetArgsAction {
+    #[serde(rename = "created")]
+    Created,
+    #[serde(rename = "updated")]
+    Updated,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// `Internal` The entity type
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationEntityListWidgetArgsEntitiesType {
+    Issue,
+    Project,
+    Initiative,
+    InitiativeUpdate,
+    ProjectUpdate,
+    WorkflowDefinition,
+    Team,
+    Template,
+    Customer,
+    CustomerNeed,
+    Document,
+    CustomView,
+    Dashboard,
+    PullRequest,
+    Release,
+    ReleasePipeline,
+    AiPrompt,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The initial source of an AI conversation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationInitialSource {
+    #[serde(rename = "slack")]
+    Slack,
+    #[serde(rename = "microsoftTeams")]
+    MicrosoftTeams,
+    #[serde(rename = "mcp")]
+    Mcp,
+    #[serde(rename = "directChat")]
+    DirectChat,
+    #[serde(rename = "comment")]
+    Comment,
+    #[serde(rename = "pullRequestComment")]
+    PullRequestComment,
+    #[serde(rename = "workflow")]
+    Workflow,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The phase during which a conversation part was generated.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationPartPhase {
+    #[serde(rename = "commentary")]
+    Commentary,
+    #[serde(rename = "answer")]
+    Answer,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The type of a part in an AI conversation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationPartType {
+    #[serde(rename = "prompt")]
+    Prompt,
+    #[serde(rename = "toolCall")]
+    ToolCall,
+    #[serde(rename = "reasoning")]
+    Reasoning,
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "widget")]
+    Widget,
+    #[serde(rename = "widgetPlaceholder")]
+    WidgetPlaceholder,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationQueryUpdatesToolCallArgsUpdateType {
+    ProjectUpdate,
+    InitiativeUpdate,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationQueryViewToolCallArgsMode {
+    #[serde(rename = "list")]
+    List,
+    #[serde(rename = "insight")]
+    Insight,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The status of an AI conversation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "complete")]
+    Complete,
+    #[serde(rename = "awaitingInput")]
+    AwaitingInput,
+    #[serde(rename = "error")]
+    Error,
+    #[serde(rename = "pending")]
+    Pending,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The name of a tool that was called in an AI conversation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationTool {
+    SearchEntities,
+    RetrieveEntities,
+    QueryView,
+    QueryActivity,
+    QueryUpdates,
+    SuggestValues,
+    CreateEntity,
+    UpdateEntity,
+    DeleteEntity,
+    RestoreEntity,
+    Research,
+    CodeIntelligence,
+    GetPullRequestDiff,
+    GetPullRequestFile,
+    HandoffToCodingSession,
+    TranscribeVideo,
+    TranscribeMedia,
+    SearchDocumentation,
+    WebSearch,
+    GetSlackConversationHistory,
+    GetMicrosoftTeamsConversationHistory,
+    NavigateToPage,
+    InvokeMcpTool,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The name of a widget in an AI conversation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiConversationWidgetName {
+    EntityCard,
+    EntityList,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// `Internal` The status of a prompt workflow.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiPromptProgressStatus {
+    #[serde(rename = "created")]
+    Created,
+    #[serde(rename = "inProgress")]
+    InProgress,
+    #[serde(rename = "finished")]
+    Finished,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "canceled")]
+    Canceled,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The type of AI prompt workflow.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiPromptType {
+    #[serde(rename = "productIntelligence")]
+    ProductIntelligence,
+    #[serde(rename = "internalResearch")]
+    InternalResearch,
+    #[serde(rename = "projectUpdates")]
+    ProjectUpdates,
+    #[serde(rename = "initiativeUpdates")]
+    InitiativeUpdates,
+    #[serde(rename = "agentGuidance")]
+    AgentGuidance,
+    #[serde(rename = "codeIntelligence")]
+    CodeIntelligence,
+    #[serde(rename = "aiConversation")]
+    AiConversation,
+    #[serde(rename = "slackIssueIntake")]
+    SlackIssueIntake,
+    #[serde(rename = "intercomIssueIntake")]
+    IntercomIssueIntake,
+    #[serde(rename = "gongIssueIntake")]
+    GongIssueIntake,
+    #[serde(rename = "zendeskIssueIntake")]
+    ZendeskIssueIntake,
+    #[serde(rename = "microsoftTeamsIssueIntake")]
+    MicrosoftTeamsIssueIntake,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthenticationSessionType {
     #[serde(rename = "web")]
@@ -220,7 +463,7 @@ pub enum FrequencyResolutionType {
     #[serde(other)]
     Unknown,
 }
-/// The various states of a pull/merge request.
+/// The Git events that can trigger an automation rule. Each value corresponds to a pull/merge request lifecycle event (e.g., branch created, PR opened for review, PR merged).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GitAutomationStates {
     #[serde(rename = "draft")]
@@ -363,6 +606,8 @@ pub enum IntegrationService {
     Slack,
     #[serde(rename = "slackAsks")]
     SlackAsks,
+    #[serde(rename = "asksWeb")]
+    AsksWeb,
     #[serde(rename = "slackCustomViewNotifications")]
     SlackCustomViewNotifications,
     #[serde(rename = "slackOrgProjectUpdatesPost")]
@@ -391,6 +636,10 @@ pub enum IntegrationService {
     McpServer,
     #[serde(rename = "microsoftTeams")]
     MicrosoftTeams,
+    #[serde(rename = "microsoftPersonal")]
+    MicrosoftPersonal,
+    #[serde(rename = "microsoftTeamsProjectPost")]
+    MicrosoftTeamsProjectPost,
     /// Catch-all for unknown/new variants added by Linear.
     #[serde(other)]
     Unknown,
@@ -410,6 +659,35 @@ pub enum IssueRelationType {
     #[serde(other)]
     Unknown,
 }
+/// Issue update fields that are disallowed for users with only shared access.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IssueSharedAccessDisallowedField {
+    #[serde(rename = "projectId")]
+    ProjectId,
+    #[serde(rename = "teamId")]
+    TeamId,
+    #[serde(rename = "cycleId")]
+    CycleId,
+    #[serde(rename = "projectMilestoneId")]
+    ProjectMilestoneId,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// Policy controlling whether and by whom issues in a team can be shared with non-team-members.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IssueSharingPolicy {
+    #[serde(rename = "disabled")]
+    Disabled,
+    #[serde(rename = "adminsOnly")]
+    AdminsOnly,
+    #[serde(rename = "allMembers")]
+    AllMembers,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
+/// The state of an issue suggestion, indicating whether it is active, accepted, or dismissed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IssueSuggestionState {
     #[serde(rename = "active")]
@@ -424,6 +702,7 @@ pub enum IssueSuggestionState {
     #[serde(other)]
     Unknown,
 }
+/// The type of an issue suggestion, indicating what kind of entity is being suggested (e.g., similar issue, assignee, label, team, project).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IssueSuggestionType {
     #[serde(rename = "team")]
@@ -665,6 +944,21 @@ pub enum ProjectUpdateReminderFrequency {
     #[serde(other)]
     Unknown,
 }
+/// `ALPHA` How a pull request check should be opened in the client.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PullRequestCheckPresentation {
+    #[serde(rename = "jobLogs")]
+    JobLogs,
+    #[serde(rename = "runLogs")]
+    RunLogs,
+    #[serde(rename = "markdown")]
+    Markdown,
+    #[serde(rename = "externalOnly")]
+    ExternalOnly,
+    /// Catch-all for unknown/new variants added by Linear.
+    #[serde(other)]
+    Unknown,
+}
 /// The method used to merge a pull request.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PullRequestMergeMethod {
@@ -741,7 +1035,7 @@ pub enum ReleaseChannel {
     #[serde(other)]
     Unknown,
 }
-/// A type of release pipeline.
+/// The type of a release pipeline, which determines how releases are created and managed. Continuous pipelines create a new completed release for each sync. Scheduled pipelines accumulate issues into a started release that is explicitly completed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReleasePipelineType {
     #[serde(rename = "continuous")]
@@ -752,7 +1046,7 @@ pub enum ReleasePipelineType {
     #[serde(other)]
     Unknown,
 }
-/// A type of release stage.
+/// The type of a release stage, which determines the release's lifecycle state. Types include planned, started, completed, and canceled. Each pipeline must have at least one stage of each type, though only started stages may have multiple instances.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReleaseStageType {
     #[serde(rename = "planned")]
@@ -767,6 +1061,7 @@ pub enum ReleaseStageType {
     #[serde(other)]
     Unknown,
 }
+/// Which day count to use for SLA calculations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SLADayCountType {
     #[serde(rename = "all")]
@@ -884,6 +1179,8 @@ pub enum TriageRuleErrorType {
     Default,
     #[serde(rename = "labelGroupConflict")]
     LabelGroupConflict,
+    #[serde(rename = "codingAgentQuotaExceeded")]
+    CodingAgentQuotaExceeded,
     /// Catch-all for unknown/new variants added by Linear.
     #[serde(other)]
     Unknown,
@@ -965,6 +1262,10 @@ pub enum UserFlagType {
     TryTriageDismissed,
     #[serde(rename = "tryGithubDismissed")]
     TryGithubDismissed,
+    #[serde(rename = "tryCursorDismissed")]
+    TryCursorDismissed,
+    #[serde(rename = "tryCodexDismissed")]
+    TryCodexDismissed,
     #[serde(rename = "rewindBannerDismissed")]
     RewindBannerDismissed,
     #[serde(rename = "helpIslandFeatureInsightsDismissed")]
@@ -991,8 +1292,16 @@ pub enum UserFlagType {
     CommandMenuClearShortcutTip,
     #[serde(rename = "slackBotWelcomeMessageShown")]
     SlackBotWelcomeMessageShown,
+    #[serde(rename = "teamsBotWelcomeMessageShown")]
+    TeamsBotWelcomeMessageShown,
     #[serde(rename = "slackAgentPromoFromCreateNewIssueShown")]
     SlackAgentPromoFromCreateNewIssueShown,
+    #[serde(rename = "agentExamplesDismissed")]
+    AgentExamplesDismissed,
+    #[serde(rename = "agentHomePageNotice")]
+    AgentHomePageNotice,
+    #[serde(rename = "agentHomeHeadlineSeen")]
+    AgentHomeHeadlineSeen,
     #[serde(rename = "all")]
     All,
     /// Catch-all for unknown/new variants added by Linear.
@@ -1014,7 +1323,7 @@ pub enum UserFlagUpdateOperation {
     #[serde(other)]
     Unknown,
 }
-/// The different permission roles available to users on an organization.
+/// The different permission roles available to users in a workspace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserRoleType {
     #[serde(rename = "owner")]
@@ -1074,7 +1383,7 @@ pub enum UserSettingsThemePreset {
     #[serde(other)]
     Unknown,
 }
-/// The type of view preferences (either user or organization level preferences).
+/// The type of view preferences (either user or workspace level preferences).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ViewPreferencesType {
     #[serde(rename = "organization")]
@@ -1114,6 +1423,8 @@ pub enum ViewType {
     Release,
     #[serde(rename = "continuousPipelineReleases")]
     ContinuousPipelineReleases,
+    #[serde(rename = "scheduledPipelineReleases")]
+    ScheduledPipelineReleases,
     #[serde(rename = "project")]
     Project,
     #[serde(rename = "projectDocuments")]
@@ -1186,6 +1497,8 @@ pub enum ViewType {
     CreatedReviews,
     #[serde(rename = "agents")]
     Agents,
+    #[serde(rename = "focus")]
+    Focus,
     #[serde(rename = "feedAll")]
     FeedAll,
     #[serde(rename = "feedCreated")]
@@ -1234,6 +1547,8 @@ pub enum WorkflowTriggerType {
     Issue,
     #[serde(rename = "project")]
     Project,
+    #[serde(rename = "release")]
+    Release,
     /// Catch-all for unknown/new variants added by Linear.
     #[serde(other)]
     Unknown,
@@ -1242,12 +1557,16 @@ pub enum WorkflowTriggerType {
 pub enum WorkflowType {
     #[serde(rename = "sla")]
     Sla,
-    #[serde(rename = "custom")]
-    Custom,
+    #[serde(rename = "automation")]
+    Automation,
     #[serde(rename = "viewSubscription")]
     ViewSubscription,
     #[serde(rename = "triage")]
     Triage,
+    #[serde(rename = "triageAutomation")]
+    TriageAutomation,
+    #[serde(rename = "release")]
+    Release,
     /// Catch-all for unknown/new variants added by Linear.
     #[serde(other)]
     Unknown,

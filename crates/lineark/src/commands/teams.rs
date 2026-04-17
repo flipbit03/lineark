@@ -253,15 +253,15 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
             triage_enabled,
         } => {
             let input = TeamCreateInput {
-                name: Some(name),
-                key,
-                description,
-                icon,
-                color,
-                timezone,
-                private,
-                cycles_enabled,
-                triage_enabled,
+                name,
+                key: key.into(),
+                description: description.into(),
+                icon: icon.into(),
+                color: color.into(),
+                timezone: timezone.into(),
+                private: private.into(),
+                cycles_enabled: cycles_enabled.into(),
+                triage_enabled: triage_enabled.into(),
                 ..Default::default()
             };
 
@@ -302,15 +302,15 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
             let team_id = resolve_team_id(client, &id).await?;
 
             let input = TeamUpdateInput {
-                name,
-                key,
-                description,
-                icon,
-                color,
-                timezone,
-                private,
-                cycles_enabled,
-                triage_enabled,
+                name: name.into(),
+                key: key.into(),
+                description: description.into(),
+                icon: icon.into(),
+                color: color.into(),
+                timezone: timezone.into(),
+                private: private.into(),
+                cycles_enabled: cycles_enabled.into(),
+                triage_enabled: triage_enabled.into(),
                 ..Default::default()
             };
 
@@ -337,8 +337,8 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
                 let user_id = resolve_user_id_or_me(client, &user).await?;
 
                 let input = TeamMembershipCreateInput {
-                    team_id: Some(team_id),
-                    user_id: Some(user_id),
+                    team_id,
+                    user_id,
                     ..Default::default()
                 };
 

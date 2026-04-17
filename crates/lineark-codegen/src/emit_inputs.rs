@@ -1,15 +1,19 @@
+use crate::dep_graph::{self, reaches};
 use crate::emit_scalars::graphql_type_to_rust;
-use crate::parser::{self, GqlType, InputDef, TypeKind};
+use crate::parser::{self, FieldDef, GqlType, InputDef, TypeKind};
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+    let defaultable = compute_defaultable_inputs(inputs, type_kind_map);
+    let reach = compute_input_reachability(inputs, type_kind_map);
+
     let structs: Vec<TokenStream> = inputs
         .iter()
         .filter(|i| !i.name.is_empty())
-        .map(|i| emit_input_struct(i, type_kind_map))
+        .map(|i| emit_input_struct(i, type_kind_map, &defaultable, &reach))
         .collect();
 
     quote! {
@@ -19,12 +23,114 @@ pub fn emit(inputs: &[InputDef], type_kind_map: &HashMap<String, TypeKind>) -> T
 
         use serde::{Deserialize, Serialize};
         use super::enums::*;
+        use crate::field_update::MaybeUndefined;
 
         #(#structs)*
     }
 }
 
-fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Build the InputObject dependency graph (edges through direct, non-list
+/// references only) and compute transitive reachability. Used to decide
+/// per-field whether `Box<T>` is needed for size correctness.
+fn compute_input_reachability(
+    inputs: &[InputDef],
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> HashMap<String, HashSet<String>> {
+    let mut edges: HashMap<String, Vec<String>> = HashMap::with_capacity(inputs.len());
+    for input in inputs {
+        if input.name.is_empty() {
+            continue;
+        }
+        // Dedupe: multiple fields can target the same InputObject, and duplicate
+        // edges would just expand the DFS stack without changing reachability.
+        let mut deps: HashSet<String> = HashSet::new();
+        for field in &input.fields {
+            if let Some(target) = direct_input_target(&field.ty, type_kind_map) {
+                deps.insert(target.to_string());
+            }
+        }
+        edges.insert(input.name.clone(), deps.into_iter().collect());
+    }
+    dep_graph::reachability(&edges)
+}
+
+/// If `ty` is a direct (non-list) reference to an InputObject, return that
+/// type's name. Lists return `None` because `Vec<T>` is sized and breaks
+/// size cycles regardless of `T`.
+fn direct_input_target<'a>(
+    ty: &'a GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> Option<&'a str> {
+    match ty {
+        GqlType::NonNull(inner) => direct_input_target(inner, type_kind_map),
+        GqlType::Named(name) => {
+            if matches!(
+                type_kind_map.get(name.as_str()),
+                Some(TypeKind::InputObject)
+            ) {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        }
+        GqlType::List(_) => None,
+    }
+}
+
+/// Compute which input structs can still derive `Default`.
+///
+/// Required (non-null) fields now emit as plain `T` instead of `Option<T>`, so
+/// the struct only derives `Default` if every required field's Rust type also
+/// has `Default`. Generated enums don't derive `Default`, and mutually recursive
+/// input objects need a fixed-point pass to converge.
+fn compute_defaultable_inputs(
+    inputs: &[InputDef],
+    type_kind_map: &HashMap<String, TypeKind>,
+) -> HashSet<String> {
+    let mut defaultable: HashSet<String> = inputs.iter().map(|i| i.name.clone()).collect();
+    loop {
+        let snapshot = defaultable.clone();
+        defaultable.retain(|name| {
+            let Some(input) = inputs.iter().find(|i| i.name == *name) else {
+                return true;
+            };
+            input.fields.iter().all(|f| {
+                // Nullable fields always have Default (MaybeUndefined::Undefined).
+                if !matches!(f.ty, GqlType::NonNull(_)) {
+                    return true;
+                }
+                type_has_default(&f.ty, type_kind_map, &snapshot)
+            })
+        });
+        if defaultable.len() == snapshot.len() {
+            break;
+        }
+    }
+    defaultable
+}
+
+fn type_has_default(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    defaultable_inputs: &HashSet<String>,
+) -> bool {
+    match ty {
+        GqlType::NonNull(inner) => type_has_default(inner, type_kind_map, defaultable_inputs),
+        GqlType::List(_) => true,
+        GqlType::Named(name) => match type_kind_map.get(name.as_str()) {
+            Some(TypeKind::Enum) => false,
+            Some(TypeKind::InputObject) => defaultable_inputs.contains(name),
+            _ => true,
+        },
+    }
+}
+
+fn emit_input_struct(
+    input: &InputDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    defaultable: &HashSet<String>,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
     let name = quote::format_ident!("{}", input.name);
     let doc = parser::doc_comment_tokens(&input.description);
 
@@ -39,50 +145,27 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
             let base = f.ty.base_name();
             matches!(
                 type_kind_map.get(base),
-                Some(TypeKind::Scalar) | Some(TypeKind::Enum) | Some(TypeKind::InputObject)
-                    | Some(TypeKind::Union) | Some(TypeKind::Interface) | Some(TypeKind::Object)
+                Some(TypeKind::Scalar)
+                    | Some(TypeKind::Enum)
+                    | Some(TypeKind::InputObject)
+                    | Some(TypeKind::Union)
+                    | Some(TypeKind::Interface)
+                    | Some(TypeKind::Object)
                     | None
             )
         })
-        .map(|f| {
-            let field_name_str = f.name.to_snake_case();
-            let original_name = &f.name;
-            let safe_name = parser::safe_ident(&field_name_str);
-            let field_ident = if safe_name.starts_with("r#") {
-                let raw: TokenStream = safe_name.parse().unwrap();
-                raw
-            } else {
-                let ident = quote::format_ident!("{}", safe_name);
-                quote! { #ident }
-            };
-            let rust_type = resolve_input_type(&f.ty, type_kind_map);
-            let fdoc = parser::doc_comment_tokens(&f.description);
-            // If the snake_case name differs from the original camelCase, add serde rename.
-            // We use rename_all on the struct level, so individual renames are only needed
-            // if to_snake_case -> to_camelCase roundtrip doesn't match.
-            let needs_rename = {
-                let roundtrip = heck::AsLowerCamelCase(&field_name_str).to_string();
-                roundtrip != *original_name
-            };
-            if needs_rename {
-                quote! {
-                    #fdoc
-                    #[serde(rename = #original_name, default, skip_serializing_if = "Option::is_none")]
-                    pub #field_ident: #rust_type,
-                }
-            } else {
-                quote! {
-                    #fdoc
-                    #[serde(default, skip_serializing_if = "Option::is_none")]
-                    pub #field_ident: #rust_type,
-                }
-            }
-        })
+        .map(|f| emit_field(f, type_kind_map, &input.name, reach))
         .collect();
+
+    let derives = if defaultable.contains(&input.name) {
+        quote! { #[derive(Debug, Clone, Default, Serialize, Deserialize)] }
+    } else {
+        quote! { #[derive(Debug, Clone, Serialize, Deserialize)] }
+    };
 
     quote! {
         #doc
-        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+        #derives
         #[serde(rename_all = "camelCase")]
         pub struct #name {
             #(#fields)*
@@ -90,34 +173,418 @@ fn emit_input_struct(input: &InputDef, type_kind_map: &HashMap<String, TypeKind>
     }
 }
 
-/// All input fields are `Option<T>` for easy Default derivation and the `..Default::default()` pattern.
-fn resolve_input_type(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
-    let inner = resolve_inner(ty, type_kind_map);
-    quote! { Option<#inner> }
+fn emit_field(
+    f: &FieldDef,
+    type_kind_map: &HashMap<String, TypeKind>,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
+    let field_name_str = f.name.to_snake_case();
+    let original_name = &f.name;
+    let safe_name = parser::safe_ident(&field_name_str);
+    let field_ident = if safe_name.starts_with("r#") {
+        let raw: TokenStream = safe_name.parse().unwrap();
+        raw
+    } else {
+        let ident = quote::format_ident!("{}", safe_name);
+        quote! { #ident }
+    };
+
+    let is_required = matches!(f.ty, GqlType::NonNull(_));
+    let rust_type = resolve_input_type(&f.ty, type_kind_map, container, reach);
+    let fdoc = parser::doc_comment_tokens(&f.description);
+    // If the snake_case name differs from the original camelCase, add serde rename.
+    // We use rename_all on the struct level, so individual renames are only needed
+    // if to_snake_case -> to_camelCase roundtrip doesn't match.
+    let needs_rename = {
+        let roundtrip = heck::AsLowerCamelCase(&field_name_str).to_string();
+        roundtrip != *original_name
+    };
+
+    // Required fields are always serialized; nullable fields use MaybeUndefined's
+    // skip predicate so `Undefined` omits the field from the JSON payload.
+    let serde_attr = match (needs_rename, is_required) {
+        (true, true) => quote! { #[serde(rename = #original_name)] },
+        (false, true) => quote! {},
+        (true, false) => quote! {
+            #[serde(rename = #original_name, default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+        },
+        (false, false) => quote! {
+            #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+        },
+    };
+
+    quote! {
+        #fdoc
+        #serde_attr
+        pub #field_ident: #rust_type,
+    }
 }
 
-fn resolve_inner(ty: &GqlType, type_kind_map: &HashMap<String, TypeKind>) -> TokenStream {
+/// Resolve a GraphQL input field type into its emitted Rust tokens.
+///
+/// Walks the type tree and applies nullability uniformly:
+///
+/// - At the **outermost** position, nullable wraps in `MaybeUndefined<T>` so
+///   the consumer can distinguish "omit this field" from "send explicit null".
+/// - **Inside a list**, nullable wraps in `Option<T>` — GraphQL list slots are
+///   always materialized (no "omit this slot" wire form), so the three-state
+///   distinction is meaningless one level in.
+/// - Required positions emit plain `T` at any depth.
+///
+/// `Box<T>` is added to a direct InputObject reference only when the field
+/// would otherwise create an infinite-size struct: at depth 0 (where the
+/// containing wrapper is `MaybeUndefined<_>` or plain `T`, both of which need
+/// `T` to be sized) and the target can transitively reach `container` in the
+/// schema's reference graph. Non-cyclic references and references inside lists
+/// (where `Vec<T>` already breaks the size cycle) drop the `Box` entirely.
+///
+/// This handles every shape the GraphQL spec allows (`T`, `T!`, `[T!]!`,
+/// `[T!]`, `[T]!`, `[T]`, and arbitrarily nested lists like `[[T!]!]!`)
+/// without special-casing the schema.
+fn resolve_input_type(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
+    resolve(ty, type_kind_map, /* depth = */ 0, container, reach)
+}
+
+fn resolve(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    depth: usize,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
+    match ty {
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth, container, reach),
+        other => {
+            let inner = resolve_required(other, type_kind_map, depth, container, reach);
+            if depth == 0 {
+                quote! { MaybeUndefined<#inner> }
+            } else {
+                quote! { Option<#inner> }
+            }
+        }
+    }
+}
+
+fn resolve_required(
+    ty: &GqlType,
+    type_kind_map: &HashMap<String, TypeKind>,
+    depth: usize,
+    container: &str,
+    reach: &HashMap<String, HashSet<String>>,
+) -> TokenStream {
     match ty {
         GqlType::Named(name) => {
             let kind = type_kind_map.get(name.as_str());
             if matches!(kind, Some(TypeKind::InputObject)) {
                 let ident = quote::format_ident!("{}", name);
-                // Self-reference: input types reference other input types in the same module.
-                quote! { Box<#ident> }
+                // Box only when depth == 0 (above us is `MaybeUndefined<_>` or
+                // plain `T`, both needing sized T) AND the target can reach the
+                // containing struct (true size cycle). Inside a list, Vec breaks
+                // the cycle on its own and Box is unnecessary.
+                let needs_box = depth == 0 && reaches(name, container, reach);
+                if needs_box {
+                    quote! { Box<#ident> }
+                } else {
+                    quote! { #ident }
+                }
             } else if matches!(
                 kind,
                 Some(TypeKind::Union) | Some(TypeKind::Interface) | Some(TypeKind::Object)
             ) {
-                // Union/interface/object types in inputs are serialized as raw JSON.
                 quote! { serde_json::Value }
             } else {
                 graphql_type_to_rust(name)
             }
         }
-        GqlType::NonNull(inner) => resolve_inner(inner, type_kind_map),
+        GqlType::NonNull(inner) => resolve_required(inner, type_kind_map, depth, container, reach),
         GqlType::List(inner) => {
-            let elem = resolve_inner(inner, type_kind_map);
+            let elem = resolve(inner, type_kind_map, depth + 1, container, reach);
             quote! { Vec<#elem> }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn type_kind_map() -> HashMap<String, TypeKind> {
+        let mut m = HashMap::new();
+        m.insert("String".to_string(), TypeKind::Scalar);
+        m
+    }
+
+    /// Render a single field's resolved Rust type with whitespace collapsed,
+    /// so test assertions can compare against a clean expected string without
+    /// matching the exact spacing `quote!` produces. Uses an empty reach map
+    /// so cycles are impossible — `Box` never applies, isolating list/nullability
+    /// rules from Box rules.
+    fn rendered(ty: GqlType) -> String {
+        let reach: HashMap<String, HashSet<String>> = HashMap::new();
+        resolve_input_type(&ty, &type_kind_map(), "Container", &reach)
+            .to_string()
+            .split_whitespace()
+            .collect::<String>()
+    }
+
+    fn named() -> GqlType {
+        GqlType::Named("String".to_string())
+    }
+    fn nn(t: GqlType) -> GqlType {
+        GqlType::NonNull(Box::new(t))
+    }
+    fn list(t: GqlType) -> GqlType {
+        GqlType::List(Box::new(t))
+    }
+
+    /// Each row covers one shape the GraphQL spec allows. The full table is
+    /// in one test so any drift is visible at a glance.
+    #[test]
+    fn input_field_shapes() {
+        // Scalars
+        assert_eq!(rendered(nn(named())), "String", "T!");
+        assert_eq!(rendered(named()), "MaybeUndefined<String>", "T");
+
+        // First-level lists
+        assert_eq!(rendered(nn(list(nn(named())))), "Vec<String>", "[T!]!");
+        assert_eq!(
+            rendered(list(nn(named()))),
+            "MaybeUndefined<Vec<String>>",
+            "[T!]"
+        );
+        assert_eq!(rendered(nn(list(named()))), "Vec<Option<String>>", "[T]!");
+        assert_eq!(
+            rendered(list(named())),
+            "MaybeUndefined<Vec<Option<String>>>",
+            "[T]"
+        );
+
+        // Nested lists — verify the recursion compounds correctly
+        assert_eq!(
+            rendered(nn(list(nn(list(nn(named())))))),
+            "Vec<Vec<String>>",
+            "[[T!]!]!"
+        );
+        assert_eq!(
+            rendered(list(nn(list(named())))),
+            "MaybeUndefined<Vec<Vec<Option<String>>>>",
+            "[[T]!]"
+        );
+        assert_eq!(
+            rendered(nn(list(list(nn(named()))))),
+            "Vec<Option<Vec<String>>>",
+            "[[T!]]!"
+        );
+    }
+
+    /// End-to-end: build an input struct with one field of each shape and
+    /// confirm the emitted code parses as valid Rust and contains the right
+    /// type wrappers + skip-serializing predicate on the right fields.
+    #[test]
+    fn emit_struct_for_all_list_shapes_parses() {
+        let mk_field = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+        let inputs = vec![InputDef {
+            name: "Sample".to_string(),
+            description: None,
+            fields: vec![
+                mk_field("a", nn(named())),
+                mk_field("b", named()),
+                mk_field("c", nn(list(nn(named())))),
+                mk_field("d", list(nn(named()))),
+                mk_field("e", nn(list(named()))),
+                mk_field("f", list(named())),
+            ],
+        }];
+        let output = emit(&inputs, &type_kind_map()).to_string();
+        syn::parse_file(&output).expect("emitted input code must be valid Rust");
+
+        let normalized: String = output.split_whitespace().collect();
+        // Required field: no skip predicate, plain T
+        assert!(normalized.contains("puba:String,"));
+        // Nullable field: MaybeUndefined wrapper + skip predicate
+        assert!(normalized.contains("MaybeUndefined::is_undefined"));
+        assert!(normalized.contains("pubb:MaybeUndefined<String>,"));
+        // Lists honor inner nullability uniformly
+        assert!(normalized.contains("pubc:Vec<String>,"));
+        assert!(normalized.contains("pubd:MaybeUndefined<Vec<String>>,"));
+        assert!(normalized.contains("pube:Vec<Option<String>>,"));
+        assert!(normalized.contains("pubf:MaybeUndefined<Vec<Option<String>>>,"));
+    }
+
+    /// Box is only emitted on InputObject fields when the field would otherwise
+    /// create an infinite-size struct: at depth 0 (where the wrapper —
+    /// `MaybeUndefined<_>` or plain `T` — needs `T` sized) and the target can
+    /// transitively reach the containing struct. List-wrapped fields drop Box
+    /// because `Vec<T>` is sized, and non-cyclic refs drop Box because there's
+    /// no size cycle to break.
+    #[test]
+    fn input_box_only_when_field_creates_size_cycle() {
+        // Schema:
+        //   Container { f1: Filter, f2: [Filter!]!, f3: Loner }
+        //   Filter    { c: Container, kids: [Filter!]! }
+        //   Loner     { name: String }
+        let mut map = HashMap::new();
+        map.insert("String".to_string(), TypeKind::Scalar);
+        map.insert("Container".to_string(), TypeKind::InputObject);
+        map.insert("Filter".to_string(), TypeKind::InputObject);
+        map.insert("Loner".to_string(), TypeKind::InputObject);
+
+        let mk = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+
+        let inputs = vec![
+            InputDef {
+                name: "Container".to_string(),
+                description: None,
+                fields: vec![
+                    mk("f1", GqlType::Named("Filter".to_string())),
+                    mk("f2", nn(list(nn(GqlType::Named("Filter".to_string()))))),
+                    mk("f3", GqlType::Named("Loner".to_string())),
+                ],
+            },
+            InputDef {
+                name: "Filter".to_string(),
+                description: None,
+                fields: vec![
+                    mk("c", GqlType::Named("Container".to_string())),
+                    mk("kids", nn(list(nn(GqlType::Named("Filter".to_string()))))),
+                ],
+            },
+            InputDef {
+                name: "Loner".to_string(),
+                description: None,
+                fields: vec![mk("name", named())],
+            },
+        ];
+
+        let normalized: String = emit(&inputs, &map).to_string().split_whitespace().collect();
+
+        // Container.f1 → Filter, and Filter reaches Container → Box.
+        assert!(
+            normalized.contains("pubf1:MaybeUndefined<Box<Filter>>,"),
+            "Container.f1 should be Boxed (cycle through Filter): {normalized}"
+        );
+        // Container.f2 → list of Filter; Vec breaks the size cycle, no Box.
+        assert!(
+            normalized.contains("pubf2:Vec<Filter>,"),
+            "Container.f2 should not be Boxed (Vec breaks cycle): {normalized}"
+        );
+        // Container.f3 → Loner; Loner cannot reach Container, no Box.
+        assert!(
+            normalized.contains("pubf3:MaybeUndefined<Loner>,"),
+            "Container.f3 should not be Boxed (no cycle): {normalized}"
+        );
+        // Filter.c closes the cycle from the other side → Box.
+        assert!(
+            normalized.contains("pubc:MaybeUndefined<Box<Container>>,"),
+            "Filter.c should be Boxed (cycle): {normalized}"
+        );
+        // Filter.kids → self-list, breaks cycle via Vec → no Box.
+        assert!(
+            normalized.contains("pubkids:Vec<Filter>,"),
+            "Filter.kids should not be Boxed (Vec breaks self-cycle): {normalized}"
+        );
+
+        let pretty = emit(&inputs, &map).to_string();
+        if let Err(e) = syn::parse_file(&pretty) {
+            panic!("emitted code must be valid Rust: {e}\n\n{pretty}");
+        }
+    }
+
+    /// Three-node cycle (A → B → C → A). The 2-node case is covered above; this
+    /// one catches any bug specific to longer cycles — e.g. a DFS that
+    /// accidentally short-circuits at depth 1. A fourth type `Outsider` sits
+    /// upstream of the cycle and must NOT be considered cyclic just because it
+    /// can reach a cyclic node.
+    #[test]
+    fn input_box_handles_three_node_and_longer_cycles() {
+        let mut map = HashMap::new();
+        map.insert("String".to_string(), TypeKind::Scalar);
+        map.insert("A".to_string(), TypeKind::InputObject);
+        map.insert("B".to_string(), TypeKind::InputObject);
+        map.insert("C".to_string(), TypeKind::InputObject);
+        map.insert("Outsider".to_string(), TypeKind::InputObject);
+
+        let mk = |name: &str, ty: GqlType| FieldDef {
+            name: name.to_string(),
+            description: None,
+            ty,
+            arguments: vec![],
+        };
+
+        let inputs = vec![
+            // Cycle: A → B → C → A
+            InputDef {
+                name: "A".to_string(),
+                description: None,
+                fields: vec![mk("b", GqlType::Named("B".to_string()))],
+            },
+            InputDef {
+                name: "B".to_string(),
+                description: None,
+                fields: vec![mk("c", GqlType::Named("C".to_string()))],
+            },
+            InputDef {
+                name: "C".to_string(),
+                description: None,
+                fields: vec![mk("a", GqlType::Named("A".to_string()))],
+            },
+            // Outsider points INTO the cycle but nothing points back.
+            InputDef {
+                name: "Outsider".to_string(),
+                description: None,
+                fields: vec![mk("a", GqlType::Named("A".to_string()))],
+            },
+        ];
+
+        let normalized: String = emit(&inputs, &map).to_string().split_whitespace().collect();
+
+        // Every edge in the cycle needs Box (the analysis is conservative —
+        // Boxing any single edge would suffice, but breaking all of them is
+        // simpler and always correct).
+        assert!(
+            normalized.contains("pubb:MaybeUndefined<Box<B>>,"),
+            "A.b should be Boxed (in cycle A→B→C→A): {normalized}"
+        );
+        assert!(
+            normalized.contains("pubc:MaybeUndefined<Box<C>>,"),
+            "B.c should be Boxed (in cycle): {normalized}"
+        );
+        assert!(
+            normalized.contains("pub\u{0061}:MaybeUndefined<Box<A>>,"),
+            "C.a should be Boxed (closes the cycle): {normalized}"
+        );
+
+        // Outsider.a → A. A cannot reach Outsider, so embedding A in Outsider
+        // is size-safe (A's own cycles are already broken by the Boxes above).
+        // The emit output contains both C.a and Outsider.a as `a: ...Box<A>...,`
+        // so we need to look at the Outsider struct specifically. Easiest way:
+        // the emitted source has exactly four struct bodies; only C's a field
+        // should be boxed. Verify by counting.
+        let box_a_count = normalized.matches("Box<A>").count();
+        assert_eq!(
+            box_a_count, 1,
+            "only C.a should Box A; Outsider.a should not. Got {box_a_count} in: {normalized}"
+        );
+
+        let pretty = emit(&inputs, &map).to_string();
+        if let Err(e) = syn::parse_file(&pretty) {
+            panic!("emitted code must be valid Rust: {e}\n\n{pretty}");
         }
     }
 }

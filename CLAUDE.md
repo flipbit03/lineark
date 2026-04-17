@@ -118,6 +118,8 @@ All crates use `version = "0.0.0"` in their Cargo.toml — this is intentional. 
 
 Never manually set version numbers in Cargo.toml files. To release, create a GitHub Release with a semver tag like `v0.1.0` (via the GitHub UI or `gh release create v0.1.0 --generate-notes`).
 
+**Always check the current version before reasoning about version bumps.** The `0.0.0` placeholder in Cargo.toml is a dev sentinel, not the real version. Run `gh release list --limit 5` to see the actual most recent release, then decide the next tag. Don't assume "pre-1.0" or guess from stale context — the project has shipped past 1.0 and is subject to normal semver rules (breaking changes → major bump, new features → minor, fixes → patch). If a PR introduces a breaking change, call out in the PR description which major version the next release should be (current_major + 1).
+
 ## Issue tracking
 
 Issue tracking for lineark development happens in GitHub Issues, not in Linear. Use `gh issue` commands to view, create, and manage issues.

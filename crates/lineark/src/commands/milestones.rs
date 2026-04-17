@@ -205,10 +205,10 @@ pub async fn run(cmd: MilestonesCmd, client: &Client, format: Format) -> anyhow:
                 .map_err(|e| anyhow::anyhow!("Invalid date format (expected YYYY-MM-DD): {}", e))?;
 
             let input = ProjectMilestoneCreateInput {
-                name: Some(name),
-                project_id: Some(project_id),
-                target_date,
-                description,
+                name,
+                project_id,
+                target_date: target_date.into(),
+                description: description.into(),
                 ..Default::default()
             };
 
@@ -240,9 +240,9 @@ pub async fn run(cmd: MilestonesCmd, client: &Client, format: Format) -> anyhow:
                 .map_err(|e| anyhow::anyhow!("Invalid date format (expected YYYY-MM-DD): {}", e))?;
 
             let input = ProjectMilestoneUpdateInput {
-                name,
-                target_date,
-                description,
+                name: name.into(),
+                target_date: target_date.into(),
+                description: description.into(),
                 ..Default::default()
             };
 
