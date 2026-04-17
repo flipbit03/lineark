@@ -113,6 +113,13 @@ jobs:
         # retry there handles most cases, but the cold-start window is
         # occasionally longer than its budget. Wrap the whole suite in a 3x
         # retry with a workspace clean between attempts.
+        #
+        # `continue-on-error: true` keeps a bad Linear day from sinking the
+        # whole CI check — the job still runs and failures are visible in
+        # this log for triage, but they don't gate the PR. Revisit once
+        # Linear's API stabilizes (or move online tests to a separate
+        # non-required workflow).
+        continue-on-error: true
         run: |
           for attempt in 1 2 3; do
             echo ">>> online attempt $attempt/3"

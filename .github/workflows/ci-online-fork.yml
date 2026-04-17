@@ -54,6 +54,9 @@ jobs:
       - name: Run online tests
         # See ci.yml comment — Linear's API has a transient cold-start
         # failure on `*Create` mutations; wrap in 3x retry to absorb it.
+        # `continue-on-error: true` keeps a bad Linear day from blocking
+        # fork PRs; failures are still visible in the job log.
+        continue-on-error: true
         run: |
           for attempt in 1 2 3; do
             echo ">>> online attempt $attempt/3"
