@@ -13,19 +13,19 @@ use crate::error::LinearError;
 use crate::field_selection::GraphQLFields;
 use serde::de::DeserializeOwned;
 impl Client {
-    /// All issue workflow states.
+    /// All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
     ///
     /// Full type: [`WorkflowState`](super::types::WorkflowState)
     pub fn workflow_states<T>(&self) -> WorkflowStatesQueryBuilder<'_, T> {
         crate::generated::queries::workflow_states(self)
     }
-    /// All users for the organization.
+    /// All users in the workspace. Supports filtering, sorting, and pagination.
     ///
     /// Full type: [`User`](super::types::User)
     pub fn users<T>(&self) -> UsersQueryBuilder<'_, T> {
         crate::generated::queries::users(self)
     }
-    /// The currently authenticated user.
+    /// The currently authenticated user making the API request.
     ///
     /// Full type: [`User`](super::types::User)
     pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
@@ -33,13 +33,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::whoami::<T>(self).await
     }
-    /// All projects.
+    /// Returns all projects in the workspace, with optional filtering and sorting.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub fn projects<T>(&self) -> ProjectsQueryBuilder<'_, T> {
         crate::generated::queries::projects(self)
     }
-    /// One specific project.
+    /// Returns a single project by its identifier or URL slug.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>(
@@ -48,13 +48,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::project::<T>(self, id).await
     }
-    /// All teams whose issues can be accessed by the user. This might be different from `administrableTeams`, which also includes teams whose settings can be changed by the user.
+    /// All teams whose issues the user can access. This includes public teams and private teams the user is a member of. This may differ from `administrableTeams`, which returns teams whose settings the user can change but whose issues they don't necessarily have access to.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub fn teams<T>(&self) -> TeamsQueryBuilder<'_, T> {
         crate::generated::queries::teams(self)
     }
-    /// One specific team.
+    /// Fetches a specific team by its ID.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>(
@@ -63,25 +63,25 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::team::<T>(self, id).await
     }
-    /// Search issues.
+    /// Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
     ///
     /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
     pub fn search_issues<T>(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_, T> {
         crate::generated::queries::search_issues(self, term)
     }
-    /// All project statuses.
+    /// Returns all project statuses in the workspace.
     ///
     /// Full type: [`ProjectStatus`](super::types::ProjectStatus)
     pub fn project_statuses<T>(&self) -> ProjectStatusesQueryBuilder<'_, T> {
         crate::generated::queries::project_statuses(self)
     }
-    /// All milestones for the project.
+    /// Returns all project milestones in the workspace, with optional filtering.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
     pub fn project_milestones<T>(&self) -> ProjectMilestonesQueryBuilder<'_, T> {
         crate::generated::queries::project_milestones(self)
     }
-    /// One specific project milestone.
+    /// Returns a single project milestone by its identifier.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
     pub async fn project_milestone<
@@ -92,19 +92,19 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::project_milestone::<T>(self, id).await
     }
-    /// All project labels.
+    /// Returns all project labels in the workspace, with optional filtering.
     ///
     /// Full type: [`ProjectLabel`](super::types::ProjectLabel)
     pub fn project_labels<T>(&self) -> ProjectLabelsQueryBuilder<'_, T> {
         crate::generated::queries::project_labels(self)
     }
-    /// All issues.
+    /// All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub fn issues<T>(&self) -> IssuesQueryBuilder<'_, T> {
         crate::generated::queries::issues(self)
     }
-    /// One specific issue.
+    /// One specific issue, looked up by its unique identifier.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>(
@@ -124,13 +124,13 @@ impl Client {
     ) -> Result<Option<T>, LinearError> {
         crate::generated::queries::issue_vcs_branch_search::<T>(self, branch_name).await
     }
-    /// All issue relationships.
+    /// All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub fn issue_relations<T>(&self) -> IssueRelationsQueryBuilder<'_, T> {
         crate::generated::queries::issue_relations(self)
     }
-    /// One specific issue relation.
+    /// One specific issue relation, looked up by its unique identifier.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub async fn issue_relation<
@@ -141,19 +141,19 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::issue_relation::<T>(self, id).await
     }
-    /// All issue labels.
+    /// All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
     ///
     /// Full type: [`IssueLabel`](super::types::IssueLabel)
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
-    /// All documents in the workspace.
+    /// All documents the user has access to in the workspace.
     ///
     /// Full type: [`Document`](super::types::Document)
     pub fn documents<T>(&self) -> DocumentsQueryBuilder<'_, T> {
         crate::generated::queries::documents(self)
     }
-    /// One specific document.
+    /// A specific document by ID or slug.
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document<
@@ -164,13 +164,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::document::<T>(self, id).await
     }
-    /// All cycles.
+    /// All cycles accessible to the user.
     ///
     /// Full type: [`Cycle`](super::types::Cycle)
     pub fn cycles<T>(&self) -> CyclesQueryBuilder<'_, T> {
         crate::generated::queries::cycles(self)
     }
-    /// One specific cycle.
+    /// One specific cycle, looked up by ID or slug.
     ///
     /// Full type: [`Cycle`](super::types::Cycle)
     pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
@@ -205,61 +205,6 @@ impl Client {
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
-    /// Creates a new comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_create<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        input: CommentCreateInput,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_create::<T>(self, input).await
-    }
-    /// Updates a comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_update<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        skip_edited_at: Option<bool>,
-        input: CommentUpdateInput,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
-    }
-    /// Deletes a comment.
-    pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::comment_delete(self, id).await
-    }
-    /// Resolves a comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_resolve<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        resolving_comment_id: Option<String>,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
-    }
-    /// Unresolves a comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_unresolve<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_unresolve::<T>(self, id).await
-    }
     /// Creates a new project.
     ///
     /// Full type: [`Project`](super::types::Project)
@@ -286,7 +231,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_update::<T>(self, input, id).await
     }
-    /// Deletes (trashes) a project.
+    /// Deletes (trashes) a project. The project can be restored later with projectUnarchive.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project_delete<
@@ -298,7 +243,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_delete::<T>(self, id).await
     }
-    /// Creates a new team. The user who creates the team will automatically be added as a member to the newly created team.
+    /// Creates a new team. The user who creates the team will automatically be added as a member and owner of the newly created team. Default workflow states, labels, and other team resources are created alongside the team.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub async fn team_create<
@@ -311,7 +256,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_create::<T>(self, copy_settings_from_team_id, input).await
     }
-    /// Updates a team.
+    /// Updates a team's settings, properties, or configuration. Requires team owner or workspace admin permissions for most changes.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub async fn team_update<
@@ -325,11 +270,11 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_update::<T>(self, mapping, input, id).await
     }
-    /// Deletes a team.
+    /// Archives a team and schedules its data for deletion. Requires team owner or workspace admin permissions.
     pub async fn team_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::team_delete(self, id).await
     }
-    /// Creates a new team membership.
+    /// Creates a new team membership, adding a user to a team. Validates that the user is not already a member, the team is not archived or retired, and the requesting user has permission to add members.
     ///
     /// Full type: [`TeamMembership`](super::types::TeamMembership)
     pub async fn team_membership_create<
@@ -341,7 +286,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_membership_create::<T>(self, input).await
     }
-    /// Deletes a team membership.
+    /// Deletes a team membership, removing the user from the team. Users can remove their own membership, or team owners and workspace admins can remove other members.
     pub async fn team_membership_delete(
         &self,
         also_leave_parent_teams: Option<bool>,
@@ -535,7 +480,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::document_update::<T>(self, input, id).await
     }
-    /// Deletes (trashes) a document.
+    /// Deletes (trashes) a document. The document is marked as trashed and archived, but not permanently removed.
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document_delete<
@@ -546,5 +491,60 @@ impl Client {
         id: String,
     ) -> Result<T, LinearError> {
         crate::generated::mutations::document_delete::<T>(self, id).await
+    }
+    /// Creates a new comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        input: CommentCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_create::<T>(self, input).await
+    }
+    /// Updates a comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        skip_edited_at: Option<bool>,
+        input: CommentUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
+    }
+    /// Deletes a comment.
+    pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::comment_delete(self, id).await
+    }
+    /// Resolves a comment thread. Marks the root comment as resolved by the current user.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_resolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        resolving_comment_id: Option<String>,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
+    }
+    /// Unresolves a previously resolved comment thread. Clears the resolved state on the root comment.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_unresolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_unresolve::<T>(self, id).await
     }
 }
