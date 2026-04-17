@@ -42,9 +42,7 @@ where
                     panic!("create failed with non-transient error: {msg}");
                 }
                 last_msg = msg;
-                eprintln!(
-                    "retry_create: attempt {attempt} failed with transient error, retrying"
-                );
+                eprintln!("retry_create: attempt {attempt} failed with transient error, retrying");
             }
         }
     }
