@@ -41,7 +41,35 @@ make test-online                         # online tests (live API, serial, needs
 
 **Online tests must run serially.** They hit the live Linear API, which has plan-level limits (e.g. max teams). Running them in parallel causes spurious failures from resource exhaustion. `make test-online` handles this automatically.
 
-**Online tests must be self-contained.** Never assume resources (projects, issues, teams, etc.) already exist in the test workspace. Each test must create the resources it needs and clean them up afterwards using RAII guards (`TeamGuard`, `IssueGuard`, `ProjectGuard`). These guards auto-delete the resource on drop, ensuring cleanup even when the test panics. Always use `create_test_team()` to create teams — it sets unique keys per team to avoid human identifier collisions in Linear's search index. Use unique names for other resources (e.g. `format!("[test] my thing {}", &uuid::Uuid::new_v4().to_string()[..8])`) to avoid conflicts from zombie resources left by previously-failed runs. Use `retry_with_backoff` when querying recently-created resources, since the Linear API is eventually consistent. Always check `output.status.success()` and include stdout/stderr in assertion messages before parsing JSON output — a bare `.unwrap()` on JSON parsing hides the real error (e.g. auth failures).
+### Writing online tests: the three pillars
+
+Linear's API has permanent, structural consistency issues — not "temporary flakiness that will go away". Treat them as part of the environment you're testing against. **Every online test must apply all three of these**, in every CRUD path it touches, or it will flake in CI:
+
+**1. Proactive cleanup.** Never assume the workspace is empty, and never leak resources between tests.
+
+- Call `create_test_team()` (from `lineark-test-utils`) for every test that needs a team. It invokes `cleanup_zombies()` once per process and assigns a fresh unique team key, dodging Linear's indexed-identifier collisions.
+- Wrap every created resource in the matching RAII guard from `lineark_test_utils::guards` (`TeamGuard`, `IssueGuard`, `ProjectGuard`, `DocumentGuard`, `LabelGuard`) *immediately* after the create returns its ID. Guards delete on drop, so cleanup happens even when a later assert panics. Never rely on explicit `.delete(...)` calls — a panic will skip them.
+- If the test creates resources through a path the guards don't yet cover (e.g. a new Linear entity type), add a new guard to `crates/lineark-test-utils/src/guards.rs` before shipping the test.
+
+**2. Unique names per attempt.** Linear's API returns phantom "conflict on insert" errors keyed on request body content, so two attempts with the same body get the same sticky conflict.
+
+- Generate a per-test random suffix: `format!("[test] <what> {}", &uuid::Uuid::new_v4().to_string()[..8])`. The `[test]` prefix is what `cleanup_workspace` looks for.
+- If a helper retries a mutation on transient failure (see pillar 3), it **must mutate the request body between attempts** — not just re-send. Our CLI helper `run_lineark_with_retry` appends a fresh `retry-<uuid6>` suffix to the `<name>` positional and returns the actually-used name so the test can look the entity up later.
+- Don't reuse fixture names across tests. Each test call site should get its own UUID-suffixed name.
+
+**3. Retries on every API call that can fail transiently.**
+
+- **Creates** (`retry_create` in `lineark-test-utils`): **15 attempts** with backoffs `[0, 2, 5, 10, 20, 30, 60×9]`s (~9 min worst case), retries on "conflict on insert" / "already exists". Use for any SDK `*_create` call. The CLI-shell variant is `run_lineark_with_retry` in `crates/lineark/tests/online.rs` — same 15-attempt budget, plus body mutation (appends a fresh `retry-<uuid6>` suffix to the positional after `"create"`, gated on `[test]` prefix so UUID positionals like `comments create <uuid>` aren't corrupted).
+- **Reads after a recent create** (`retry_search` / `retry_with_backoff`): Linear's search/filter indexes are eventually consistent — a freshly-created resource may not be queryable by name for several seconds. Use `retry_search` with a predicate, or `retry_with_backoff` for arbitrary checks that need time to propagate.
+- **`settle()` (5s sleep)** between a create and the subsequent assertion, when retry-with-predicate isn't applicable.
+- **No suite-level retry.** CI runs the online suite single-shot. Per-call persistence inside the helpers above is the line of defense — if a test fails, it's a real regression, not a flake worth retrying. Earlier iterations had a 3x suite wrapper + `continue-on-error: true`; both removed once per-call retries became persistent enough to stand on their own.
+
+### Other online-test rules
+
+- **Check process exit before parsing output.** For tests that shell out to `lineark`, always `assert!(output.status.success(), "<msg>\nstdout: {stdout}\nstderr: {stderr}")` **before** `serde_json::from_str`. A bare `.unwrap()` on JSON parsing hides the real error (usually auth, schema drift, or a new required field).
+- **Skip when no token.** Guard every online test with `#[test_with::runtime_ignore_if(no_online_test_token)]` so contributors without a token aren't blocked.
+- **No production tokens.** The test token must point at a dedicated test workspace. `cleanup_workspace` deletes everything with the `[test]` prefix — running against prod would be catastrophic.
+- **Multi-workspace token pool.** `~/.linear_api_token_test` (and the `LINEAR_TEST_TOKEN` GitHub secret) accept a `;`-separated pool of API tokens — one per Linear workspace. `test_token()` picks one at random per test process and pins it for the process lifetime, spreading load across workspaces (free-plan limits, trash retention). Single-token files still work unchanged. Newlines also separate; `#`-prefixed comment lines are ignored. The `cleanup-test-workspace` binary iterates every pooled workspace, not just the one drawn this run.
 
 ## Updating the schema
 

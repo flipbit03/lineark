@@ -52,6 +52,10 @@ jobs:
         run: cargo run -p lineark-test-utils --bin cleanup-test-workspace
 
       - name: Run online tests
+        # See ci.yml comment — Linear's API has a transient cold-start
+        # failure on `*Create` mutations; the per-call retry helper in
+        # crates/lineark/tests/online.rs absorbs it (15 attempts with body
+        # mutation, ~9 min worst case per call).
         run: cargo test --workspace --test online -- --test-threads=1
 
       - name: Clean test workspace (post)

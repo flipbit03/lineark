@@ -26,6 +26,14 @@ test:
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
 # Cleans the test workspace before running to avoid stale resource conflicts.
 # test_with's custom harness runs tests sequentially and aborts on first panic.
+#
+# Linear's API has a known transient failure mode on `*Create` mutations
+# (returns "conflict on insert" with a UUID it just generated, with no
+# matching record server-side — confirmed by `read` returning "not found").
+# The per-call `run_lineark_with_retry` helper in
+# `crates/lineark/tests/online.rs` retries up to 15 times with body
+# mutation (~9 min worst case per call), persistent enough that a single
+# unlucky test no longer needs a suite-level wrapper to compensate.
 test-online:
 	cargo run -p lineark-test-utils --bin cleanup-test-workspace
 	cargo test --workspace --test online -- --test-threads=1

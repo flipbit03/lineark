@@ -549,8 +549,12 @@ mod online {
         let team_id = team.id.clone();
 
         // Create an issue.
+        let title = format!(
+            "[test] SDK issue_create_and_delete {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_create_and_delete".to_string()).into(),
+            title: Some(title).into(),
             team_id,
             description: Some("Automated test — will be deleted immediately.".to_string()).into(),
             priority: Some(4).into(), // Low
@@ -585,8 +589,9 @@ mod online {
         let team = create_test_team(&client).await;
         let team_id = team.id.clone();
 
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_update".to_string()).into(),
+            title: Some(format!("[test] SDK issue_update {suffix}")).into(),
             team_id,
             priority: Some(4).into(),
             ..Default::default()
@@ -604,7 +609,7 @@ mod online {
 
         // Update the issue.
         let update_input = IssueUpdateInput {
-            title: Some("[test] SDK issue_update — updated".to_string()).into(),
+            title: Some(format!("[test] SDK issue_update — updated {suffix}")).into(),
             priority: Some(3).into(), // Medium
             ..Default::default()
         };
@@ -633,7 +638,11 @@ mod online {
         let team_id = team.id.clone();
 
         let input = IssueCreateInput {
-            title: Some("[test] SDK issue_archive_and_unarchive".to_string()).into(),
+            title: Some(format!(
+                "[test] SDK issue_archive_and_unarchive {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            ))
+            .into(),
             team_id,
             priority: Some(4).into(),
             ..Default::default()
@@ -679,7 +688,11 @@ mod online {
         let team_id = team.id.clone();
 
         let issue_input = IssueCreateInput {
-            title: Some("[test] SDK comment_create".to_string()).into(),
+            title: Some(format!(
+                "[test] SDK comment_create {}",
+                &uuid::Uuid::new_v4().to_string()[..8]
+            ))
+            .into(),
             team_id,
             priority: Some(4).into(),
             ..Default::default()
@@ -744,8 +757,10 @@ mod online {
         let team_id = team.id.clone();
 
         // Create a document.
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let title = format!("[test] SDK document_create_update_and_delete {suffix}");
         let input = DocumentCreateInput {
-            title: "[test] SDK document_create_update_and_delete".to_string(),
+            title: title.clone(),
             content: Some("Automated test document content.".to_string()).into(),
             team_id: Some(team_id).into(),
             ..Default::default()
@@ -765,14 +780,11 @@ mod online {
         // Read the document by ID.
         let fetched = client.document::<Document>(doc_id.clone()).await.unwrap();
         assert_eq!(fetched.id, Some(doc_id.clone()));
-        assert_eq!(
-            fetched.title,
-            Some("[test] SDK document_create_update_and_delete".to_string())
-        );
+        assert_eq!(fetched.title, Some(title));
 
         // Update the document.
         let update_input = DocumentUpdateInput {
-            title: Some("[test] SDK document — updated".to_string()).into(),
+            title: Some(format!("[test] SDK document — updated {suffix}")).into(),
             content: Some("Updated content.".to_string()).into(),
             ..Default::default()
         };
@@ -813,8 +825,9 @@ mod online {
         let team_id = team.id.clone();
 
         // Create two issues to relate.
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let input_a = IssueCreateInput {
-            title: Some("[test] relation issue A".to_string()).into(),
+            title: Some(format!("[test] relation issue A {suffix}")).into(),
             team_id: team_id.clone(),
             priority: Some(4).into(),
             ..Default::default()
@@ -831,7 +844,7 @@ mod online {
         };
 
         let input_b = IssueCreateInput {
-            title: Some("[test] relation issue B".to_string()).into(),
+            title: Some(format!("[test] relation issue B {suffix}")).into(),
             team_id,
             priority: Some(4).into(),
             ..Default::default()

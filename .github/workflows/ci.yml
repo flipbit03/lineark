@@ -107,6 +107,13 @@ jobs:
         run: cargo run -p lineark-test-utils --bin cleanup-test-workspace
 
       - name: Run online tests
+        # Linear's API has a known transient failure mode on `*Create`
+        # mutations (returns "conflict on insert" with a phantom UUID — see
+        # the `run_lineark_with_retry` helper docs in
+        # `crates/lineark/tests/online.rs`). That per-call helper retries up
+        # to 15 times with body mutation, persistent enough to ride out the
+        # cold-start window without needing a suite-level wrapper that would
+        # waste cycles re-running the 60+ tests that already passed.
         run: cargo test --workspace --test online -- --test-threads=1
 
       - name: Clean test workspace (post)

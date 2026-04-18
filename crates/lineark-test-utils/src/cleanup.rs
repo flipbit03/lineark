@@ -9,6 +9,14 @@ use crate::test_token;
 /// for CI. Free plans have hard resource limits (e.g. max 1 team), so we must
 /// ensure a clean slate before tests run.
 ///
+/// **Always queries with `include_archived(true)`** so that soft-deleted /
+/// trashed resources from previous runs are also enumerated. Linear's
+/// `*_delete` mutations on projects only trash the entity (no permanent
+/// delete via the API), and the trashed rows still occupy plan-level
+/// resource slots — which empirically causes follow-up `*Create`
+/// mutations to fail with phantom "conflict on insert" errors. Skipping
+/// archived rows in the query was the bug that left those zombies behind.
+///
 /// Teams are only deleted if `[test]`-prefixed (the default workspace team must
 /// stay — Linear won't actually delete it and the free plan only allows one).
 /// All other resource types are deleted unconditionally.
@@ -18,7 +26,13 @@ use crate::test_token;
 pub async fn cleanup_workspace(client: &Client) {
     // Issues first — they belong to teams, and deleting a team may fail if
     // issues still reference it.
-    if let Ok(conn) = client.issues::<Issue>().first(250).send().await {
+    if let Ok(conn) = client
+        .issues::<Issue>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+    {
         for issue in &conn.nodes {
             if let Some(id) = &issue.id {
                 let title = issue.title.as_deref().unwrap_or("<untitled>");
@@ -29,7 +43,13 @@ pub async fn cleanup_workspace(client: &Client) {
     }
 
     // Documents before projects.
-    if let Ok(conn) = client.documents::<Document>().first(250).send().await {
+    if let Ok(conn) = client
+        .documents::<Document>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+    {
         for doc in &conn.nodes {
             if let Some(id) = &doc.id {
                 let title = doc.title.as_deref().unwrap_or("<untitled>");
@@ -39,8 +59,16 @@ pub async fn cleanup_workspace(client: &Client) {
         }
     }
 
-    // Projects.
-    if let Ok(conn) = client.projects::<Project>().first(250).send().await {
+    // Projects — must include archived/trashed so prior runs' zombies get
+    // cleaned up. Linear's `projectDelete` only trashes; trashed projects
+    // appear here on subsequent runs and we re-call delete (idempotent).
+    if let Ok(conn) = client
+        .projects::<Project>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+    {
         for project in &conn.nodes {
             if let Some(id) = &project.id {
                 let name = project.name.as_deref().unwrap_or("<unnamed>");
@@ -51,7 +79,13 @@ pub async fn cleanup_workspace(client: &Client) {
     }
 
     // Issue labels (only custom ones — built-in labels will fail silently).
-    if let Ok(conn) = client.issue_labels::<IssueLabel>().first(250).send().await {
+    if let Ok(conn) = client
+        .issue_labels::<IssueLabel>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+    {
         for label in &conn.nodes {
             if let Some(id) = &label.id {
                 let name = label.name.as_deref().unwrap_or("<unnamed>");
@@ -63,7 +97,13 @@ pub async fn cleanup_workspace(client: &Client) {
 
     // Teams — only [test]-prefixed. The default workspace team must stay
     // (free plan allows max 1 team; Linear won't actually delete it).
-    if let Ok(conn) = client.teams::<Team>().first(250).send().await {
+    if let Ok(conn) = client
+        .teams::<Team>()
+        .first(250)
+        .include_archived(true)
+        .send()
+        .await
+    {
         for team in &conn.nodes {
             if let (Some(id), Some(name)) = (&team.id, &team.name) {
                 if name.starts_with("[test]") {
