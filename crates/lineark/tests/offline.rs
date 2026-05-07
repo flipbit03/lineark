@@ -522,19 +522,22 @@ fn projects_create_help_shows_flags() {
         .stdout(predicate::str::contains("--color"));
 }
 
-/// Regression test for #146: `--icon` help text must warn that emoji are
-/// rejected by Linear's API, despite the GraphQL schema docstring claiming
-/// otherwise. Without this warning, users (especially LLM consumers) follow
-/// the schema-documented "emoji or icon name" wording and hit a confusing
-/// `INVALID_INPUT` error from the upstream validator.
+/// Regression test for #146: `--icon` help text must document the two
+/// formats Linear's API actually accepts — emoji *shortcodes* (`:repeat:`)
+/// and named icons (`Computer`) — and warn that raw unicode emoji (`🔁`)
+/// are rejected at runtime despite the GraphQL schema docstring claiming
+/// otherwise. Without this, users (especially LLM consumers) reach for
+/// raw unicode and hit a confusing `INVALID_INPUT` error from the
+/// upstream validator.
 #[test]
-fn projects_create_help_icon_warns_emoji_rejected() {
+fn projects_create_help_icon_documents_accepted_formats() {
     lineark()
         .args(["projects", "create", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Linear's API rejects emoji"))
-        .stdout(predicate::str::contains("Computer"));
+        .stdout(predicate::str::contains(":repeat:"))
+        .stdout(predicate::str::contains("Computer"))
+        .stdout(predicate::str::contains("rejects raw unicode emoji"));
 }
 
 #[test]
@@ -561,15 +564,16 @@ fn projects_update_help_shows_flags() {
         .stdout(predicate::str::contains("--labels"));
 }
 
-/// Regression test for #146 — same warning must appear on `update` help.
+/// Regression test for #146 — same documentation must appear on `update` help.
 #[test]
-fn projects_update_help_icon_warns_emoji_rejected() {
+fn projects_update_help_icon_documents_accepted_formats() {
     lineark()
         .args(["projects", "update", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Linear's API rejects emoji"))
-        .stdout(predicate::str::contains("Computer"));
+        .stdout(predicate::str::contains(":repeat:"))
+        .stdout(predicate::str::contains("Computer"))
+        .stdout(predicate::str::contains("rejects raw unicode emoji"));
 }
 
 #[test]

@@ -75,7 +75,7 @@ pub enum ProjectsAction {
         /// Markdown content for the project.
         #[arg(long)]
         content: Option<String>,
-        /// Project icon name (e.g., "Computer", "Database", "Cloud"). Linear's API rejects emoji despite the GraphQL schema docstring claiming otherwise.
+        /// Project icon: an emoji shortcode like ":repeat:" (NOT raw unicode 🔁) or a Linear named icon like "Computer". Linear's API rejects raw unicode emoji.
         #[arg(long)]
         icon: Option<String>,
         /// Project color (hex color code).
@@ -131,7 +131,7 @@ pub enum ProjectsAction {
         /// Project status name or UUID.
         #[arg(long)]
         status: Option<String>,
-        /// Project icon name (e.g., "Computer", "Database", "Cloud"). Linear's API rejects emoji despite the GraphQL schema docstring claiming otherwise.
+        /// Project icon: an emoji shortcode like ":repeat:" (NOT raw unicode 🔁) or a Linear named icon like "Computer". Linear's API rejects raw unicode emoji.
         #[arg(long)]
         icon: Option<String>,
         /// Project color (hex color code).
