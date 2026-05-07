@@ -522,6 +522,60 @@ fn projects_create_help_shows_flags() {
         .stdout(predicate::str::contains("--color"));
 }
 
+/// Regression test for #146: `--icon` help text must document the two
+/// formats Linear's API actually accepts — emoji *shortcodes* (`:repeat:`)
+/// and named icons (`Computer`) — and warn that raw unicode emoji (`🔁`)
+/// are rejected at runtime despite the GraphQL schema docstring claiming
+/// otherwise. Without this, users (especially LLM consumers) reach for
+/// raw unicode and hit a confusing `INVALID_INPUT` error from the
+/// upstream validator.
+#[test]
+fn projects_create_help_icon_documents_accepted_formats() {
+    lineark()
+        .args(["projects", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(":repeat:"))
+        .stdout(predicate::str::contains("Computer"))
+        .stdout(predicate::str::contains("rejects raw unicode emoji"));
+}
+
+#[test]
+fn projects_update_help_shows_flags() {
+    lineark()
+        .args(["projects", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--name"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--content"))
+        .stdout(predicate::str::contains("--lead"))
+        .stdout(predicate::str::contains("--clear-lead"))
+        .stdout(predicate::str::contains("--members"))
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--start-date"))
+        .stdout(predicate::str::contains("--clear-start-date"))
+        .stdout(predicate::str::contains("--target-date"))
+        .stdout(predicate::str::contains("--clear-target-date"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--icon"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--labels"));
+}
+
+/// Regression test for #146 — same documentation must appear on `update` help.
+#[test]
+fn projects_update_help_icon_documents_accepted_formats() {
+    lineark()
+        .args(["projects", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(":repeat:"))
+        .stdout(predicate::str::contains("Computer"))
+        .stdout(predicate::str::contains("rejects raw unicode emoji"));
+}
+
 #[test]
 fn projects_list_help_shows_led_by_me_flag() {
     lineark()
