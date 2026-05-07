@@ -522,6 +522,56 @@ fn projects_create_help_shows_flags() {
         .stdout(predicate::str::contains("--color"));
 }
 
+/// Regression test for #146: `--icon` help text must warn that emoji are
+/// rejected by Linear's API, despite the GraphQL schema docstring claiming
+/// otherwise. Without this warning, users (especially LLM consumers) follow
+/// the schema-documented "emoji or icon name" wording and hit a confusing
+/// `INVALID_INPUT` error from the upstream validator.
+#[test]
+fn projects_create_help_icon_warns_emoji_rejected() {
+    lineark()
+        .args(["projects", "create", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Linear's API rejects emoji"))
+        .stdout(predicate::str::contains("Computer"));
+}
+
+#[test]
+fn projects_update_help_shows_flags() {
+    lineark()
+        .args(["projects", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--name"))
+        .stdout(predicate::str::contains("--description"))
+        .stdout(predicate::str::contains("--content"))
+        .stdout(predicate::str::contains("--lead"))
+        .stdout(predicate::str::contains("--clear-lead"))
+        .stdout(predicate::str::contains("--members"))
+        .stdout(predicate::str::contains("--team"))
+        .stdout(predicate::str::contains("--start-date"))
+        .stdout(predicate::str::contains("--clear-start-date"))
+        .stdout(predicate::str::contains("--target-date"))
+        .stdout(predicate::str::contains("--clear-target-date"))
+        .stdout(predicate::str::contains("--priority"))
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--icon"))
+        .stdout(predicate::str::contains("--color"))
+        .stdout(predicate::str::contains("--labels"));
+}
+
+/// Regression test for #146 — same warning must appear on `update` help.
+#[test]
+fn projects_update_help_icon_warns_emoji_rejected() {
+    lineark()
+        .args(["projects", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Linear's API rejects emoji"))
+        .stdout(predicate::str::contains("Computer"));
+}
+
 #[test]
 fn projects_list_help_shows_led_by_me_flag() {
     lineark()
