@@ -4616,6 +4616,14 @@ mod online {
             detail.get("estimate").is_some(),
             "issues read output should have an 'estimate' field"
         );
+        // Regression for #149: these association fields must be present in the
+        // output (as null here, since this issue has none), not silently omitted.
+        for key in ["project", "projectMilestone", "cycle", "parent"] {
+            assert!(
+                detail.get(key).is_some(),
+                "issues read output should have a '{key}' key.\nstdout: {stdout}"
+            );
+        }
     }
 
     // ── Batch update ─────────────────────────────────────────────────────────

@@ -82,7 +82,7 @@ COMMANDS:
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
     [--project NAME-OR-ID] [--mine]                Filter by project, assignee
     [--show-done]                                  Include done/canceled issues
-  lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues, comments, relations
+  lineark issues read <IDENTIFIER>                 Full issue detail incl. project, sub-issues, comments, relations
   lineark issues find-branch <BRANCH>              Find issue by Git branch name
   lineark issues search <QUERY> [-l N]             Full-text search
     [--team KEY] [--assignee NAME-OR-ID|me]        Filter by team, assignee, status
