@@ -43,7 +43,7 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         show_done: bool,
     },
-    /// Show full details for a single issue, including assignee, state, labels, description, sub-issues, and comments.
+    /// Show full details for a single issue, including assignee, state, project, cycle, parent, labels, description, sub-issues, and comments.
     Read {
         /// Issue identifier (e.g., E-929) or UUID.
         identifier: String,
@@ -413,6 +413,14 @@ pub struct IssueDetail {
     #[graphql(nested)]
     pub team: Option<TeamRef>,
     #[graphql(nested)]
+    pub project: Option<ProjectRef>,
+    #[graphql(nested)]
+    pub project_milestone: Option<MilestoneRef>,
+    #[graphql(nested)]
+    pub cycle: Option<CycleRef>,
+    #[graphql(nested)]
+    pub parent: Option<RelatedIssueRef>,
+    #[graphql(nested)]
     pub labels: Option<LabelConnection>,
     #[graphql(nested)]
     pub relations: Option<RelationConnection>,
@@ -448,6 +456,31 @@ pub struct TeamRef {
     pub id: Option<String>,
     pub name: Option<String>,
     pub key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = lineark_sdk::generated::types::Project)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ProjectRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = lineark_sdk::generated::types::ProjectMilestone)]
+#[serde(rename_all = "camelCase", default)]
+pub struct MilestoneRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, GraphQLFields)]
+#[graphql(full_type = lineark_sdk::generated::types::Cycle)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CycleRef {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub number: Option<f64>,
 }
 
 /// Wrapper around IssueLabelConnection that serializes as a flat list of names:
