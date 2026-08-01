@@ -74,6 +74,7 @@ COMMANDS:
   lineark projects read <NAME-OR-ID>               Full project detail (lead, members, status, dates, teams)
   lineark projects create <NAME> --team KEY ...    Create project (--help for flags)
   lineark projects update <NAME-OR-ID> ...         Update project (--help for flags)
+    [--status NAME]                                No archive cmd: retire via --status "Completed"/"Canceled"
   lineark labels list [--team KEY]                 List labels (group, team, parent, color)
   lineark labels create|update|delete ...          Manage labels (--help for flags)
   lineark cycles list [-l N] [--team KEY]          List cycles
@@ -94,11 +95,12 @@ COMMANDS:
     [--cycle NAME-OR-ID]
   lineark issues update <IDENTIFIER>               Update an issue
     [-s NAME] [-p PRIORITY] [-e N]                 Status, priority, estimate
-    [--assignee NAME-OR-ID|me]                     Assignee
+    [--assignee NAME-OR-ID|me] [--clear-assignee]  Assign or unassign
     [--labels NAME,...] [--label-by adding|replacing|removing]
     [--clear-labels] [-t TEXT] [-d TEXT]           Title, description
     [--parent ID] [--clear-parent]                 Set or remove parent
-    [--project NAME-OR-ID] [--cycle NAME-OR-ID]    Project, cycle
+    [--project NAME-OR-ID] [--clear-project]       Set or remove project
+    [--cycle NAME-OR-ID] [--clear-cycle]           Set or remove cycle
   lineark issues batch-update ID [ID ...]          Batch update (--help for flags)
   lineark issues archive|unarchive|delete ...      Lifecycle ops (--help for flags)
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
