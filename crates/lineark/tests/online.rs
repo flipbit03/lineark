@@ -2294,6 +2294,267 @@ mod online {
         delete_issue(&parent_id);
     }
 
+    // ── Issues update: --clear-project / --clear-cycle / --clear-assignee ───
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_update_clears_project_cycle_assignee() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+
+        let team = create_test_team();
+        let team_id = team.id.clone();
+        let team_key = team.key.clone();
+
+        // Enable cycles — Linear auto-creates upcoming cycles server-side.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "teams",
+                "update",
+                &team_key,
+                "--cycles-enabled",
+                "true",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "teams update --cycles-enabled should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Cycle generation is asynchronous — wait until cycle 1 is queryable.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "cycles",
+                    "list",
+                    "--team",
+                    &team_key,
+                ])
+                .output()
+                .unwrap();
+            if !output.status.success() {
+                return Err("cycles list failed".to_string());
+            }
+            let cycles: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            match cycles.as_array() {
+                Some(arr) if !arr.is_empty() => Ok(()),
+                _ => Err("no cycles generated yet".to_string()),
+            }
+        })
+        .expect("team should have auto-generated cycles (after retries)");
+
+        // Create a project via the SDK.
+        let client = Client::from_token(test_token()).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let project: Project = rt.block_on(async {
+            let input = ProjectCreateInput {
+                name: format!("[test] clear-flags project {suffix}"),
+                team_ids: vec![team_id],
+                ..Default::default()
+            };
+            retry_create(|| {
+                let input = input.clone();
+                async { client.project_create::<Project>(None, input).await }
+            })
+            .await
+        });
+        let project_id = project.id.as_ref().unwrap().to_string();
+        let _project_guard = ProjectGuard {
+            token: token.clone(),
+            id: project_id.clone(),
+        };
+
+        // Create an issue with project, cycle, and assignee all set.
+        let (output, _) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "issues",
+            "create",
+            &format!("[test] clear-flags issue {suffix}"),
+            "--team",
+            &team_key,
+            "--project",
+            &project_id,
+            "--cycle",
+            "1",
+            "--assignee",
+            "me",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues create should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let issue: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let issue_id = issue["id"].as_str().unwrap().to_string();
+        let _issue_guard = IssueGuard {
+            token: token.clone(),
+            id: issue_id.clone(),
+        };
+
+        // Sanity check: all three relations are set.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail["project"].is_object(),
+            "issue should have a project before clearing"
+        );
+        assert!(
+            detail["cycle"].is_object(),
+            "issue should have a cycle before clearing"
+        );
+        assert!(
+            detail["assignee"].is_object(),
+            "issue should have an assignee before clearing"
+        );
+
+        // Clear all three in one update.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &issue_id,
+                "--clear-project",
+                "--clear-cycle",
+                "--clear-assignee",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update with clear flags should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        // Verify all three relations are gone.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail["project"].is_null(),
+            "project should be null after --clear-project, got: {}",
+            detail["project"]
+        );
+        assert!(
+            detail["cycle"].is_null(),
+            "cycle should be null after --clear-cycle, got: {}",
+            detail["cycle"]
+        );
+        assert!(
+            detail["assignee"].is_null(),
+            "assignee should be null after --clear-assignee, got: {}",
+            detail["assignee"]
+        );
+
+        // Re-set project and assignee, then clear via batch-update.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &issue_id,
+                "--project",
+                &project_id,
+                "--assignee",
+                "me",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "re-setting project/assignee should succeed"
+        );
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "batch-update",
+                &issue_id,
+                "--clear-project",
+                "--clear-assignee",
+            ])
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues batch-update with clear flags should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "read",
+                &issue_id,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let detail: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert!(
+            detail["project"].is_null(),
+            "project should be null after batch-update --clear-project"
+        );
+        assert!(
+            detail["assignee"].is_null(),
+            "assignee should be null after batch-update --clear-assignee"
+        );
+
+        // Clean up.
+        delete_issue(&issue_id);
+    }
+
     // ── Project milestones CRUD ──────────────────────────────────────────────
 
     #[test_with::runtime_ignore_if(no_online_test_token)]

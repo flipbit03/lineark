@@ -715,6 +715,40 @@ fn issues_update_help_shows_clear_parent_and_project() {
 }
 
 #[test]
+fn issues_update_help_shows_clear_relation_flags() {
+    lineark()
+        .args(["issues", "update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--clear-project"))
+        .stdout(predicate::str::contains("--clear-cycle"))
+        .stdout(predicate::str::contains("--clear-assignee"));
+}
+
+#[test]
+fn issues_batch_update_help_shows_clear_relation_flags() {
+    lineark()
+        .args(["issues", "batch-update", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--clear-project"))
+        .stdout(predicate::str::contains("--clear-cycle"))
+        .stdout(predicate::str::contains("--clear-assignee"));
+}
+
+#[test]
+fn usage_mentions_projects_status_and_clear_flags() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--clear-project"))
+        .stdout(predicate::str::contains("--clear-cycle"))
+        .stdout(predicate::str::contains("--clear-assignee"));
+}
+
+#[test]
 fn issues_search_help_shows_filter_flags() {
     lineark()
         .args(["issues", "search", "--help"])
@@ -741,6 +775,54 @@ fn issues_update_clear_parent_conflicts_with_parent() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn issues_update_clear_flags_conflict_with_setters() {
+    for (setter, value, clearer) in [
+        ("--project", "Alpha", "--clear-project"),
+        ("--cycle", "3", "--clear-cycle"),
+        ("--assignee", "me", "--clear-assignee"),
+    ] {
+        lineark()
+            .args([
+                "--api-token",
+                "fake",
+                "issues",
+                "update",
+                "ENG-123",
+                setter,
+                value,
+                clearer,
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("cannot be used with"));
+    }
+}
+
+#[test]
+fn issues_batch_update_clear_flags_conflict_with_setters() {
+    for (setter, value, clearer) in [
+        ("--project", "Alpha", "--clear-project"),
+        ("--cycle", "3", "--clear-cycle"),
+        ("--assignee", "me", "--clear-assignee"),
+    ] {
+        lineark()
+            .args([
+                "--api-token",
+                "fake",
+                "issues",
+                "batch-update",
+                "ENG-123",
+                setter,
+                value,
+                clearer,
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("cannot be used with"));
+    }
 }
 
 // ── Documents: filter flags ────────────────────────────────────────────────

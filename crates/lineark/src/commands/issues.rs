@@ -170,12 +170,21 @@ pub enum IssuesAction {
         /// Assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
+        /// Remove the assignee (unassign the issues).
+        #[arg(long, default_value = "false", conflicts_with = "assignee")]
+        clear_assignee: bool,
         /// Project name or UUID.
         #[arg(long)]
         project: Option<String>,
+        /// Remove the issues from their project.
+        #[arg(long, default_value = "false", conflicts_with = "project")]
+        clear_project: bool,
         /// Cycle name, number, or UUID (resolved within the first issue's team).
         #[arg(long)]
         cycle: Option<String>,
+        /// Remove the issues from their cycle.
+        #[arg(long, default_value = "false", conflicts_with = "cycle")]
+        clear_cycle: bool,
     },
     /// Update an existing issue. Returns the updated issue.
     ///
@@ -207,6 +216,9 @@ pub enum IssuesAction {
         /// Assignee: user name, display name, UUID, or `me`.
         #[arg(long)]
         assignee: Option<String>,
+        /// Remove the assignee (unassign the issue).
+        #[arg(long, default_value = "false", conflicts_with = "assignee")]
+        clear_assignee: bool,
         /// Parent issue identifier (e.g., ENG-123) or UUID.
         #[arg(long)]
         parent: Option<String>,
@@ -222,9 +234,15 @@ pub enum IssuesAction {
         /// Project name or UUID.
         #[arg(long)]
         project: Option<String>,
+        /// Remove the issue from its project.
+        #[arg(long, default_value = "false", conflicts_with = "project")]
+        clear_project: bool,
         /// Cycle name, number, or UUID (resolved within the team).
         #[arg(long)]
         cycle: Option<String>,
+        /// Remove the issue from its cycle.
+        #[arg(long, default_value = "false", conflicts_with = "cycle")]
+        clear_cycle: bool,
     },
 }
 
@@ -818,19 +836,25 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             label_by,
             clear_labels,
             assignee,
+            clear_assignee,
             project,
+            clear_project,
             cycle,
+            clear_cycle,
         } => {
             if status.is_none()
                 && priority.is_none()
                 && labels.is_none()
                 && !clear_labels
                 && assignee.is_none()
+                && !clear_assignee
                 && project.is_none()
+                && !clear_project
                 && cycle.is_none()
+                && !clear_cycle
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --status, --priority, --assignee, --labels, --project, or --cycle to specify changes."
+                    "No update fields provided. Use --status, --priority, --assignee, --labels, --project, --cycle, or a --clear-* flag to specify changes."
                 ));
             }
 
@@ -895,14 +919,14 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let input = IssueUpdateInput {
-                assignee_id: assignee_id.into(),
+                assignee_id: clear_or_set(clear_assignee, assignee_id),
                 priority: priority.into(),
                 state_id: state_id.into(),
                 label_ids: label_ids.into(),
                 added_label_ids: added_label_ids.into(),
                 removed_label_ids: removed_label_ids.into(),
-                project_id: project_id.into(),
-                cycle_id: cycle_id.into(),
+                project_id: clear_or_set(clear_project, project_id),
+                cycle_id: clear_or_set(clear_cycle, cycle_id),
                 ..Default::default()
             };
 
@@ -923,12 +947,15 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             label_by,
             clear_labels,
             assignee,
+            clear_assignee,
             parent,
             clear_parent,
             title,
             description,
             project,
+            clear_project,
             cycle,
+            clear_cycle,
         } => {
             if status.is_none()
                 && priority.is_none()
@@ -936,15 +963,18 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 && labels.is_none()
                 && !clear_labels
                 && assignee.is_none()
+                && !clear_assignee
                 && parent.is_none()
                 && !clear_parent
                 && title.is_none()
                 && description.is_none()
                 && project.is_none()
+                && !clear_project
                 && cycle.is_none()
+                && !clear_cycle
             {
                 return Err(anyhow::anyhow!(
-                    "No update fields provided. Use --status, --priority, --estimate, --assignee, --labels, --title, --description, --parent, --project, or --cycle to specify changes."
+                    "No update fields provided. Use --status, --priority, --estimate, --assignee, --labels, --title, --description, --parent, --project, --cycle, or a --clear-* flag to specify changes."
                 ));
             }
 
@@ -1011,25 +1041,19 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 (None, None, None)
             };
 
-            let parent_id = if clear_parent {
-                MaybeUndefined::Null
-            } else {
-                parent_id.into()
-            };
-
             let input = IssueUpdateInput {
                 title: title.into(),
                 description: description.into(),
-                assignee_id: assignee_id.into(),
+                assignee_id: clear_or_set(clear_assignee, assignee_id),
                 priority: priority.into(),
                 estimate: estimate.into(),
                 state_id: state_id.into(),
-                parent_id,
+                parent_id: clear_or_set(clear_parent, parent_id),
                 label_ids: label_ids.into(),
                 added_label_ids: added_label_ids.into(),
                 removed_label_ids: removed_label_ids.into(),
-                project_id: project_id.into(),
-                cycle_id: cycle_id.into(),
+                project_id: clear_or_set(clear_project, project_id),
+                cycle_id: clear_or_set(clear_cycle, cycle_id),
                 ..Default::default()
             };
 
@@ -1042,6 +1066,15 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
         }
     }
     Ok(())
+}
+
+/// Explicit null when clearing, the resolved ID when set, undefined otherwise.
+fn clear_or_set(clear: bool, id: Option<String>) -> MaybeUndefined<String> {
+    if clear {
+        MaybeUndefined::Null
+    } else {
+        id.into()
+    }
 }
 
 // TODO(phase2): query workflowStates types instead of hardcoding state names

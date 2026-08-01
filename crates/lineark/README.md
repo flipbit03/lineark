@@ -73,6 +73,10 @@ lineark projects create <NAME> --team KEY        Create a project
   [--members NAME,...|me]                        Project members (comma-separated)
   [--start-date DATE] [--target-date DATE]       Priority, content, icon, color
   [-p PRIORITY] [--content TEXT] ...             See --help for all options
+lineark projects update <NAME-OR-ID>             Update a project
+  [--status NAME]                                No archive command — retire via
+                                                 --status "Completed"/"Canceled"
+  [--name TEXT] [--lead NAME-OR-ID|me] ...       See --help for all options
 lineark labels list [--team KEY]                 List labels (group, team, parent)
 lineark labels create <NAME>                     Create a label
   [--team KEY] [--color HEX]                     Team, color
@@ -100,10 +104,14 @@ lineark issues create <TITLE> --team KEY         Create an issue
   [--labels NAME,...] [-s NAME] ...              Labels, status — see --help
 lineark issues update <IDENTIFIER>               Update an issue
   [-s NAME] [-p PRIORITY] [-e N]                 Status, priority, estimate
-  [--assignee NAME-OR-ID|me]                     Assignee
-  [--clear-parent] [--project NAME-OR-ID] ...    See --help for all options
+  [--assignee NAME-OR-ID|me] [--clear-assignee]  Assign or unassign
+  [--project NAME-OR-ID] [--clear-project]       Set or remove project
+  [--cycle NAME-OR-ID] [--clear-cycle]           Set or remove cycle
+  [--parent ID] [--clear-parent] ...             See --help for all options
 lineark issues batch-update ID [ID ...]          Batch update multiple issues
   [-s NAME] [-p PRIORITY] [--assignee ...]       Status, priority, assignee
+  [--clear-project] [--clear-cycle]              Clear relations in bulk
+  [--clear-assignee]
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
