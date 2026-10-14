@@ -110,13 +110,13 @@ pub enum IssuesAction {
         #[arg(long)]
         cycle: Option<String>,
         /// Raw sortOrder value (Manual ordering, lower appears higher). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         sort_order: Option<f64>,
         /// Raw prioritySortOrder value (Priority ordering, within a priority group). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         priority_sort_order: Option<f64>,
         /// Raw subIssueSortOrder value (the parent's sub-issue list). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         sub_issue_sort_order: Option<f64>,
     },
     /// Archive an issue
@@ -259,13 +259,13 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false", conflicts_with = "cycle")]
         clear_cycle: bool,
         /// Raw sortOrder value (Manual ordering, lower appears higher). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         sort_order: Option<f64>,
         /// Raw prioritySortOrder value (Priority ordering, within a priority group). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         priority_sort_order: Option<f64>,
         /// Raw subIssueSortOrder value (the parent's sub-issue list). Prefer `issues reorder`.
-        #[arg(long, allow_negative_numbers = true)]
+        #[arg(long, allow_negative_numbers = true, value_parser = parse_order_value)]
         sub_issue_sort_order: Option<f64>,
     },
     /// Put issues in the given order (first = top). Returns the issues with their new order values
@@ -276,8 +276,11 @@ pub enum IssuesAction {
     ///   subIssueSortOrder  The sub-issue list on the parent issue's page.
     ///
     /// Default (--field all): set all three, so the order holds whatever ordering the
-    /// viewer uses. The values start at the lowest current value among the listed issues
-    /// and step by 0.01, so the block stays where its topmost issue was.
+    /// viewer uses. The block starts at (or just after) the position of the topmost
+    /// listed issue, with values 0.01 apart, so it stays where that issue was.
+    /// subIssueSortOrder only orders siblings: listed issues that share a parent are
+    /// ordered among themselves, and issues without a parent are skipped for it.
+    /// A field already in the wanted order is left untouched.
     ///
     /// With --parent: reorder that parent's sub-issue list (subIssueSortOrder only).
     /// Listed children go first, in the given order. Children not listed follow, in
@@ -1294,6 +1297,9 @@ const REORDER_STEP: f64 = 0.01;
 /// Step for a parent's sub-issue list. Every child gets rewritten, so absolute values are safe.
 const SUB_ISSUE_STEP: f64 = 1000.0;
 
+/// Random offsets to try before giving up on avoiding ties.
+const TIE_ATTEMPTS: usize = 32;
+
 /// Lean issue type for `issues reorder`: identity plus the three order fields.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Tabled, GraphQLFields)]
 #[graphql(full_type = Issue)]
@@ -1311,6 +1317,49 @@ pub struct IssueOrder {
     pub priority_sort_order: Option<f64>,
     #[tabled(rename = "subIssueSortOrder", display_with = "output::display_opt")]
     pub sub_issue_sort_order: Option<f64>,
+    #[serde(skip_serializing)]
+    #[tabled(skip)]
+    #[graphql(nested)]
+    pub parent: Option<IssueIdRef>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase", default)]
+pub struct IssueIdRef {
+    pub id: Option<String>,
+}
+
+/// A parent issue with the first page of its children, for `issues reorder --parent`.
+#[derive(Debug, Clone, Default, Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase", default)]
+struct ParentWithChildren {
+    id: Option<String>,
+    identifier: Option<String>,
+    #[graphql(nested)]
+    children: Option<ChildOrderConnection>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, GraphQLFields)]
+#[graphql(full_type = IssueConnection)]
+#[serde(rename_all = "camelCase", default)]
+struct ChildOrderConnection {
+    #[graphql(nested)]
+    nodes: Vec<IssueOrder>,
+}
+
+impl IssueOrder {
+    fn parent_id(&self) -> Option<&str> {
+        self.parent.as_ref().and_then(|p| p.id.as_deref())
+    }
+
+    fn label(&self) -> String {
+        self.identifier
+            .clone()
+            .or_else(|| self.id.clone())
+            .unwrap_or_default()
+    }
 }
 
 /// One of Linear's three order fields on `Issue`.
@@ -1359,17 +1408,12 @@ impl OrderField {
     }
 }
 
-/// `n` values starting at the lowest of `current` (0 when none is set), `step` apart.
-fn anchored_values(current: &[Option<f64>], step: f64) -> Vec<f64> {
-    let anchor = current
-        .iter()
-        .flatten()
-        .copied()
-        .reduce(f64::min)
-        .unwrap_or(0.0);
-    (0..current.len())
-        .map(|i| tidy(anchor + i as f64 * step))
-        .collect()
+/// Parse a raw order value, rejecting NaN and infinity (serde_json would send them as null).
+fn parse_order_value(s: &str) -> Result<f64, String> {
+    match s.trim().parse::<f64>() {
+        Ok(v) if v.is_finite() => Ok(v),
+        _ => Err(format!("'{s}' is not a finite number")),
+    }
 }
 
 /// Round to 6 decimals to drop binary noise (`-3189.9849999999997`); the step is far coarser.
@@ -1377,29 +1421,90 @@ fn tidy(value: f64) -> f64 {
     (value * 1e6).round() / 1e6
 }
 
-/// Shift `values` by a fraction of `step` until none equals the current value of another
-/// issue. Linear moves an issue elsewhere when its new subIssueSortOrder or
-/// prioritySortOrder ties with an issue that still holds that value, and the writes are
-/// sequential, so a tie with a not-yet-updated issue would scramble the result. This
-/// happens on every re-run, since a re-run proposes the same grid of values.
-fn avoid_ties(values: &mut [f64], current: &[Option<f64>], step: f64) {
-    let ties = |offset: f64| {
+/// A uniform random number in [0, 1), from the std library's randomly keyed hasher.
+fn random_fraction() -> f64 {
+    use std::hash::BuildHasher;
+    let bits = std::collections::hash_map::RandomState::new().hash_one(0u8);
+    (bits >> 11) as f64 / (1u64 << 53) as f64
+}
+
+/// New values for one group of issues, given in the wanted order.
+#[derive(Debug, PartialEq)]
+struct GroupValues {
+    values: Vec<f64>,
+    /// False when every offset tried tied with another issue's current value.
+    tie_free: bool,
+}
+
+/// Plan the values of one group of issues (`current`, in the wanted order).
+///
+/// Returns `None` when the current values already ascend in that order. Otherwise the
+/// values are `base + offset + i * step`, with `offset` a random fraction of a step.
+/// The offset is chosen so that no value ties the current value of another issue in
+/// the group: Linear moves an issue elsewhere when its new prioritySortOrder or
+/// subIssueSortOrder ties one that another issue still holds, and the writes are
+/// sequential. The random offset also keeps runs off a shared grid, so a later run
+/// is unlikely to tie with issues an earlier run placed and this one doesn't list.
+fn plan_group_values(
+    current: &[Option<f64>],
+    base: f64,
+    step: f64,
+    mut random: impl FnMut() -> f64,
+) -> anyhow::Result<Option<GroupValues>> {
+    let ascending = current.windows(2).all(|w| match (w[0], w[1]) {
+        (Some(a), Some(b)) => a < b,
+        _ => false,
+    });
+    if ascending && current.iter().all(Option::is_some) {
+        return Ok(None);
+    }
+
+    let candidate = |offset: f64| -> Vec<f64> {
+        (0..current.len())
+            .map(|i| tidy(base + offset + i as f64 * step))
+            .collect()
+    };
+    let ties = |values: &[f64]| {
         values.iter().enumerate().any(|(i, v)| {
             current
                 .iter()
                 .enumerate()
-                .any(|(j, c)| i != j && *c == Some(tidy(v + offset)))
+                .any(|(j, c)| i != j && *c == Some(*v))
         })
     };
-    // Offsets 0, step/2, 3step/4, 7step/8, ...: always less than one step.
-    let (mut offset, mut delta) = (0.0, step / 2.0);
-    while ties(offset) && delta > step / 1024.0 {
-        offset += delta;
-        delta /= 2.0;
+
+    let mut values = candidate(0.0);
+    let mut tie_free = false;
+    for _ in 0..TIE_ATTEMPTS {
+        values = candidate(random() * step);
+        if !ties(&values) {
+            tie_free = true;
+            break;
+        }
     }
-    for v in values.iter_mut() {
-        *v = tidy(*v + offset);
+
+    if !values.windows(2).all(|w| w[0] < w[1]) || values.iter().any(|v| !v.is_finite()) {
+        return Err(anyhow::anyhow!(
+            "Cannot space issues {step} apart around {base}: the values are too large for float precision. Set them with `issues update --sort-order` etc. instead."
+        ));
     }
+    Ok(Some(GroupValues { values, tie_free }))
+}
+
+/// Indexes of `issues` grouped by parent, in first-appearance order. Issues without a
+/// parent are left out: Linear keeps their subIssueSortOrder null.
+fn group_by_parent(issues: &[IssueOrder]) -> Vec<Vec<usize>> {
+    let mut groups: Vec<(&str, Vec<usize>)> = Vec::new();
+    for (i, issue) in issues.iter().enumerate() {
+        let Some(parent) = issue.parent_id() else {
+            continue;
+        };
+        match groups.iter_mut().find(|(p, _)| *p == parent) {
+            Some((_, members)) => members.push(i),
+            None => groups.push((parent, vec![i])),
+        }
+    }
+    groups.into_iter().map(|(_, members)| members).collect()
 }
 
 /// Order `children` so that `listed` (indexes into `children`) come first, in the given
@@ -1423,10 +1528,68 @@ fn sub_issue_order(children: &[IssueOrder], listed: &[usize]) -> Vec<usize> {
     listed.iter().copied().chain(rest).collect()
 }
 
-/// An issue, and the order values to write to it.
-struct PlannedUpdate {
-    issue: IssueOrder,
-    values: Vec<(OrderKey, f64)>,
+/// The issues to write, in output order, and the order each group must end up in.
+#[derive(Default)]
+struct ReorderPlan {
+    issues: Vec<IssueOrder>,
+    /// New values per issue (same indexes as `issues`).
+    values: Vec<Vec<(OrderKey, f64)>>,
+    /// Groups of issue indexes that must ascend on a key after the writes.
+    groups: Vec<(OrderKey, Vec<usize>)>,
+}
+
+impl ReorderPlan {
+    fn new(issues: Vec<IssueOrder>) -> Self {
+        let values = vec![Vec::new(); issues.len()];
+        Self {
+            issues,
+            values,
+            groups: Vec::new(),
+        }
+    }
+
+    /// Plan `key` for `members` (indexes, in the wanted order), starting at `base`
+    /// (the group's current minimum when `None`).
+    fn plan_group(
+        &mut self,
+        key: OrderKey,
+        members: Vec<usize>,
+        base: Option<f64>,
+        step: f64,
+    ) -> anyhow::Result<()> {
+        if members.len() < 2 {
+            return Ok(());
+        }
+        let current: Vec<Option<f64>> = members.iter().map(|&i| key.get(&self.issues[i])).collect();
+        let base = base.unwrap_or_else(|| {
+            current
+                .iter()
+                .flatten()
+                .copied()
+                .reduce(f64::min)
+                .unwrap_or(0.0)
+        });
+        if let Some(planned) = plan_group_values(&current, base, step, random_fraction)? {
+            if !planned.tie_free {
+                eprintln!(
+                    "Warning: could not avoid a {} tie with another issue; Linear may place one issue slightly off. Re-run to retry.",
+                    key.name()
+                );
+            }
+            for (&i, value) in members.iter().zip(planned.values) {
+                self.values[i].push((key, value));
+            }
+        }
+        self.groups.push((key, members));
+        Ok(())
+    }
+
+    /// Whether issue `i` has a planned value that differs from its current one.
+    fn changes(&self, i: usize) -> bool {
+        self.values[i]
+            .iter()
+            .any(|&(key, value)| key.get(&self.issues[i]) != Some(value))
+    }
 }
 
 /// `issues reorder A B C`: anchor each selected field at the group's current minimum.
@@ -1440,7 +1603,6 @@ async fn reorder_issues(
             "Give at least two issues to reorder, or use --parent to move a sub-issue to the top of its parent's list."
         ));
     }
-    let keys = field.unwrap_or(OrderField::All).keys();
 
     let mut issues: Vec<IssueOrder> = Vec::with_capacity(identifiers.len());
     for ident in identifiers {
@@ -1458,23 +1620,27 @@ async fn reorder_issues(
         issues.push(issue);
     }
 
-    let mut plan: Vec<PlannedUpdate> = issues
-        .into_iter()
-        .map(|issue| PlannedUpdate {
-            issue,
-            values: Vec::new(),
-        })
-        .collect();
-    for &key in keys {
-        let current: Vec<Option<f64>> = plan.iter().map(|p| key.get(&p.issue)).collect();
-        let mut values = anchored_values(&current, REORDER_STEP);
-        avoid_ties(&mut values, &current, REORDER_STEP);
-        for (p, value) in plan.iter_mut().zip(values) {
-            p.values.push((key, value));
+    let mut plan = ReorderPlan::new(issues);
+    for &key in field.unwrap_or(OrderField::All).keys() {
+        if key == OrderKey::SubIssue {
+            // subIssueSortOrder only orders siblings: order each parent's listed children
+            // among themselves.
+            let groups = group_by_parent(&plan.issues);
+            if field == Some(OrderField::SubIssue) && groups.iter().all(|g| g.len() < 2) {
+                return Err(anyhow::anyhow!(
+                    "No two of these issues share a parent, so there is no sub-issue list to order. Use --parent to move a sub-issue within its parent's list."
+                ));
+            }
+            for members in groups {
+                plan.plan_group(key, members, None, REORDER_STEP)?;
+            }
+        } else {
+            let members = (0..plan.issues.len()).collect();
+            plan.plan_group(key, members, None, REORDER_STEP)?;
         }
     }
 
-    apply_reorder(client, plan, keys).await
+    apply_reorder(client, plan).await
 }
 
 /// `issues reorder --parent P A B`: rewrite the subIssueSortOrder of all of P's children.
@@ -1491,7 +1657,7 @@ async fn reorder_sub_issues(
     }
 
     let parent_issue = client
-        .issue::<IssueRef>(parent.to_string())
+        .issue::<ParentWithChildren>(parent.to_string())
         .await
         .map_err(|e| anyhow::anyhow!("Parent issue '{}': {}", parent, e))?;
     let parent_id = parent_issue
@@ -1501,58 +1667,62 @@ async fn reorder_sub_issues(
         .identifier
         .unwrap_or_else(|| parent.to_string());
 
-    let children = fetch_children(client, &parent_id).await?;
-
-    let mut listed: Vec<usize> = Vec::with_capacity(identifiers.len());
+    // Check membership on each listed issue itself: the children query below goes
+    // through a filter, which can lag behind a just-created child.
+    let mut listed_issues: Vec<IssueOrder> = Vec::with_capacity(identifiers.len());
     for ident in identifiers {
-        let idx = children
-            .iter()
-            .position(|c| {
-                c.id.as_deref() == Some(ident.as_str())
-                    || c.identifier
-                        .as_deref()
-                        .is_some_and(|id| id.eq_ignore_ascii_case(ident))
-            })
-            .ok_or_else(|| {
-                let available: Vec<&str> = children
-                    .iter()
-                    .filter_map(|c| c.identifier.as_deref())
-                    .collect();
-                anyhow::anyhow!(
-                    "Issue '{}' is not a sub-issue of {}. Sub-issues: {}",
-                    ident,
-                    parent_label,
-                    available.join(", ")
-                )
-            })?;
-        if listed.contains(&idx) {
+        let issue = client
+            .issue::<IssueOrder>(ident.clone())
+            .await
+            .map_err(|e| anyhow::anyhow!("Issue '{}': {}", ident, e))?;
+        if issue.parent_id() != Some(parent_id.as_str()) {
+            return Err(anyhow::anyhow!(
+                "Issue '{}' is not a sub-issue of {}",
+                ident,
+                parent_label
+            ));
+        }
+        if listed_issues.iter().any(|i| i.id == issue.id) {
             return Err(anyhow::anyhow!(
                 "Issue '{}' is listed more than once",
                 ident
             ));
         }
+        listed_issues.push(issue);
+    }
+
+    // Union of the parent's children connection (first page) and the paginated filter
+    // query, so a child missing from one source is still rewritten.
+    let mut children = fetch_children(client, &parent_id).await?;
+    for child in parent_issue.children.map(|c| c.nodes).unwrap_or_default() {
+        if !children.iter().any(|c| c.id == child.id) {
+            children.push(child);
+        }
+    }
+    let mut listed: Vec<usize> = Vec::with_capacity(listed_issues.len());
+    for issue in listed_issues {
+        let idx = match children.iter().position(|c| c.id == issue.id) {
+            Some(idx) => idx,
+            None => {
+                children.push(issue);
+                children.len() - 1
+            }
+        };
         listed.push(idx);
     }
 
     let order = sub_issue_order(&children, &listed);
-    let current: Vec<Option<f64>> = order
-        .iter()
-        .map(|&idx| children[idx].sub_issue_sort_order)
-        .collect();
-    let mut values: Vec<f64> = (1..=order.len())
-        .map(|position| position as f64 * SUB_ISSUE_STEP)
-        .collect();
-    avoid_ties(&mut values, &current, SUB_ISSUE_STEP);
-    let plan: Vec<PlannedUpdate> = order
-        .into_iter()
-        .zip(values)
-        .map(|(idx, value)| PlannedUpdate {
-            issue: children[idx].clone(),
-            values: vec![(OrderKey::SubIssue, value)],
-        })
-        .collect();
+    let ordered: Vec<IssueOrder> = order.into_iter().map(|i| children[i].clone()).collect();
+    let mut plan = ReorderPlan::new(ordered);
+    let members = (0..plan.issues.len()).collect();
+    plan.plan_group(
+        OrderKey::SubIssue,
+        members,
+        Some(SUB_ISSUE_STEP),
+        SUB_ISSUE_STEP,
+    )?;
 
-    apply_reorder(client, plan, &[OrderKey::SubIssue]).await
+    apply_reorder(client, plan).await
 }
 
 /// All non-archived children of a parent issue, following pagination.
@@ -1581,72 +1751,64 @@ async fn fetch_children(client: &Client, parent_id: &str) -> anyhow::Result<Vec<
 }
 
 /// Write the planned values (one `issueUpdate` per issue whose values change), then read
-/// every issue back and check that `keys` now sort in the planned order.
-async fn apply_reorder(
-    client: &Client,
-    plan: Vec<PlannedUpdate>,
-    keys: &[OrderKey],
-) -> anyhow::Result<Vec<IssueOrder>> {
-    let label = |issue: &IssueOrder| {
-        issue
-            .identifier
-            .clone()
-            .or_else(|| issue.id.clone())
-            .unwrap_or_default()
-    };
-
-    let mut updated: Vec<String> = Vec::new();
-    for (n, p) in plan.iter().enumerate() {
-        let unchanged = p
-            .values
-            .iter()
-            .all(|&(key, value)| key.get(&p.issue) == Some(value));
-        if unchanged {
-            continue;
-        }
+/// every issue back and check that each planned group now ascends in the wanted order.
+async fn apply_reorder(client: &Client, plan: ReorderPlan) -> anyhow::Result<Vec<IssueOrder>> {
+    let pending: Vec<usize> = (0..plan.issues.len())
+        .filter(|&i| plan.changes(i))
+        .collect();
+    for (n, &i) in pending.iter().enumerate() {
         let mut input = IssueUpdateInput::default();
-        for &(key, value) in &p.values {
+        for &(key, value) in &plan.values[i] {
             key.set(&mut input, value);
         }
-        let id = p.issue.id.clone().unwrap_or_default();
+        let id = plan.issues[i].id.clone().unwrap_or_default();
         if let Err(e) = client.issue_update::<IssueRef>(input, id).await {
-            let pending: Vec<String> = plan[n..].iter().map(|p| label(&p.issue)).collect();
-            let done = if updated.is_empty() {
-                "none".to_string()
-            } else {
-                updated.join(", ")
+            let names = |indexes: &[usize]| -> String {
+                if indexes.is_empty() {
+                    return "none".to_string();
+                }
+                indexes
+                    .iter()
+                    .map(|&j| plan.issues[j].label())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             };
             return Err(anyhow::anyhow!(
                 "Failed to update {}: {}\nAlready updated: {}\nNot updated: {}\nRe-run the same command to finish.",
-                label(&p.issue),
+                plan.issues[i].label(),
                 e,
-                done,
-                pending.join(", ")
+                names(&pending[..n]),
+                names(&pending[n..])
             ));
         }
-        updated.push(label(&p.issue));
     }
 
-    let mut result = Vec::with_capacity(plan.len());
-    for p in &plan {
-        let id = p.issue.id.clone().unwrap_or_default();
-        let issue = client
+    let mut result = Vec::with_capacity(plan.issues.len());
+    for issue in &plan.issues {
+        let id = issue.id.clone().unwrap_or_default();
+        let fresh = client
             .issue::<IssueOrder>(id)
             .await
-            .map_err(|e| anyhow::anyhow!("Reading back {}: {}", label(&p.issue), e))?;
-        result.push(issue);
+            .map_err(|e| anyhow::anyhow!("Reading back {}: {}", issue.label(), e))?;
+        result.push(fresh);
     }
 
-    for &key in keys {
-        let values: Vec<Option<f64>> = result.iter().map(|i| key.get(i)).collect();
+    for (key, members) in &plan.groups {
+        let values: Vec<Option<f64>> = members.iter().map(|&i| key.get(&result[i])).collect();
         let ordered = values.windows(2).all(|w| match (w[0], w[1]) {
             (Some(a), Some(b)) => a < b,
             _ => false,
         });
         if !ordered {
-            let got: Vec<String> = result
+            let got: Vec<String> = members
                 .iter()
-                .map(|i| format!("{}={}", label(i), output::display_opt(&key.get(i))))
+                .map(|&i| {
+                    format!(
+                        "{}={}",
+                        result[i].label(),
+                        output::display_opt(&key.get(&result[i]))
+                    )
+                })
                 .collect();
             return Err(anyhow::anyhow!(
                 "Verification failed: {} is not in the wanted order after the update: {}",
@@ -1718,63 +1880,120 @@ mod tests {
         assert_eq!(format_estimate(Some(0.5)), "0.5");
     }
 
-    #[test]
-    fn anchored_values_start_at_current_minimum() {
-        let values = anchored_values(&[Some(5.0), Some(-3.0), None], 0.5);
-        assert_eq!(values, vec![-3.0, -2.5, -2.0]);
-    }
-
-    #[test]
-    fn anchored_values_have_no_binary_noise() {
-        let values = anchored_values(&[Some(-3190.0), Some(0.0), Some(0.0)], 0.01);
-        assert_eq!(values, vec![-3190.0, -3189.99, -3189.98]);
-    }
-
-    #[test]
-    fn anchored_values_default_to_zero_when_unset() {
-        assert_eq!(anchored_values(&[None, None], 1.0), vec![0.0, 1.0]);
-    }
-
-    #[test]
-    fn avoid_ties_keeps_values_without_ties() {
-        let mut values = vec![1000.0, 2000.0];
-        avoid_ties(&mut values, &[Some(78.0), Some(1001.0)], 1000.0);
-        assert_eq!(values, vec![1000.0, 2000.0]);
-    }
-
-    #[test]
-    fn avoid_ties_shifts_off_another_issues_current_value() {
-        // Re-run: the issues already hold the grid, in a different order.
-        let mut values = vec![1000.0, 2000.0, 3000.0];
-        avoid_ties(
-            &mut values,
-            &[Some(3000.0), Some(2000.0), Some(1000.0)],
-            1000.0,
-        );
-        assert_eq!(values, vec![1500.0, 2500.0, 3500.0]);
-    }
-
-    #[test]
-    fn avoid_ties_ignores_an_issues_own_value() {
-        let mut values = vec![1000.0, 2000.0];
-        avoid_ties(&mut values, &[Some(1000.0), Some(5.0)], 1000.0);
-        assert_eq!(values, vec![1000.0, 2000.0]);
-    }
-
-    fn child(sub_issue_sort_order: Option<f64>) -> IssueOrder {
+    fn issue(parent: Option<&str>, sub_issue_sort_order: Option<f64>) -> IssueOrder {
         IssueOrder {
             sub_issue_sort_order,
+            parent: parent.map(|p| IssueIdRef {
+                id: Some(p.to_string()),
+            }),
             ..Default::default()
         }
     }
 
     #[test]
+    fn plan_group_values_skips_groups_already_in_order() {
+        let planned = plan_group_values(&[Some(1.0), Some(2.0)], 1.0, 0.01, || 0.5).unwrap();
+        assert_eq!(planned, None);
+    }
+
+    #[test]
+    fn plan_group_values_anchors_at_base_plus_offset() {
+        let planned = plan_group_values(&[Some(5.0), Some(-3.0), None], -3.0, 0.5, || 0.5)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.values, vec![-2.75, -2.25, -1.75]);
+        assert!(planned.tie_free);
+    }
+
+    #[test]
+    fn plan_group_values_detect_tie_with_the_minimum_holder() {
+        // Offset 0 would give the first issue -3.0 while the second still holds it.
+        let planned = plan_group_values(&[Some(5.0), Some(-3.0)], -3.0, 0.5, || 0.0)
+            .unwrap()
+            .unwrap();
+        assert!(!planned.tie_free);
+    }
+
+    #[test]
+    fn plan_group_values_have_no_binary_noise() {
+        let planned = plan_group_values(&[None, None, None], -3190.0, 0.01, || 0.0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.values, vec![-3190.0, -3189.99, -3189.98]);
+    }
+
+    #[test]
+    fn plan_group_values_retries_offsets_that_tie() {
+        // Re-run with the order reversed: offset 0 ties every value with another issue's.
+        let mut offsets = vec![0.25, 0.0].into_iter();
+        let planned = plan_group_values(
+            &[Some(3000.0), Some(2000.0), Some(1000.0)],
+            1000.0,
+            1000.0,
+            || offsets.next_back().unwrap(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(planned.values, vec![1250.0, 2250.0, 3250.0]);
+        assert!(planned.tie_free);
+    }
+
+    #[test]
+    fn plan_group_values_ignores_an_issues_own_value() {
+        let planned = plan_group_values(&[Some(1000.0), Some(5.0)], 1000.0, 1000.0, || 0.0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.values, vec![1000.0, 2000.0]);
+        assert!(planned.tie_free);
+    }
+
+    #[test]
+    fn plan_group_values_reports_unavoidable_ties() {
+        let planned = plan_group_values(&[Some(2.0), Some(1.0)], 1.0, 1.0, || 0.0)
+            .unwrap()
+            .unwrap();
+        assert!(!planned.tie_free);
+    }
+
+    #[test]
+    fn plan_group_values_rejects_lost_precision() {
+        assert!(plan_group_values(&[Some(2e17), Some(1e17)], 1e17, 0.01, || 0.0).is_err());
+    }
+
+    #[test]
+    fn random_fraction_is_in_unit_interval() {
+        for _ in 0..1000 {
+            let r = random_fraction();
+            assert!((0.0..1.0).contains(&r));
+        }
+    }
+
+    #[test]
+    fn parse_order_value_rejects_non_finite() {
+        assert_eq!(parse_order_value("-615877.5"), Ok(-615877.5));
+        assert!(parse_order_value("nan").is_err());
+        assert!(parse_order_value("inf").is_err());
+        assert!(parse_order_value("x").is_err());
+    }
+
+    #[test]
+    fn group_by_parent_skips_parentless_issues() {
+        let issues = vec![
+            issue(Some("p1"), None),
+            issue(None, None),
+            issue(Some("p2"), None),
+            issue(Some("p1"), None),
+        ];
+        assert_eq!(group_by_parent(&issues), vec![vec![0, 3], vec![2]]);
+    }
+
+    #[test]
     fn sub_issue_order_puts_listed_first_then_rest_by_current_value() {
         let children = vec![
-            child(Some(30.0)),
-            child(None),
-            child(Some(10.0)),
-            child(Some(20.0)),
+            issue(None, Some(30.0)),
+            issue(None, None),
+            issue(None, Some(10.0)),
+            issue(None, Some(20.0)),
         ];
         assert_eq!(sub_issue_order(&children, &[3, 0]), vec![3, 0, 2, 1]);
     }
