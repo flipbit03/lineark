@@ -68,13 +68,14 @@ pub enum IssuesAction {
         #[arg(long, visible_alias = "state", value_delimiter = ',')]
         status: Option<Vec<String>>,
     },
-    /// Create a new issue. Returns the created issue.
+    /// Create a new issue. Returns the created issue
     ///
     /// Examples:
     ///   lineark issues create "Fix the bug" --team ENG
     ///   lineark issues create "Add feature" --team ENG --priority high --description "Details here"
     ///   lineark issues create "Urgent fix" --team ENG -p urgent --labels Bug,Frontend
     ///   lineark issues create "My task" --team ENG --assignee me
+    #[command(verbatim_doc_comment)]
     Create {
         /// Issue title.
         title: String,
@@ -118,18 +119,20 @@ pub enum IssuesAction {
         #[arg(long, allow_negative_numbers = true)]
         sub_issue_sort_order: Option<f64>,
     },
-    /// Archive an issue.
+    /// Archive an issue
     ///
     /// Examples:
     ///   lineark issues archive ENG-123
+    #[command(verbatim_doc_comment)]
     Archive {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
     },
-    /// Unarchive a previously archived issue.
+    /// Unarchive a previously archived issue
     ///
     /// Examples:
     ///   lineark issues unarchive ENG-123
+    #[command(verbatim_doc_comment)]
     Unarchive {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
@@ -139,11 +142,12 @@ pub enum IssuesAction {
         /// Git branch name to search for.
         branch_name: String,
     },
-    /// Delete (trash) an issue. Use --permanently to delete permanently.
+    /// Delete (trash) an issue. Use --permanently to delete permanently
     ///
     /// Examples:
     ///   lineark issues delete ENG-123
     ///   lineark issues delete ENG-123 --permanently
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
@@ -151,12 +155,13 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false")]
         permanently: bool,
     },
-    /// Batch update multiple issues at once. Returns the updated issues.
+    /// Batch update multiple issues at once. Returns the updated issues
     ///
     /// Examples:
     ///   lineark issues batch-update ENG-1 ENG-2 --priority high
     ///   lineark issues batch-update ENG-1 ENG-2 ENG-3 --status "In Progress"
     ///   lineark issues batch-update ENG-1 ENG-2 --assignee me --labels Bug --label-by adding
+    #[command(verbatim_doc_comment)]
     BatchUpdate {
         /// Issue identifiers (e.g., ENG-123) or UUIDs. At least one required.
         #[arg(required = true, num_args = 1..)]
@@ -195,12 +200,13 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false", conflicts_with = "cycle")]
         clear_cycle: bool,
     },
-    /// Update an existing issue. Returns the updated issue.
+    /// Update an existing issue. Returns the updated issue
     ///
     /// Examples:
     ///   lineark issues update ENG-123 --status "In Progress"
     ///   lineark issues update ENG-123 --priority urgent --assignee "John Doe"
     ///   lineark issues update ENG-123 --labels Bug,Frontend --label-by adding
+    #[command(verbatim_doc_comment)]
     Update {
         /// Issue identifier (e.g., ENG-123) or UUID.
         identifier: String,
@@ -262,7 +268,7 @@ pub enum IssuesAction {
         #[arg(long, allow_negative_numbers = true)]
         sub_issue_sort_order: Option<f64>,
     },
-    /// Put issues in the given order (first = top). Returns the issues with their new order values.
+    /// Put issues in the given order (first = top). Returns the issues with their new order values
     ///
     /// Linear has three independent order fields. A lower value appears higher.
     ///   sortOrder          Views with Ordering: Manual (what drag-and-drop changes).

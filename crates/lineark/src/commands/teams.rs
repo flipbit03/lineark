@@ -20,22 +20,24 @@ pub struct TeamsCmd {
 pub enum TeamsAction {
     /// List all teams.
     List,
-    /// Show full details for a single team, including members and settings.
+    /// Show full details for a single team, including members and settings
     ///
     /// Examples:
     ///   lineark teams read ENG
     ///   lineark teams read "Engineering"
     ///   lineark teams read TEAM-UUID
+    #[command(verbatim_doc_comment)]
     Read {
         /// Team key, name, or UUID.
         id: String,
     },
-    /// Create a new team.
+    /// Create a new team
     ///
     /// Examples:
     ///   lineark teams create "Backend"
     ///   lineark teams create "Frontend" --key FE --description "Frontend team"
     ///   lineark teams create "Platform" --cycles-enabled --triage-enabled
+    #[command(verbatim_doc_comment)]
     Create {
         /// Team name.
         name: String,
@@ -64,11 +66,12 @@ pub enum TeamsAction {
         #[arg(long)]
         triage_enabled: Option<bool>,
     },
-    /// Update an existing team.
+    /// Update an existing team
     ///
     /// Examples:
     ///   lineark teams update ENG --description "Updated description"
     ///   lineark teams update "Backend" --name "Backend Services"
+    #[command(verbatim_doc_comment)]
     Update {
         /// Team key, name, or UUID.
         id: String,
@@ -100,11 +103,12 @@ pub enum TeamsAction {
         #[arg(long)]
         triage_enabled: Option<bool>,
     },
-    /// Delete a team.
+    /// Delete a team
     ///
     /// Examples:
     ///   lineark teams delete ENG
     ///   lineark teams delete TEAM-UUID
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Team key, name, or UUID.
         id: String,
@@ -118,11 +122,12 @@ pub enum TeamsAction {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum MembersAction {
-    /// Add a user to a team.
+    /// Add a user to a team
     ///
     /// Examples:
     ///   lineark teams members add ENG --user me
     ///   lineark teams members add "Backend" --user "alice"
+    #[command(verbatim_doc_comment)]
     Add {
         /// Team key, name, or UUID.
         team: String,
@@ -130,11 +135,12 @@ pub enum MembersAction {
         #[arg(long)]
         user: String,
     },
-    /// Remove a user from a team.
+    /// Remove a user from a team
     ///
     /// Examples:
     ///   lineark teams members remove ENG --user me
     ///   lineark teams members remove "Backend" --user "alice"
+    #[command(verbatim_doc_comment)]
     Remove {
         /// Team key, name, or UUID.
         team: String,

@@ -825,6 +825,35 @@ fn issues_batch_update_clear_flags_conflict_with_setters() {
     }
 }
 
+// ── Help formatting ────────────────────────────────────────────────────────
+
+#[test]
+fn help_keeps_example_lines_separate() {
+    // Without verbatim_doc_comment, clap joins the example lines into one paragraph.
+    for (args, first_example) in [
+        (
+            vec!["issues", "create", "--help"],
+            "\n  lineark issues create ",
+        ),
+        (
+            vec!["teams", "members", "add", "--help"],
+            "\n  lineark teams members add ",
+        ),
+        (
+            vec!["comments", "create", "--help"],
+            "\n  lineark comments create ",
+        ),
+    ] {
+        lineark()
+            .args(&args)
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Examples:\n"))
+            .stdout(predicate::str::contains(first_example))
+            .stdout(predicate::str::contains("Examples: lineark").not());
+    }
+}
+
 // ── Issues reorder ─────────────────────────────────────────────────────────
 
 #[test]

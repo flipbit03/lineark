@@ -17,12 +17,13 @@ pub struct DocumentsCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum DocumentsAction {
-    /// List documents in the workspace.
+    /// List documents in the workspace
     ///
     /// Examples:
     ///   lineark documents list
     ///   lineark documents list --project "My Project"
     ///   lineark documents list --issue ENG-123
+    #[command(verbatim_doc_comment)]
     List {
         /// Maximum number of documents to return (max 250).
         #[arg(long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
@@ -39,11 +40,12 @@ pub enum DocumentsAction {
         /// Document UUID.
         id: String,
     },
-    /// Create a new document.
+    /// Create a new document
     ///
     /// Examples:
     ///   lineark documents create --title "Design Doc" --content "# Overview\n..."
     ///   lineark documents create --title "Spec" --content "Details" --project "My Project"
+    #[command(verbatim_doc_comment)]
     Create {
         /// Document title.
         #[arg(long)]
@@ -58,11 +60,12 @@ pub enum DocumentsAction {
         #[arg(long)]
         issue: Option<String>,
     },
-    /// Update an existing document.
+    /// Update an existing document
     ///
     /// Examples:
     ///   lineark documents update DOC-UUID --title "New Title"
     ///   lineark documents update DOC-UUID --content "Updated content"
+    #[command(verbatim_doc_comment)]
     Update {
         /// Document UUID.
         id: String,

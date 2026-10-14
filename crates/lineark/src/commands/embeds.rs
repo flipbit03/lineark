@@ -14,10 +14,11 @@ pub struct EmbedsCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum EmbedsAction {
-    /// Download a file from a URL (handles Linear's signed/expiring URLs).
+    /// Download a file from a URL (handles Linear's signed/expiring URLs)
     ///
     /// Examples:
     ///   lineark embeds download "<https://uploads.linear.app/...>" --output ./file.png
+    #[command(verbatim_doc_comment)]
     Download {
         /// URL of the file to download.
         url: String,
@@ -28,7 +29,7 @@ pub enum EmbedsAction {
         #[arg(long, default_value = "false")]
         overwrite: bool,
     },
-    /// Upload a file to Linear's cloud storage and return the asset URL.
+    /// Upload a file to Linear's cloud storage and return the asset URL
     ///
     /// The upload is a two-step process handled by the SDK:
     /// 1. Request a signed upload URL from Linear's API
@@ -37,6 +38,7 @@ pub enum EmbedsAction {
     /// Examples:
     ///   lineark embeds upload ./screenshot.png
     ///   lineark embeds upload ./report.pdf --public
+    #[command(verbatim_doc_comment)]
     Upload {
         /// Path to the file to upload.
         file: PathBuf,
