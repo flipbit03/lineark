@@ -235,7 +235,7 @@ pub async fn run(cmd: DocumentsCmd, client: &Client, format: Format) -> anyhow::
         }
         DocumentsAction::Delete { id } => {
             let doc = client
-                .document_delete::<DocumentRef>(id)
+                .document_delete::<DocumentRef>(None, id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

@@ -208,8 +208,8 @@ Required fields (schema type ends with `!`) stay as plain `T` — no wrapper.
 | `issue_relation_delete(id)` | Delete an issue relation |
 | `document_create(input)` | Create a document |
 | `document_update(input, id)` | Update a document |
-| `document_delete(id)` | Delete a document |
-| `project_create(slack_channel_name, input)` | Create a project |
+| `document_delete(if_parent_document_id, id)` | Delete a document |
+| `project_create(ai_conversation_id, project_draft_id, slack_channel_name, input)` | Create a project |
 | `project_update(input, id)` | Update a project |
 | `project_delete(id)` | Delete a project |
 | `project_milestone_create(input)` | Create a project milestone |

@@ -468,7 +468,7 @@ async fn document_update_sends_input_and_id() {
 async fn document_delete_sends_id() {
     let (server, client) = setup_mutation("documentDelete").await;
     let _ = client
-        .document_delete::<Document>("doc-uuid-456".to_string())
+        .document_delete::<Document>(None, "doc-uuid-456".to_string())
         .await;
     let vars = extract_variables(&server.received_requests().await.unwrap());
     assert_eq!(vars["id"], "doc-uuid-456");

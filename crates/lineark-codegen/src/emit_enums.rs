@@ -24,6 +24,12 @@ pub fn emit(enums: &[EnumDef]) -> TokenStream {
 fn emit_enum(e: &EnumDef) -> TokenStream {
     let name = quote::format_ident!("{}", e.name);
     let doc = parser::doc_comment_tokens(&e.description);
+    // Some enums define their own `unknown` value. It doubles as the catch-all,
+    // so `Unknown` means "unknown or unrecognized" in every enum.
+    let has_own_unknown = e
+        .values
+        .iter()
+        .any(|v| to_variant_name(&v.name) == "Unknown");
     let variants: Vec<TokenStream> = e
         .values
         .iter()
@@ -34,7 +40,14 @@ fn emit_enum(e: &EnumDef) -> TokenStream {
             // Convert to PascalCase for Rust convention.
             let rust_name = to_variant_name(original);
             let variant_ident = quote::format_ident!("{}", rust_name);
-            if rust_name == *original {
+            if rust_name == "Unknown" {
+                quote! {
+                    #vdoc
+                    /// Also the catch-all for unknown/new variants added by Linear.
+                    #[serde(rename = #original, other)]
+                    #variant_ident,
+                }
+            } else if rust_name == *original {
                 quote! { #vdoc #variant_ident, }
             } else {
                 quote! {
@@ -46,14 +59,22 @@ fn emit_enum(e: &EnumDef) -> TokenStream {
         })
         .collect();
 
+    let catch_all = if has_own_unknown {
+        quote! {}
+    } else {
+        quote! {
+            /// Catch-all for unknown/new variants added by Linear.
+            #[serde(other)]
+            Unknown,
+        }
+    };
+
     quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum #name {
             #(#variants)*
-            /// Catch-all for unknown/new variants added by Linear.
-            #[serde(other)]
-            Unknown,
+            #catch_all
         }
     }
 }
@@ -121,6 +142,27 @@ mod tests {
         let output = emit(&enums).to_string();
         assert!(output.contains("Unknown"));
         assert!(output.contains("other"));
+    }
+
+    #[test]
+    fn emit_reuses_own_unknown_value_as_catch_all() {
+        let enums = vec![EnumDef {
+            name: "DiffFileState".to_string(),
+            description: None,
+            values: vec![
+                EnumValueDef {
+                    name: "added".to_string(),
+                    description: None,
+                },
+                EnumValueDef {
+                    name: "unknown".to_string(),
+                    description: None,
+                },
+            ],
+        }];
+        let output = emit(&enums).to_string();
+        assert_eq!(output.matches("Unknown ,").count(), 1, "{output}");
+        assert!(output.contains("rename = \"unknown\" , other"), "{output}");
     }
 
     #[test]

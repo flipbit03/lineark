@@ -351,7 +351,7 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
             };
 
             let project = client
-                .project_create::<ProjectRef>(None, input)
+                .project_create::<ProjectRef>(None, None, None, input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 

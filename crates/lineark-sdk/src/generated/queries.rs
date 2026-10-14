@@ -12,196 +12,6 @@ use crate::error::LinearError;
 use crate::field_selection::GraphQLFields;
 use crate::pagination::Connection;
 use serde::de::DeserializeOwned;
-/// Query builder: All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
-///
-/// Full type: [`WorkflowState`](super::types::WorkflowState)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct WorkflowStatesQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<WorkflowStateFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::WorkflowState>>
-    WorkflowStatesQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: WorkflowStateFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "WorkflowStates",
-            "$filter: WorkflowStateFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "workflowStates",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "workflowStates")
-            .await
-    }
-}
-/// Query builder: All users in the workspace. Supports filtering, sorting, and pagination.
-///
-/// Full type: [`User`](super::types::User)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct UsersQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<UserFilter>,
-    include_disabled: Option<bool>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    sort: Option<UserSortInput>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>
-    UsersQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: UserFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn include_disabled(mut self, value: bool) -> Self {
-        self.include_disabled = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub fn sort(mut self, value: UserSortInput) -> Self {
-        self.sort = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_disabled {
-            map.insert("includeDisabled".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.sort {
-            map.insert("sort".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "Users",
-            "$filter: UserFilter, $includeDisabled: Boolean, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [UserSortInput!]",
-            "users",
-            "filter: $filter, includeDisabled: $includeDisabled, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "users")
-            .await
-    }
-}
 /// Query builder: Returns all projects in the workspace, with optional filtering and sorting.
 ///
 /// Full type: [`Project`](super::types::Project)
@@ -297,16 +107,16 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>
             .await
     }
 }
-/// Query builder: All teams whose issues the user can access. This includes public teams and private teams the user is a member of. This may differ from `administrableTeams`, which returns teams whose settings the user can change but whose issues they don't necessarily have access to.
+/// Query builder: All cycles accessible to the user.
 ///
-/// Full type: [`Team`](super::types::Team)
+/// Full type: [`Cycle`](super::types::Cycle)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct TeamsQueryBuilder<'a, T> {
+pub struct CyclesQueryBuilder<'a, T> {
     client: &'a Client,
-    filter: Option<TeamFilter>,
+    filter: Option<CycleFilter>,
     before: Option<String>,
     after: Option<String>,
     first: Option<i64>,
@@ -315,10 +125,10 @@ pub struct TeamsQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
-    TeamsQueryBuilder<'a, T>
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>
+    CyclesQueryBuilder<'a, T>
 {
-    pub fn filter(mut self, value: TeamFilter) -> Self {
+    pub fn filter(mut self, value: CycleFilter) -> Self {
         self.filter = Some(value);
         self
     }
@@ -373,14 +183,623 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
         let selection = T::selection();
         let query = format!(
             "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "Teams",
-            "$filter: TeamFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "teams",
+            "Cycles",
+            "$filter: CycleFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "cycles",
             "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
             selection
         );
         self.client
-            .execute_connection::<T>(&query, variables, "teams")
+            .execute_connection::<T>(&query, variables, "cycles")
+            .await
+    }
+}
+/// Query builder: All documents the user has access to in the workspace.
+///
+/// Full type: [`Document`](super::types::Document)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct DocumentsQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<DocumentFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    sort: Option<DocumentSortInput>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>
+    DocumentsQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: DocumentFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub fn sort(mut self, value: DocumentSortInput) -> Self {
+        self.sort = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.sort {
+            map.insert("sort".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "Documents",
+            "$filter: DocumentFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [DocumentSortInput!]",
+            "documents",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "documents")
+            .await
+    }
+}
+/// Query builder: All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct IssueLabelsQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<IssueLabelFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>>
+    IssueLabelsQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: IssueLabelFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "IssueLabels",
+            "$filter: IssueLabelFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "issueLabels",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "issueLabels")
+            .await
+    }
+}
+/// Query builder: All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct IssueRelationsQueryBuilder<'a, T> {
+    client: &'a Client,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>>
+    IssueRelationsQueryBuilder<'a, T>
+{
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "IssueRelations",
+            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "issueRelations",
+            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "issueRelations")
+            .await
+    }
+}
+/// Query builder: All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
+///
+/// Full type: [`Issue`](super::types::Issue)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct IssuesQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<IssueFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    sort: Option<IssueSortInput>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>
+    IssuesQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: IssueFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub fn sort(mut self, value: IssueSortInput) -> Self {
+        self.sort = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.sort {
+            map.insert("sort".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "Issues",
+            "$filter: IssueFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [IssueSortInput!]",
+            "issues",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "issues")
+            .await
+    }
+}
+/// Query builder: All project labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels, with optional filtering.
+///
+/// Full type: [`ProjectLabel`](super::types::ProjectLabel)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct ProjectLabelsQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<ProjectLabelFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectLabel>>
+    ProjectLabelsQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: ProjectLabelFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "ProjectLabels",
+            "$filter: ProjectLabelFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "projectLabels",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "projectLabels")
+            .await
+    }
+}
+/// Query builder: Returns all project milestones in the workspace, with optional filtering.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct ProjectMilestonesQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<ProjectMilestoneFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>>
+    ProjectMilestonesQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: ProjectMilestoneFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "ProjectMilestones",
+            "$filter: ProjectMilestoneFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "projectMilestones",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "projectMilestones")
+            .await
+    }
+}
+/// Query builder: Returns all project statuses in the workspace.
+///
+/// Full type: [`ProjectStatus`](super::types::ProjectStatus)
+///
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct ProjectStatusesQueryBuilder<'a, T> {
+    client: &'a Client,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
+}
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectStatus>>
+    ProjectStatusesQueryBuilder<'a, T>
+{
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "ProjectStatuses",
+            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "projectStatuses",
+            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "projectStatuses")
             .await
     }
 }
@@ -489,15 +908,16 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueSearc
             .await
     }
 }
-/// Query builder: Returns all project statuses in the workspace.
+/// Query builder: All teams whose issues the user can access. This includes public teams and private teams the user is a member of. This may differ from `administrableTeams`, which returns teams whose settings the user can change but whose issues they don't necessarily have access to.
 ///
-/// Full type: [`ProjectStatus`](super::types::ProjectStatus)
+/// Full type: [`Team`](super::types::Team)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct ProjectStatusesQueryBuilder<'a, T> {
+pub struct TeamsQueryBuilder<'a, T> {
     client: &'a Client,
+    filter: Option<TeamFilter>,
     before: Option<String>,
     after: Option<String>,
     first: Option<i64>,
@@ -506,90 +926,10 @@ pub struct ProjectStatusesQueryBuilder<'a, T> {
     order_by: Option<PaginationOrderBy>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectStatus>>
-    ProjectStatusesQueryBuilder<'a, T>
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
+    TeamsQueryBuilder<'a, T>
 {
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "ProjectStatuses",
-            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "projectStatuses",
-            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "projectStatuses")
-            .await
-    }
-}
-/// Query builder: Returns all project milestones in the workspace, with optional filtering.
-///
-/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct ProjectMilestonesQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<ProjectMilestoneFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>>
-    ProjectMilestonesQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: ProjectMilestoneFilter) -> Self {
+    pub fn filter(mut self, value: TeamFilter) -> Self {
         self.filter = Some(value);
         self
     }
@@ -644,40 +984,46 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMil
         let selection = T::selection();
         let query = format!(
             "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "ProjectMilestones",
-            "$filter: ProjectMilestoneFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "projectMilestones",
+            "Teams",
+            "$filter: TeamFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "teams",
             "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
             selection
         );
         self.client
-            .execute_connection::<T>(&query, variables, "projectMilestones")
+            .execute_connection::<T>(&query, variables, "teams")
             .await
     }
 }
-/// Query builder: Returns all project labels in the workspace, with optional filtering.
+/// Query builder: All users in the workspace. Supports filtering, sorting, and pagination.
 ///
-/// Full type: [`ProjectLabel`](super::types::ProjectLabel)
+/// Full type: [`User`](super::types::User)
 ///
 /// Use setter methods to configure optional parameters, then call
 /// [`.send()`](Self::send) to execute the query.
 #[must_use]
-pub struct ProjectLabelsQueryBuilder<'a, T> {
+pub struct UsersQueryBuilder<'a, T> {
     client: &'a Client,
-    filter: Option<ProjectLabelFilter>,
+    filter: Option<UserFilter>,
+    include_disabled: Option<bool>,
     before: Option<String>,
     after: Option<String>,
     first: Option<i64>,
     last: Option<i64>,
     include_archived: Option<bool>,
     order_by: Option<PaginationOrderBy>,
+    sort: Option<UserSortInput>,
     _marker: std::marker::PhantomData<T>,
 }
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectLabel>>
-    ProjectLabelsQueryBuilder<'a, T>
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>
+    UsersQueryBuilder<'a, T>
 {
-    pub fn filter(mut self, value: ProjectLabelFilter) -> Self {
+    pub fn filter(mut self, value: UserFilter) -> Self {
         self.filter = Some(value);
+        self
+    }
+    pub fn include_disabled(mut self, value: bool) -> Self {
+        self.include_disabled = Some(value);
         self
     }
     pub fn before(mut self, value: impl Into<String>) -> Self {
@@ -704,95 +1050,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectLab
         self.order_by = Some(value);
         self
     }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "ProjectLabels",
-            "$filter: ProjectLabelFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "projectLabels",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "projectLabels")
-            .await
-    }
-}
-/// Query builder: All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
-///
-/// Full type: [`Issue`](super::types::Issue)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct IssuesQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<IssueFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    sort: Option<IssueSortInput>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>
-    IssuesQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: IssueFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub fn sort(mut self, value: IssueSortInput) -> Self {
+    pub fn sort(mut self, value: UserSortInput) -> Self {
         self.sort = Some(value);
         self
     }
@@ -800,6 +1058,9 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>
         let mut map = serde_json::Map::new();
         if let Some(ref v) = self.filter {
             map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_disabled {
+            map.insert("includeDisabled".to_string(), serde_json::json!(v));
         }
         if let Some(ref v) = self.before {
             map.insert("before".to_string(), serde_json::json!(v));
@@ -826,401 +1087,103 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>
         let selection = T::selection();
         let query = format!(
             "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "Issues",
-            "$filter: IssueFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [IssueSortInput!]",
-            "issues",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
+            "Users",
+            "$filter: UserFilter, $includeDisabled: Boolean, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy, $sort: [UserSortInput!]",
+            "users",
+            "filter: $filter, includeDisabled: $includeDisabled, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy, sort: $sort",
             selection
         );
         self.client
-            .execute_connection::<T>(&query, variables, "issues")
+            .execute_connection::<T>(&query, variables, "users")
             .await
     }
 }
-/// Query builder: All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
-///
-/// Full type: [`IssueRelation`](super::types::IssueRelation)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct IssueRelationsQueryBuilder<'a, T> {
-    client: &'a Client,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>>
-    IssueRelationsQueryBuilder<'a, T>
-{
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "IssueRelations",
-            "$before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "issueRelations",
-            "before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "issueRelations")
-            .await
-    }
-}
-/// Query builder: All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
-///
-/// Full type: [`IssueLabel`](super::types::IssueLabel)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct IssueLabelsQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<IssueLabelFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel>>
-    IssueLabelsQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: IssueLabelFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "IssueLabels",
-            "$filter: IssueLabelFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "issueLabels",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "issueLabels")
-            .await
-    }
-}
-/// Query builder: All documents the user has access to in the workspace.
-///
-/// Full type: [`Document`](super::types::Document)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct DocumentsQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<DocumentFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>
-    DocumentsQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: DocumentFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "Documents",
-            "$filter: DocumentFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "documents",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "documents")
-            .await
-    }
-}
-/// Query builder: All cycles accessible to the user.
-///
-/// Full type: [`Cycle`](super::types::Cycle)
-///
-/// Use setter methods to configure optional parameters, then call
-/// [`.send()`](Self::send) to execute the query.
-#[must_use]
-pub struct CyclesQueryBuilder<'a, T> {
-    client: &'a Client,
-    filter: Option<CycleFilter>,
-    before: Option<String>,
-    after: Option<String>,
-    first: Option<i64>,
-    last: Option<i64>,
-    include_archived: Option<bool>,
-    order_by: Option<PaginationOrderBy>,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>
-    CyclesQueryBuilder<'a, T>
-{
-    pub fn filter(mut self, value: CycleFilter) -> Self {
-        self.filter = Some(value);
-        self
-    }
-    pub fn before(mut self, value: impl Into<String>) -> Self {
-        self.before = Some(value.into());
-        self
-    }
-    pub fn after(mut self, value: impl Into<String>) -> Self {
-        self.after = Some(value.into());
-        self
-    }
-    pub fn first(mut self, value: i64) -> Self {
-        self.first = Some(value);
-        self
-    }
-    pub fn last(mut self, value: i64) -> Self {
-        self.last = Some(value);
-        self
-    }
-    pub fn include_archived(mut self, value: bool) -> Self {
-        self.include_archived = Some(value);
-        self
-    }
-    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
-        self.order_by = Some(value);
-        self
-    }
-    pub async fn send(self) -> Result<Connection<T>, LinearError> {
-        let mut map = serde_json::Map::new();
-        if let Some(ref v) = self.filter {
-            map.insert("filter".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.before {
-            map.insert("before".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.after {
-            map.insert("after".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.first {
-            map.insert("first".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.last {
-            map.insert("last".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.include_archived {
-            map.insert("includeArchived".to_string(), serde_json::json!(v));
-        }
-        if let Some(ref v) = self.order_by {
-            map.insert("orderBy".to_string(), serde_json::json!(v));
-        }
-        let variables = serde_json::Value::Object(map);
-        let selection = T::selection();
-        let query = format!(
-            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
-            "Cycles",
-            "$filter: CycleFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
-            "cycles",
-            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
-            selection
-        );
-        self.client
-            .execute_connection::<T>(&query, variables, "cycles")
-            .await
-    }
-}
-/// All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
+/// Query builder: All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
 ///
 /// Full type: [`WorkflowState`](super::types::WorkflowState)
-pub fn workflow_states<'a, T>(client: &'a Client) -> WorkflowStatesQueryBuilder<'a, T> {
-    WorkflowStatesQueryBuilder {
-        client,
-        filter: None,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        _marker: std::marker::PhantomData,
-    }
-}
-/// All users in the workspace. Supports filtering, sorting, and pagination.
 ///
-/// Full type: [`User`](super::types::User)
-pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
-    UsersQueryBuilder {
-        client,
-        filter: None,
-        include_disabled: None,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        sort: None,
-        _marker: std::marker::PhantomData,
-    }
+/// Use setter methods to configure optional parameters, then call
+/// [`.send()`](Self::send) to execute the query.
+#[must_use]
+pub struct WorkflowStatesQueryBuilder<'a, T> {
+    client: &'a Client,
+    filter: Option<WorkflowStateFilter>,
+    before: Option<String>,
+    after: Option<String>,
+    first: Option<i64>,
+    last: Option<i64>,
+    include_archived: Option<bool>,
+    order_by: Option<PaginationOrderBy>,
+    _marker: std::marker::PhantomData<T>,
 }
-/// The currently authenticated user making the API request.
-///
-/// Full type: [`User`](super::types::User)
-pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
-    client: &Client,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!({});
-    let selection = T::selection();
-    let query = format!("query {} {{ {} {{ {} }} }}", "Viewer", "viewer", selection);
-    client.execute::<T>(&query, variables, "viewer").await
+impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::WorkflowState>>
+    WorkflowStatesQueryBuilder<'a, T>
+{
+    pub fn filter(mut self, value: WorkflowStateFilter) -> Self {
+        self.filter = Some(value);
+        self
+    }
+    pub fn before(mut self, value: impl Into<String>) -> Self {
+        self.before = Some(value.into());
+        self
+    }
+    pub fn after(mut self, value: impl Into<String>) -> Self {
+        self.after = Some(value.into());
+        self
+    }
+    pub fn first(mut self, value: i64) -> Self {
+        self.first = Some(value);
+        self
+    }
+    pub fn last(mut self, value: i64) -> Self {
+        self.last = Some(value);
+        self
+    }
+    pub fn include_archived(mut self, value: bool) -> Self {
+        self.include_archived = Some(value);
+        self
+    }
+    pub fn order_by(mut self, value: PaginationOrderBy) -> Self {
+        self.order_by = Some(value);
+        self
+    }
+    pub async fn send(self) -> Result<Connection<T>, LinearError> {
+        let mut map = serde_json::Map::new();
+        if let Some(ref v) = self.filter {
+            map.insert("filter".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.before {
+            map.insert("before".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.after {
+            map.insert("after".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.first {
+            map.insert("first".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.last {
+            map.insert("last".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.include_archived {
+            map.insert("includeArchived".to_string(), serde_json::json!(v));
+        }
+        if let Some(ref v) = self.order_by {
+            map.insert("orderBy".to_string(), serde_json::json!(v));
+        }
+        let variables = serde_json::Value::Object(map);
+        let selection = T::selection();
+        let query = format!(
+            "query {}({}) {{ {}({}) {{ nodes {{ {} }} pageInfo {{ hasNextPage endCursor }} }} }}",
+            "WorkflowStates",
+            "$filter: WorkflowStateFilter, $before: String, $after: String, $first: Int, $last: Int, $includeArchived: Boolean, $orderBy: PaginationOrderBy",
+            "workflowStates",
+            "filter: $filter, before: $before, after: $after, first: $first, last: $last, includeArchived: $includeArchived, orderBy: $orderBy",
+            selection
+        );
+        self.client
+            .execute_connection::<T>(&query, variables, "workflowStates")
+            .await
+    }
 }
 /// Returns all projects in the workspace, with optional filtering and sorting.
 ///
@@ -1254,11 +1217,11 @@ pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types
     );
     client.execute::<T>(&query, variables, "project").await
 }
-/// All teams whose issues the user can access. This includes public teams and private teams the user is a member of. This may differ from `administrableTeams`, which returns teams whose settings the user can change but whose issues they don't necessarily have access to.
+/// All cycles accessible to the user.
 ///
-/// Full type: [`Team`](super::types::Team)
-pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
-    TeamsQueryBuilder {
+/// Full type: [`Cycle`](super::types::Cycle)
+pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
+    CyclesQueryBuilder {
         client,
         filter: None,
         before: None,
@@ -1270,10 +1233,10 @@ pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// Fetches a specific team by its ID.
+/// One specific cycle, looked up by ID or slug.
 ///
-/// Full type: [`Team`](super::types::Team)
-pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>(
+/// Full type: [`Cycle`](super::types::Cycle)
+pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1281,52 +1244,15 @@ pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::T
     let selection = T::selection();
     let query = format!(
         "query {}({}) {{ {}({}) {{ {} }} }}",
-        "Team", "$id: String!", "team", "id: $id", selection
+        "Cycle", "$id: String!", "cycle", "id: $id", selection
     );
-    client.execute::<T>(&query, variables, "team").await
+    client.execute::<T>(&query, variables, "cycle").await
 }
-/// Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
+/// All documents the user has access to in the workspace.
 ///
-/// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
-pub fn search_issues<'a, T>(
-    client: &'a Client,
-    term: impl Into<String>,
-) -> SearchIssuesQueryBuilder<'a, T> {
-    SearchIssuesQueryBuilder {
-        client,
-        term: term.into(),
-        filter: None,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        include_comments: None,
-        team_id: None,
-        _marker: std::marker::PhantomData,
-    }
-}
-/// Returns all project statuses in the workspace.
-///
-/// Full type: [`ProjectStatus`](super::types::ProjectStatus)
-pub fn project_statuses<'a, T>(client: &'a Client) -> ProjectStatusesQueryBuilder<'a, T> {
-    ProjectStatusesQueryBuilder {
-        client,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        _marker: std::marker::PhantomData,
-    }
-}
-/// Returns all project milestones in the workspace, with optional filtering.
-///
-/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
-pub fn project_milestones<'a, T>(client: &'a Client) -> ProjectMilestonesQueryBuilder<'a, T> {
-    ProjectMilestonesQueryBuilder {
+/// Full type: [`Document`](super::types::Document)
+pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
+    DocumentsQueryBuilder {
         client,
         filter: None,
         before: None,
@@ -1335,14 +1261,61 @@ pub fn project_milestones<'a, T>(client: &'a Client) -> ProjectMilestonesQueryBu
         last: None,
         include_archived: None,
         order_by: None,
+        sort: None,
         _marker: std::marker::PhantomData,
     }
 }
-/// Returns a single project milestone by its identifier.
+/// A specific document by ID or slug.
 ///
-/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
-pub async fn project_milestone<
-    T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>,
+/// Full type: [`Document`](super::types::Document)
+pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>(
+    client: &Client,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let selection = T::selection();
+    let query = format!(
+        "query {}({}) {{ {}({}) {{ {} }} }}",
+        "Document", "$id: String!", "document", "id: $id", selection
+    );
+    client.execute::<T>(&query, variables, "document").await
+}
+/// All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T> {
+    IssueLabelsQueryBuilder {
+        client,
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
+pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<'a, T> {
+    IssueRelationsQueryBuilder {
+        client,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// One specific issue relation, looked up by its unique identifier.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
+pub async fn issue_relation<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>,
 >(
     client: &Client,
     id: String,
@@ -1351,27 +1324,11 @@ pub async fn project_milestone<
     let selection = T::selection();
     let query = format!(
         "query {}({}) {{ {}({}) {{ {} }} }}",
-        "ProjectMilestone", "$id: String!", "projectMilestone", "id: $id", selection
+        "IssueRelation", "$id: String!", "issueRelation", "id: $id", selection
     );
     client
-        .execute::<T>(&query, variables, "projectMilestone")
+        .execute::<T>(&query, variables, "issueRelation")
         .await
-}
-/// Returns all project labels in the workspace, with optional filtering.
-///
-/// Full type: [`ProjectLabel`](super::types::ProjectLabel)
-pub fn project_labels<'a, T>(client: &'a Client) -> ProjectLabelsQueryBuilder<'a, T> {
-    ProjectLabelsQueryBuilder {
-        client,
-        filter: None,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        _marker: std::marker::PhantomData,
-    }
 }
 /// All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
 ///
@@ -1428,12 +1385,13 @@ pub async fn issue_vcs_branch_search<
         .execute::<Option<T>>(&query, variables, "issueVcsBranchSearch")
         .await
 }
-/// All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+/// All project labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels, with optional filtering.
 ///
-/// Full type: [`IssueRelation`](super::types::IssueRelation)
-pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<'a, T> {
-    IssueRelationsQueryBuilder {
+/// Full type: [`ProjectLabel`](super::types::ProjectLabel)
+pub fn project_labels<'a, T>(client: &'a Client) -> ProjectLabelsQueryBuilder<'a, T> {
+    ProjectLabelsQueryBuilder {
         client,
+        filter: None,
         before: None,
         after: None,
         first: None,
@@ -1443,11 +1401,27 @@ pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<
         _marker: std::marker::PhantomData,
     }
 }
-/// One specific issue relation, looked up by its unique identifier.
+/// Returns all project milestones in the workspace, with optional filtering.
 ///
-/// Full type: [`IssueRelation`](super::types::IssueRelation)
-pub async fn issue_relation<
-    T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelation>,
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub fn project_milestones<'a, T>(client: &'a Client) -> ProjectMilestonesQueryBuilder<'a, T> {
+    ProjectMilestonesQueryBuilder {
+        client,
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// Returns a single project milestone by its identifier.
+///
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone<
+    T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectMilestone>,
 >(
     client: &Client,
     id: String,
@@ -1456,17 +1430,54 @@ pub async fn issue_relation<
     let selection = T::selection();
     let query = format!(
         "query {}({}) {{ {}({}) {{ {} }} }}",
-        "IssueRelation", "$id: String!", "issueRelation", "id: $id", selection
+        "ProjectMilestone", "$id: String!", "projectMilestone", "id: $id", selection
     );
     client
-        .execute::<T>(&query, variables, "issueRelation")
+        .execute::<T>(&query, variables, "projectMilestone")
         .await
 }
-/// All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+/// Returns all project statuses in the workspace.
 ///
-/// Full type: [`IssueLabel`](super::types::IssueLabel)
-pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T> {
-    IssueLabelsQueryBuilder {
+/// Full type: [`ProjectStatus`](super::types::ProjectStatus)
+pub fn project_statuses<'a, T>(client: &'a Client) -> ProjectStatusesQueryBuilder<'a, T> {
+    ProjectStatusesQueryBuilder {
+        client,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
+///
+/// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
+pub fn search_issues<'a, T>(
+    client: &'a Client,
+    term: impl Into<String>,
+) -> SearchIssuesQueryBuilder<'a, T> {
+    SearchIssuesQueryBuilder {
+        client,
+        term: term.into(),
+        filter: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        include_comments: None,
+        team_id: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// All teams whose issues the user can access. This includes public teams and private teams the user is a member of. This may differ from `administrableTeams`, which returns teams whose settings the user can change but whose issues they don't necessarily have access to.
+///
+/// Full type: [`Team`](super::types::Team)
+pub fn teams<'a, T>(client: &'a Client) -> TeamsQueryBuilder<'a, T> {
+    TeamsQueryBuilder {
         client,
         filter: None,
         before: None,
@@ -1478,26 +1489,10 @@ pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T>
         _marker: std::marker::PhantomData,
     }
 }
-/// All documents the user has access to in the workspace.
+/// Fetches a specific team by its ID.
 ///
-/// Full type: [`Document`](super::types::Document)
-pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
-    DocumentsQueryBuilder {
-        client,
-        filter: None,
-        before: None,
-        after: None,
-        first: None,
-        last: None,
-        include_archived: None,
-        order_by: None,
-        _marker: std::marker::PhantomData,
-    }
-}
-/// A specific document by ID or slug.
-///
-/// Full type: [`Document`](super::types::Document)
-pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>(
+/// Full type: [`Team`](super::types::Team)
+pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>(
     client: &Client,
     id: String,
 ) -> Result<T, LinearError> {
@@ -1505,15 +1500,44 @@ pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::type
     let selection = T::selection();
     let query = format!(
         "query {}({}) {{ {}({}) {{ {} }} }}",
-        "Document", "$id: String!", "document", "id: $id", selection
+        "Team", "$id: String!", "team", "id: $id", selection
     );
-    client.execute::<T>(&query, variables, "document").await
+    client.execute::<T>(&query, variables, "team").await
 }
-/// All cycles accessible to the user.
+/// All users in the workspace. Supports filtering, sorting, and pagination.
 ///
-/// Full type: [`Cycle`](super::types::Cycle)
-pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
-    CyclesQueryBuilder {
+/// Full type: [`User`](super::types::User)
+pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
+    UsersQueryBuilder {
+        client,
+        filter: None,
+        include_disabled: None,
+        before: None,
+        after: None,
+        first: None,
+        last: None,
+        include_archived: None,
+        order_by: None,
+        sort: None,
+        _marker: std::marker::PhantomData,
+    }
+}
+/// The currently authenticated user making the API request.
+///
+/// Full type: [`User`](super::types::User)
+pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
+    client: &Client,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({});
+    let selection = T::selection();
+    let query = format!("query {} {{ {} {{ {} }} }}", "Viewer", "viewer", selection);
+    client.execute::<T>(&query, variables, "viewer").await
+}
+/// All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
+///
+/// Full type: [`WorkflowState`](super::types::WorkflowState)
+pub fn workflow_states<'a, T>(client: &'a Client) -> WorkflowStatesQueryBuilder<'a, T> {
+    WorkflowStatesQueryBuilder {
         client,
         filter: None,
         before: None,
@@ -1524,19 +1548,4 @@ pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
         order_by: None,
         _marker: std::marker::PhantomData,
     }
-}
-/// One specific cycle, looked up by ID or slug.
-///
-/// Full type: [`Cycle`](super::types::Cycle)
-pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
-    client: &Client,
-    id: String,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!({ "id" : id });
-    let selection = T::selection();
-    let query = format!(
-        "query {}({}) {{ {}({}) {{ {} }} }}",
-        "Cycle", "$id: String!", "cycle", "id: $id", selection
-    );
-    client.execute::<T>(&query, variables, "cycle").await
 }
