@@ -26,13 +26,14 @@ pub enum LabelsAction {
         #[arg(long)]
         team: Option<String>,
     },
-    /// Create a new issue label.
+    /// Create a new issue label
     ///
     /// Examples:
     ///   lineark labels create "Bug" --color "#eb5757"
     ///   lineark labels create "Feature" --team ENG --color "#4ea7fc" --description "Feature requests"
     ///   lineark labels create "Category" --make-label-group --color "#000000"
     ///   lineark labels create "Sub-label" --parent-label-group GROUP-UUID --color "#ffffff"
+    #[command(verbatim_doc_comment)]
     Create {
         /// Label name.
         name: String,
@@ -52,13 +53,14 @@ pub enum LabelsAction {
         #[arg(long, default_value = "false")]
         make_label_group: bool,
     },
-    /// Update an existing issue label.
+    /// Update an existing issue label
     ///
     /// Examples:
     ///   lineark labels update LABEL-UUID --name "Renamed"
     ///   lineark labels update LABEL-UUID --color "#00ff00" --description "Updated"
     ///   lineark labels update LABEL-UUID --make-label-group   # promote to group
     ///   lineark labels update LABEL-UUID --clear-label-group # demote (must have no children)
+    #[command(verbatim_doc_comment)]
     Update {
         /// Label UUID.
         id: String,
@@ -84,10 +86,11 @@ pub enum LabelsAction {
         #[arg(long, default_value = "false")]
         clear_label_group: bool,
     },
-    /// Delete an issue label.
+    /// Delete an issue label
     ///
     /// Examples:
     ///   lineark labels delete LABEL-UUID
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Label UUID.
         id: String,

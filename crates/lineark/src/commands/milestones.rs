@@ -20,11 +20,12 @@ pub struct MilestonesCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum MilestonesAction {
-    /// List milestones for a project.
+    /// List milestones for a project
     ///
     /// Examples:
     ///   lineark project-milestones list --project "My Project"
     ///   lineark project-milestones list --project PROJECT-UUID --limit 10
+    #[command(verbatim_doc_comment)]
     List {
         /// Project name or UUID.
         #[arg(long)]
@@ -33,11 +34,12 @@ pub enum MilestonesAction {
         #[arg(long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
         limit: i64,
     },
-    /// Read a specific milestone by UUID or by name (with --project).
+    /// Read a specific milestone by UUID or by name (with --project)
     ///
     /// Examples:
     ///   lineark project-milestones read MILESTONE-UUID
     ///   lineark project-milestones read "Beta Release" --project "My Project"
+    #[command(verbatim_doc_comment)]
     Read {
         /// Milestone UUID or name.
         id: String,
@@ -45,11 +47,12 @@ pub enum MilestonesAction {
         #[arg(long)]
         project: Option<String>,
     },
-    /// Create a new milestone.
+    /// Create a new milestone
     ///
     /// Examples:
     ///   lineark project-milestones create "Beta Release" --project "My Project"
     ///   lineark project-milestones create "v1.0" --project "My Project" --target-date 2025-06-01
+    #[command(verbatim_doc_comment)]
     Create {
         /// Milestone name.
         name: String,
@@ -63,11 +66,12 @@ pub enum MilestonesAction {
         #[arg(long)]
         description: Option<String>,
     },
-    /// Update an existing milestone.
+    /// Update an existing milestone
     ///
     /// Examples:
     ///   lineark project-milestones update MILESTONE-UUID --name "GA Release"
     ///   lineark project-milestones update "Beta" --project "My Project" --target-date 2025-07-01
+    #[command(verbatim_doc_comment)]
     Update {
         /// Milestone UUID or name (with --project).
         id: String,
@@ -84,11 +88,12 @@ pub enum MilestonesAction {
         #[arg(long)]
         description: Option<String>,
     },
-    /// Delete a milestone.
+    /// Delete a milestone
     ///
     /// Examples:
     ///   lineark project-milestones delete MILESTONE-UUID
     ///   lineark project-milestones delete "Beta Release" --project "My Project"
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Milestone UUID or name (with --project).
         id: String,

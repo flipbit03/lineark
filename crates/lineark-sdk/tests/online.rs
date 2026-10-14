@@ -795,7 +795,10 @@ mod online {
             .unwrap();
 
         // Delete the document.
-        client.document_delete::<Document>(doc_id).await.unwrap();
+        client
+            .document_delete::<Document>(None, doc_id)
+            .await
+            .unwrap();
     }
 
     // ── Issue Relations ─────────────────────────────────────────────────────

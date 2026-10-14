@@ -8,47 +8,6 @@
 use super::inputs::*;
 use crate::client::Client;
 use crate::error::LinearError;
-/// XHR request payload to upload an images, video and other attachments directly to Linear's cloud storage.
-pub async fn file_upload(
-    client: &Client,
-    meta_data: Option<serde_json::Value>,
-    make_public: Option<bool>,
-    size: i64,
-    content_type: String,
-    filename: String,
-) -> Result<serde_json::Value, LinearError> {
-    let variables = serde_json::json!(
-        { "metaData" : meta_data, "makePublic" : make_public, "size" : size,
-        "contentType" : content_type, "filename" : filename }
-    );
-    let mut response_parts: Vec<String> = vec!["success".to_string()];
-    response_parts.push(format!(
-        "{} {{ {} }}",
-        "uploadFile",
-        <super::types::UploadFile as crate::field_selection::GraphQLFields>::selection()
-    ));
-    let query = String::from(
-        "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { ",
-    ) + &response_parts.join(" ") + " } }";
-    client
-        .execute::<serde_json::Value>(&query, variables, "fileUpload")
-        .await
-}
-/// Upload an image from an URL to Linear.
-pub async fn image_upload_from_url(
-    client: &Client,
-    url: String,
-) -> Result<serde_json::Value, LinearError> {
-    let variables = serde_json::json!({ "url" : url });
-    let response_parts: Vec<String> = vec!["url".to_string(), "success".to_string()];
-    let query = String::from(
-        "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { ",
-    ) + &response_parts.join(" ")
-        + " } }";
-    client
-        .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
-        .await
-}
 /// Creates a new project.
 ///
 /// Full type: [`Project`](super::types::Project)
@@ -57,14 +16,17 @@ pub async fn project_create<
         + crate::field_selection::GraphQLFields<FullType = super::types::Project>,
 >(
     client: &Client,
+    ai_conversation_id: Option<String>,
+    project_draft_id: Option<String>,
     slack_channel_name: Option<String>,
     input: ProjectCreateInput,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!(
-        { "slackChannelName" : slack_channel_name, "input" : input }
+        { "aiConversationId" : ai_conversation_id, "projectDraftId" : project_draft_id,
+        "slackChannelName" : slack_channel_name, "input" : input }
     );
     let query = String::from(
-        "mutation ProjectCreate($slackChannelName: String, $input: ProjectCreateInput!) { projectCreate(slackChannelName: $slackChannelName, input: $input) { success project { ",
+        "mutation ProjectCreate($aiConversationId: String, $projectDraftId: String, $slackChannelName: String, $input: ProjectCreateInput!) { projectCreate(aiConversationId: $aiConversationId, projectDraftId: $projectDraftId, slackChannelName: $slackChannelName, input: $input) { success project { ",
     ) + &T::selection() + " } } }";
     client
         .execute_mutation::<T>(&query, variables, "projectCreate", "project")
@@ -108,155 +70,288 @@ pub async fn project_delete<
         .execute_mutation::<T>(&query, variables, "projectDelete", "entity")
         .await
 }
-/// Creates a new team. The user who creates the team will automatically be added as a member and owner of the newly created team. Default workflow states, labels, and other team resources are created alongside the team.
-///
-/// Full type: [`Team`](super::types::Team)
-pub async fn team_create<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
->(
+/// XHR request payload to upload an images, video and other attachments directly to Linear's cloud storage.
+pub async fn file_upload(
     client: &Client,
-    copy_settings_from_team_id: Option<String>,
-    input: TeamCreateInput,
-) -> Result<T, LinearError> {
+    meta_data: Option<serde_json::Value>,
+    make_public: Option<bool>,
+    size: i64,
+    content_type: String,
+    filename: String,
+) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!(
-        { "copySettingsFromTeamId" : copy_settings_from_team_id, "input" : input }
+        { "metaData" : meta_data, "makePublic" : make_public, "size" : size,
+        "contentType" : content_type, "filename" : filename }
     );
+    let mut response_parts: Vec<String> = vec!["success".to_string()];
+    response_parts.push(format!(
+        "{} {{ {} }}",
+        "uploadFile",
+        <super::types::UploadFile as crate::field_selection::GraphQLFields>::selection()
+    ));
     let query = String::from(
-        "mutation TeamCreate($copySettingsFromTeamId: String, $input: TeamCreateInput!) { teamCreate(copySettingsFromTeamId: $copySettingsFromTeamId, input: $input) { success team { ",
-    ) + &T::selection() + " } } }";
+        "mutation FileUpload($metaData: JSON, $makePublic: Boolean, $size: Int!, $contentType: String!, $filename: String!) { fileUpload(metaData: $metaData, makePublic: $makePublic, size: $size, contentType: $contentType, filename: $filename) { ",
+    ) + &response_parts.join(" ") + " } }";
     client
-        .execute_mutation::<T>(&query, variables, "teamCreate", "team")
+        .execute::<serde_json::Value>(&query, variables, "fileUpload")
         .await
 }
-/// Updates a team's settings, properties, or configuration. Requires team owner or workspace admin permissions for most changes.
+/// Upload an image from an URL to Linear.
+pub async fn image_upload_from_url(
+    client: &Client,
+    url: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "url" : url });
+    let response_parts: Vec<String> = vec!["url".to_string(), "success".to_string()];
+    let query = String::from(
+        "mutation ImageUploadFromUrl($url: String!) { imageUploadFromUrl(url: $url) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "imageUploadFromUrl")
+        .await
+}
+/// Creates a new comment.
 ///
-/// Full type: [`Team`](super::types::Team)
-pub async fn team_update<
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_create<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
 >(
     client: &Client,
-    mapping: Option<InheritanceEntityMapping>,
-    input: TeamUpdateInput,
+    input: CommentCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "input" : input });
+    let query = String::from(
+        "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
+        .await
+}
+/// Updates a comment.
+///
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+>(
+    client: &Client,
+    skip_edited_at: Option<bool>,
+    input: CommentUpdateInput,
     id: String,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!(
-        { "mapping" : mapping, "input" : input, "id" : id }
+        { "skipEditedAt" : skip_edited_at, "input" : input, "id" : id }
     );
     let query = String::from(
-        "mutation TeamUpdate($mapping: InheritanceEntityMapping, $input: TeamUpdateInput!, $id: String!) { teamUpdate(mapping: $mapping, input: $input, id: $id) { success team { ",
+        "mutation CommentUpdate($skipEditedAt: Boolean, $input: CommentUpdateInput!, $id: String!) { commentUpdate(skipEditedAt: $skipEditedAt, input: $input, id: $id) { success comment { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(&query, variables, "teamUpdate", "team")
+        .execute_mutation::<T>(&query, variables, "commentUpdate", "comment")
         .await
 }
-/// Archives a team and schedules its data for deletion. Requires team owner or workspace admin permissions.
-pub async fn team_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
+/// Deletes a comment.
+pub async fn comment_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "id" : id });
     let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
-    let query = String::from("mutation TeamDelete($id: String!) { teamDelete(id: $id) { ")
+    let query = String::from("mutation CommentDelete($id: String!) { commentDelete(id: $id) { ")
         + &response_parts.join(" ")
         + " } }";
     client
-        .execute::<serde_json::Value>(&query, variables, "teamDelete")
+        .execute::<serde_json::Value>(&query, variables, "commentDelete")
         .await
 }
-/// Creates a new team membership, adding a user to a team. Validates that the user is not already a member, the team is not archived or retired, and the requesting user has permission to add members.
+/// Resolves a comment thread. Marks the root comment as resolved by the current user.
 ///
-/// Full type: [`TeamMembership`](super::types::TeamMembership)
-pub async fn team_membership_create<
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_resolve<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::TeamMembership>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
 >(
     client: &Client,
-    input: TeamMembershipCreateInput,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!({ "input" : input });
-    let query = String::from(
-        "mutation TeamMembershipCreate($input: TeamMembershipCreateInput!) { teamMembershipCreate(input: $input) { success teamMembership { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "teamMembershipCreate", "teamMembership")
-        .await
-}
-/// Deletes a team membership, removing the user from the team. Users can remove their own membership, or team owners and workspace admins can remove other members.
-pub async fn team_membership_delete(
-    client: &Client,
-    also_leave_parent_teams: Option<bool>,
+    resolving_comment_id: Option<String>,
     id: String,
-) -> Result<serde_json::Value, LinearError> {
+) -> Result<T, LinearError> {
     let variables = serde_json::json!(
-        { "alsoLeaveParentTeams" : also_leave_parent_teams, "id" : id }
+        { "resolvingCommentId" : resolving_comment_id, "id" : id }
     );
-    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
     let query = String::from(
-        "mutation TeamMembershipDelete($alsoLeaveParentTeams: Boolean, $id: String!) { teamMembershipDelete(alsoLeaveParentTeams: $alsoLeaveParentTeams, id: $id) { ",
-    ) + &response_parts.join(" ") + " } }";
+        "mutation CommentResolve($resolvingCommentId: String, $id: String!) { commentResolve(resolvingCommentId: $resolvingCommentId, id: $id) { success comment { ",
+    ) + &T::selection() + " } } }";
     client
-        .execute::<serde_json::Value>(&query, variables, "teamMembershipDelete")
+        .execute_mutation::<T>(&query, variables, "commentResolve", "comment")
         .await
 }
-/// Creates a new project milestone.
+/// Unresolves a previously resolved comment thread. Clears the resolved state on the root comment.
 ///
-/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
-pub async fn project_milestone_create<
+/// Full type: [`Comment`](super::types::Comment)
+pub async fn comment_unresolve<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
 >(
     client: &Client,
-    input: ProjectMilestoneCreateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let query = String::from(
+        "mutation CommentUnresolve($id: String!) { commentUnresolve(id: $id) { success comment { ",
+    ) + &T::selection()
+        + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "commentUnresolve", "comment")
+        .await
+}
+/// Creates a new document.
+///
+/// Full type: [`Document`](super::types::Document)
+pub async fn document_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+>(
+    client: &Client,
+    input: DocumentCreateInput,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
     let query = String::from(
-        "mutation ProjectMilestoneCreate($input: ProjectMilestoneCreateInput!) { projectMilestoneCreate(input: $input) { success projectMilestone { ",
+        "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(
-            &query,
-            variables,
-            "projectMilestoneCreate",
-            "projectMilestone",
-        )
+        .execute_mutation::<T>(&query, variables, "documentCreate", "document")
         .await
 }
-/// Updates a project milestone.
+/// Updates a document.
 ///
-/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
-pub async fn project_milestone_update<
+/// Full type: [`Document`](super::types::Document)
+pub async fn document_update<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
 >(
     client: &Client,
-    input: ProjectMilestoneUpdateInput,
+    input: DocumentUpdateInput,
     id: String,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input, "id" : id });
     let query = String::from(
-        "mutation ProjectMilestoneUpdate($input: ProjectMilestoneUpdateInput!, $id: String!) { projectMilestoneUpdate(input: $input, id: $id) { success projectMilestone { ",
+        "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(
-            &query,
-            variables,
-            "projectMilestoneUpdate",
-            "projectMilestone",
-        )
+        .execute_mutation::<T>(&query, variables, "documentUpdate", "document")
         .await
 }
-/// Deletes a project milestone.
-pub async fn project_milestone_delete(
+/// Deletes (trashes) a document. The document is marked as trashed and archived, but not permanently removed.
+///
+/// Full type: [`Document`](super::types::Document)
+pub async fn document_delete<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+>(
+    client: &Client,
+    if_parent_document_id: Option<String>,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "ifParentDocumentId" : if_parent_document_id, "id" : id }
+    );
+    let query = String::from(
+        "mutation DocumentDelete($ifParentDocumentId: String, $id: String!) { documentDelete(ifParentDocumentId: $ifParentDocumentId, id: $id) { success entity { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "documentDelete", "entity")
+        .await
+}
+/// Creates a new label.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub async fn issue_label_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+>(
+    client: &Client,
+    replace_team_labels: Option<bool>,
+    input: IssueLabelCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "replaceTeamLabels" : replace_team_labels, "input" : input }
+    );
+    let query = String::from(
+        "mutation IssueLabelCreate($replaceTeamLabels: Boolean, $input: IssueLabelCreateInput!) { issueLabelCreate(replaceTeamLabels: $replaceTeamLabels, input: $input) { success issueLabel { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "issueLabelCreate", "issueLabel")
+        .await
+}
+/// Updates a label.
+///
+/// Full type: [`IssueLabel`](super::types::IssueLabel)
+pub async fn issue_label_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
+>(
+    client: &Client,
+    replace_team_labels: Option<bool>,
+    input: IssueLabelUpdateInput,
+    id: String,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "replaceTeamLabels" : replace_team_labels, "input" : input, "id" : id }
+    );
+    let query = String::from(
+        "mutation IssueLabelUpdate($replaceTeamLabels: Boolean, $input: IssueLabelUpdateInput!, $id: String!) { issueLabelUpdate(replaceTeamLabels: $replaceTeamLabels, input: $input, id: $id) { success issueLabel { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "issueLabelUpdate", "issueLabel")
+        .await
+}
+/// Deletes an issue label.
+pub async fn issue_label_delete(
+    client: &Client,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query =
+        String::from("mutation IssueLabelDelete($id: String!) { issueLabelDelete(id: $id) { ")
+            + &response_parts.join(" ")
+            + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "issueLabelDelete")
+        .await
+}
+/// Creates a new issue relation.
+///
+/// Full type: [`IssueRelation`](super::types::IssueRelation)
+pub async fn issue_relation_create<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::IssueRelation>,
+>(
+    client: &Client,
+    override_created_at: Option<serde_json::Value>,
+    input: IssueRelationCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "overrideCreatedAt" : override_created_at, "input" : input }
+    );
+    let query = String::from(
+        "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "issueRelationCreate", "issueRelation")
+        .await
+}
+/// Deletes an issue relation.
+pub async fn issue_relation_delete(
     client: &Client,
     id: String,
 ) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "id" : id });
     let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
     let query = String::from(
-        "mutation ProjectMilestoneDelete($id: String!) { projectMilestoneDelete(id: $id) { ",
+        "mutation IssueRelationDelete($id: String!) { issueRelationDelete(id: $id) { ",
     ) + &response_parts.join(" ")
         + " } }";
     client
-        .execute::<serde_json::Value>(&query, variables, "projectMilestoneDelete")
+        .execute::<serde_json::Value>(&query, variables, "issueRelationDelete")
         .await
 }
 /// Creates a new issue.
@@ -374,244 +469,154 @@ pub async fn issue_delete<
         .execute_mutation::<T>(&query, variables, "issueDelete", "entity")
         .await
 }
-/// Creates a new issue relation.
+/// Creates a new project milestone.
 ///
-/// Full type: [`IssueRelation`](super::types::IssueRelation)
-pub async fn issue_relation_create<
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone_create<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::IssueRelation>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
 >(
     client: &Client,
-    override_created_at: Option<serde_json::Value>,
-    input: IssueRelationCreateInput,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!(
-        { "overrideCreatedAt" : override_created_at, "input" : input }
-    );
-    let query = String::from(
-        "mutation IssueRelationCreate($overrideCreatedAt: DateTime, $input: IssueRelationCreateInput!) { issueRelationCreate(overrideCreatedAt: $overrideCreatedAt, input: $input) { success issueRelation { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "issueRelationCreate", "issueRelation")
-        .await
-}
-/// Deletes an issue relation.
-pub async fn issue_relation_delete(
-    client: &Client,
-    id: String,
-) -> Result<serde_json::Value, LinearError> {
-    let variables = serde_json::json!({ "id" : id });
-    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
-    let query = String::from(
-        "mutation IssueRelationDelete($id: String!) { issueRelationDelete(id: $id) { ",
-    ) + &response_parts.join(" ")
-        + " } }";
-    client
-        .execute::<serde_json::Value>(&query, variables, "issueRelationDelete")
-        .await
-}
-/// Creates a new label.
-///
-/// Full type: [`IssueLabel`](super::types::IssueLabel)
-pub async fn issue_label_create<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
->(
-    client: &Client,
-    replace_team_labels: Option<bool>,
-    input: IssueLabelCreateInput,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!(
-        { "replaceTeamLabels" : replace_team_labels, "input" : input }
-    );
-    let query = String::from(
-        "mutation IssueLabelCreate($replaceTeamLabels: Boolean, $input: IssueLabelCreateInput!) { issueLabelCreate(replaceTeamLabels: $replaceTeamLabels, input: $input) { success issueLabel { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "issueLabelCreate", "issueLabel")
-        .await
-}
-/// Updates a label.
-///
-/// Full type: [`IssueLabel`](super::types::IssueLabel)
-pub async fn issue_label_update<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::IssueLabel>,
->(
-    client: &Client,
-    replace_team_labels: Option<bool>,
-    input: IssueLabelUpdateInput,
-    id: String,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!(
-        { "replaceTeamLabels" : replace_team_labels, "input" : input, "id" : id }
-    );
-    let query = String::from(
-        "mutation IssueLabelUpdate($replaceTeamLabels: Boolean, $input: IssueLabelUpdateInput!, $id: String!) { issueLabelUpdate(replaceTeamLabels: $replaceTeamLabels, input: $input, id: $id) { success issueLabel { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "issueLabelUpdate", "issueLabel")
-        .await
-}
-/// Deletes an issue label.
-pub async fn issue_label_delete(
-    client: &Client,
-    id: String,
-) -> Result<serde_json::Value, LinearError> {
-    let variables = serde_json::json!({ "id" : id });
-    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
-    let query =
-        String::from("mutation IssueLabelDelete($id: String!) { issueLabelDelete(id: $id) { ")
-            + &response_parts.join(" ")
-            + " } }";
-    client
-        .execute::<serde_json::Value>(&query, variables, "issueLabelDelete")
-        .await
-}
-/// Creates a new document.
-///
-/// Full type: [`Document`](super::types::Document)
-pub async fn document_create<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
->(
-    client: &Client,
-    input: DocumentCreateInput,
+    input: ProjectMilestoneCreateInput,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
     let query = String::from(
-        "mutation DocumentCreate($input: DocumentCreateInput!) { documentCreate(input: $input) { success document { ",
+        "mutation ProjectMilestoneCreate($input: ProjectMilestoneCreateInput!) { projectMilestoneCreate(input: $input) { success projectMilestone { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(&query, variables, "documentCreate", "document")
+        .execute_mutation::<T>(
+            &query,
+            variables,
+            "projectMilestoneCreate",
+            "projectMilestone",
+        )
         .await
 }
-/// Updates a document.
+/// Updates a project milestone.
 ///
-/// Full type: [`Document`](super::types::Document)
-pub async fn document_update<
+/// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
+pub async fn project_milestone_update<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::ProjectMilestone>,
 >(
     client: &Client,
-    input: DocumentUpdateInput,
+    input: ProjectMilestoneUpdateInput,
     id: String,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input, "id" : id });
     let query = String::from(
-        "mutation DocumentUpdate($input: DocumentUpdateInput!, $id: String!) { documentUpdate(input: $input, id: $id) { success document { ",
+        "mutation ProjectMilestoneUpdate($input: ProjectMilestoneUpdateInput!, $id: String!) { projectMilestoneUpdate(input: $input, id: $id) { success projectMilestone { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(&query, variables, "documentUpdate", "document")
+        .execute_mutation::<T>(
+            &query,
+            variables,
+            "projectMilestoneUpdate",
+            "projectMilestone",
+        )
         .await
 }
-/// Deletes (trashes) a document. The document is marked as trashed and archived, but not permanently removed.
-///
-/// Full type: [`Document`](super::types::Document)
-pub async fn document_delete<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
->(
+/// Deletes a project milestone.
+pub async fn project_milestone_delete(
     client: &Client,
     id: String,
-) -> Result<T, LinearError> {
+) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "id" : id });
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
     let query = String::from(
-        "mutation DocumentDelete($id: String!) { documentDelete(id: $id) { success entity { ",
-    ) + &T::selection()
-        + " } } }";
+        "mutation ProjectMilestoneDelete($id: String!) { projectMilestoneDelete(id: $id) { ",
+    ) + &response_parts.join(" ")
+        + " } }";
     client
-        .execute_mutation::<T>(&query, variables, "documentDelete", "entity")
+        .execute::<serde_json::Value>(&query, variables, "projectMilestoneDelete")
         .await
 }
-/// Creates a new comment.
+/// Creates a new team membership, adding a user to a team. Validates that the user is not already a member, the team is not archived or retired, and the requesting user has permission to add members.
 ///
-/// Full type: [`Comment`](super::types::Comment)
-pub async fn comment_create<
+/// Full type: [`TeamMembership`](super::types::TeamMembership)
+pub async fn team_membership_create<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::TeamMembership>,
 >(
     client: &Client,
-    input: CommentCreateInput,
+    input: TeamMembershipCreateInput,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!({ "input" : input });
     let query = String::from(
-        "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { ",
+        "mutation TeamMembershipCreate($input: TeamMembershipCreateInput!) { teamMembershipCreate(input: $input) { success teamMembership { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(&query, variables, "commentCreate", "comment")
+        .execute_mutation::<T>(&query, variables, "teamMembershipCreate", "teamMembership")
         .await
 }
-/// Updates a comment.
+/// Deletes a team membership, removing the user from the team. Users can remove their own membership, or team owners and workspace admins can remove other members.
+pub async fn team_membership_delete(
+    client: &Client,
+    also_leave_parent_teams: Option<bool>,
+    id: String,
+) -> Result<serde_json::Value, LinearError> {
+    let variables = serde_json::json!(
+        { "alsoLeaveParentTeams" : also_leave_parent_teams, "id" : id }
+    );
+    let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
+    let query = String::from(
+        "mutation TeamMembershipDelete($alsoLeaveParentTeams: Boolean, $id: String!) { teamMembershipDelete(alsoLeaveParentTeams: $alsoLeaveParentTeams, id: $id) { ",
+    ) + &response_parts.join(" ") + " } }";
+    client
+        .execute::<serde_json::Value>(&query, variables, "teamMembershipDelete")
+        .await
+}
+/// Creates a new team. The user who creates the team will automatically be added as a member and owner of the newly created team. Default workflow states, labels, and other team resources are created alongside the team.
 ///
-/// Full type: [`Comment`](super::types::Comment)
-pub async fn comment_update<
+/// Full type: [`Team`](super::types::Team)
+pub async fn team_create<
     T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
 >(
     client: &Client,
-    skip_edited_at: Option<bool>,
-    input: CommentUpdateInput,
+    copy_settings_from_team_id: Option<String>,
+    input: TeamCreateInput,
+) -> Result<T, LinearError> {
+    let variables = serde_json::json!(
+        { "copySettingsFromTeamId" : copy_settings_from_team_id, "input" : input }
+    );
+    let query = String::from(
+        "mutation TeamCreate($copySettingsFromTeamId: String, $input: TeamCreateInput!) { teamCreate(copySettingsFromTeamId: $copySettingsFromTeamId, input: $input) { success team { ",
+    ) + &T::selection() + " } } }";
+    client
+        .execute_mutation::<T>(&query, variables, "teamCreate", "team")
+        .await
+}
+/// Updates a team's settings, properties, or configuration. Requires team owner or workspace admin permissions for most changes.
+///
+/// Full type: [`Team`](super::types::Team)
+pub async fn team_update<
+    T: serde::de::DeserializeOwned
+        + crate::field_selection::GraphQLFields<FullType = super::types::Team>,
+>(
+    client: &Client,
+    mapping: Option<InheritanceEntityMapping>,
+    input: TeamUpdateInput,
     id: String,
 ) -> Result<T, LinearError> {
     let variables = serde_json::json!(
-        { "skipEditedAt" : skip_edited_at, "input" : input, "id" : id }
+        { "mapping" : mapping, "input" : input, "id" : id }
     );
     let query = String::from(
-        "mutation CommentUpdate($skipEditedAt: Boolean, $input: CommentUpdateInput!, $id: String!) { commentUpdate(skipEditedAt: $skipEditedAt, input: $input, id: $id) { success comment { ",
+        "mutation TeamUpdate($mapping: InheritanceEntityMapping, $input: TeamUpdateInput!, $id: String!) { teamUpdate(mapping: $mapping, input: $input, id: $id) { success team { ",
     ) + &T::selection() + " } } }";
     client
-        .execute_mutation::<T>(&query, variables, "commentUpdate", "comment")
+        .execute_mutation::<T>(&query, variables, "teamUpdate", "team")
         .await
 }
-/// Deletes a comment.
-pub async fn comment_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
+/// Archives a team and schedules its data for deletion. Requires team owner or workspace admin permissions.
+pub async fn team_delete(client: &Client, id: String) -> Result<serde_json::Value, LinearError> {
     let variables = serde_json::json!({ "id" : id });
     let response_parts: Vec<String> = vec!["success".to_string(), "entityId".to_string()];
-    let query = String::from("mutation CommentDelete($id: String!) { commentDelete(id: $id) { ")
+    let query = String::from("mutation TeamDelete($id: String!) { teamDelete(id: $id) { ")
         + &response_parts.join(" ")
         + " } }";
     client
-        .execute::<serde_json::Value>(&query, variables, "commentDelete")
-        .await
-}
-/// Resolves a comment thread. Marks the root comment as resolved by the current user.
-///
-/// Full type: [`Comment`](super::types::Comment)
-pub async fn comment_resolve<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
->(
-    client: &Client,
-    resolving_comment_id: Option<String>,
-    id: String,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!(
-        { "resolvingCommentId" : resolving_comment_id, "id" : id }
-    );
-    let query = String::from(
-        "mutation CommentResolve($resolvingCommentId: String, $id: String!) { commentResolve(resolvingCommentId: $resolvingCommentId, id: $id) { success comment { ",
-    ) + &T::selection() + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "commentResolve", "comment")
-        .await
-}
-/// Unresolves a previously resolved comment thread. Clears the resolved state on the root comment.
-///
-/// Full type: [`Comment`](super::types::Comment)
-pub async fn comment_unresolve<
-    T: serde::de::DeserializeOwned
-        + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
->(
-    client: &Client,
-    id: String,
-) -> Result<T, LinearError> {
-    let variables = serde_json::json!({ "id" : id });
-    let query = String::from(
-        "mutation CommentUnresolve($id: String!) { commentUnresolve(id: $id) { success comment { ",
-    ) + &T::selection()
-        + " } } }";
-    client
-        .execute_mutation::<T>(&query, variables, "commentUnresolve", "comment")
+        .execute::<serde_json::Value>(&query, variables, "teamDelete")
         .await
 }

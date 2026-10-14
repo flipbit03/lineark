@@ -54,7 +54,7 @@ pub async fn cleanup_workspace(client: &Client) {
             if let Some(id) = &doc.id {
                 let title = doc.title.as_deref().unwrap_or("<untitled>");
                 eprintln!("cleanup: deleting document {title:?} ({id})");
-                let _ = client.document_delete::<Document>(id.clone()).await;
+                let _ = client.document_delete::<Document>(None, id.clone()).await;
             }
         }
     }

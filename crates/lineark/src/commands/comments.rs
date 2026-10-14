@@ -16,11 +16,12 @@ pub struct CommentsCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum CommentsAction {
-    /// Create a comment on an issue.
+    /// Create a comment on an issue
     ///
     /// Examples:
     ///   lineark comments create ENG-123 --body "Working on it"
     ///   lineark comments create ENG-123 --body "Fixed in PR #42"
+    #[command(verbatim_doc_comment)]
     Create {
         /// Issue identifier (e.g., ENG-123) or UUID.
         issue: String,
@@ -28,10 +29,11 @@ pub enum CommentsAction {
         #[arg(long)]
         body: String,
     },
-    /// Update a comment's body.
+    /// Update a comment's body
     ///
     /// Examples:
     ///   lineark comments update COMMENT-UUID --body "Updated text"
+    #[command(verbatim_doc_comment)]
     Update {
         /// Comment UUID.
         id: String,
@@ -39,19 +41,21 @@ pub enum CommentsAction {
         #[arg(long)]
         body: Option<String>,
     },
-    /// Delete a comment.
+    /// Delete a comment
     ///
     /// Examples:
     ///   lineark comments delete COMMENT-UUID
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Comment UUID.
         id: String,
     },
-    /// Resolve a comment thread.
+    /// Resolve a comment thread
     ///
     /// Examples:
     ///   lineark comments resolve COMMENT-UUID
     ///   lineark comments resolve COMMENT-UUID --resolving-comment REPLY-UUID
+    #[command(verbatim_doc_comment)]
     Resolve {
         /// Comment UUID (the thread root to resolve).
         id: String,
@@ -59,10 +63,11 @@ pub enum CommentsAction {
         #[arg(long)]
         resolving_comment: Option<String>,
     },
-    /// Unresolve a previously resolved comment thread.
+    /// Unresolve a previously resolved comment thread
     ///
     /// Examples:
     ///   lineark comments unresolve COMMENT-UUID
+    #[command(verbatim_doc_comment)]
     Unresolve {
         /// Comment UUID.
         id: String,

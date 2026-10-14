@@ -17,7 +17,7 @@ pub struct RelationsCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum RelationsAction {
-    /// Create a relation between two issues.
+    /// Create a relation between two issues
     ///
     /// Exactly one relation flag is required: --blocks, --blocked-by, --related,
     /// --duplicate, or --similar.
@@ -28,6 +28,7 @@ pub enum RelationsAction {
     ///   lineark relations create ENG-100 --related ENG-200
     ///   lineark relations create ENG-100 --duplicate ENG-200
     ///   lineark relations create ENG-100 --similar ENG-200
+    #[command(verbatim_doc_comment)]
     Create {
         /// Source issue identifier (e.g., ENG-123) or UUID.
         issue: String,
@@ -47,10 +48,11 @@ pub enum RelationsAction {
         #[arg(long, group = "relation_type")]
         similar: Option<String>,
     },
-    /// Delete an issue relation.
+    /// Delete an issue relation
     ///
     /// Examples:
     ///   lineark relations delete RELATION-UUID
+    #[command(verbatim_doc_comment)]
     Delete {
         /// Relation UUID (visible in `lineark issues read` output).
         id: String,

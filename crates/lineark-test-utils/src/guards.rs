@@ -59,7 +59,7 @@ impl Drop for DocumentGuard {
         let _ = std::thread::spawn(move || {
             tokio::runtime::Runtime::new().unwrap().block_on(async {
                 if let Ok(client) = Client::from_token(token) {
-                    let _ = client.document_delete::<Document>(id).await;
+                    let _ = client.document_delete::<Document>(None, id).await;
                 }
             });
         })

@@ -17,12 +17,13 @@ pub struct CyclesCmd {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum CyclesAction {
-    /// List cycles. By default shows all cycles; use --active to filter.
+    /// List cycles. By default shows all cycles; use --active to filter
     ///
     /// Examples:
     ///   lineark cycles list
     ///   lineark cycles list --active
     ///   lineark cycles list --team ENG --around-active 2
+    #[command(verbatim_doc_comment)]
     List {
         /// Maximum number of cycles to return (max 250).
         #[arg(long, default_value = "50", value_parser = clap::value_parser!(i64).range(1..=250))]
@@ -38,11 +39,12 @@ pub enum CyclesAction {
         #[arg(long, value_parser = clap::value_parser!(i64).range(0..=50), conflicts_with = "active")]
         around_active: Option<i64>,
     },
-    /// Read a specific cycle by UUID or by name/number.
+    /// Read a specific cycle by UUID or by name/number
     ///
     /// Examples:
     ///   lineark cycles read CYCLE-UUID
     ///   lineark cycles read "Sprint 42" --team ENG
+    #[command(verbatim_doc_comment)]
     Read {
         /// Cycle UUID or name/number.
         id: String,

@@ -23,31 +23,34 @@ pub struct ProjectsCmd {
 #[derive(Debug, clap::Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum ProjectsAction {
-    /// List all projects.
+    /// List all projects
     ///
     /// Examples:
     ///   lineark projects list
     ///   lineark projects list --led-by-me
+    #[command(verbatim_doc_comment)]
     List {
         /// Show only projects where the authenticated user is the lead.
         #[arg(long, default_value = "false")]
         led_by_me: bool,
     },
-    /// Show full details for a single project, including lead, members, status, dates, teams, and description.
+    /// Show full details for a single project, including lead, members, status, dates, teams, and description
     ///
     /// Examples:
     ///   lineark projects read "Mobile App UX"
     ///   lineark projects read PROJECT-UUID
+    #[command(verbatim_doc_comment)]
     Read {
         /// Project name or UUID.
         id: String,
     },
-    /// Create a new project.
+    /// Create a new project
     ///
     /// Examples:
     ///   lineark projects create "My Project" --team ENG
     ///   lineark projects create "Q4 Initiative" --team ENG,DESIGN --description "Cross-team effort"
     ///   lineark projects create "Alpha" --team ENG --lead me --members anna,rick
+    #[command(verbatim_doc_comment)]
     Create {
         /// Project name.
         name: String,
@@ -82,13 +85,14 @@ pub enum ProjectsAction {
         #[arg(long)]
         color: Option<String>,
     },
-    /// Update an existing project. Returns the updated project.
+    /// Update an existing project. Returns the updated project
     ///
     /// Examples:
     ///   lineark projects update "Mobile App UX" --description "Updated scope"
     ///   lineark projects update PROJECT-UUID --lead me --priority high
     ///   lineark projects update "Alpha" --status "In Progress" --target-date 2026-06-01
     ///   lineark projects update "Alpha" --clear-lead --clear-target-date
+    #[command(verbatim_doc_comment)]
     Update {
         /// Project name or UUID.
         id: String,
@@ -351,7 +355,7 @@ pub async fn run(cmd: ProjectsCmd, client: &Client, format: Format) -> anyhow::R
             };
 
             let project = client
-                .project_create::<ProjectRef>(None, input)
+                .project_create::<ProjectRef>(None, None, None, input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
