@@ -111,6 +111,113 @@ fn create_test_team() -> TestTeam {
     rt.block_on(lineark_test_utils::create_test_team(&client))
 }
 
+/// Helper: create a `[test]` issue via the CLI (with retry). Returns its UUID,
+/// identifier, and a guard that deletes it on drop.
+fn create_test_issue(
+    token: &str,
+    team_key: &str,
+    title: &str,
+    extra: &[&str],
+) -> (String, String, IssueGuard) {
+    let mut args = vec![
+        "--api-token",
+        token,
+        "--format",
+        "json",
+        "issues",
+        "create",
+        title,
+        "--team",
+        team_key,
+    ];
+    args.extend_from_slice(extra);
+    let (output, _) = run_lineark_with_retry(&args);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "issue creation failed.\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    let issue: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let id = issue["id"].as_str().unwrap().to_string();
+    let identifier = issue["identifier"].as_str().unwrap().to_string();
+    let guard = IssueGuard {
+        token: token.to_string(),
+        id: id.clone(),
+    };
+    (id, identifier, guard)
+}
+
+/// Helper: read an issue's (sortOrder, prioritySortOrder, subIssueSortOrder) via `issues read`.
+fn read_sort_orders(token: &str, id: &str) -> (f64, f64, f64) {
+    let output = lineark()
+        .args([
+            "--api-token",
+            token,
+            "--format",
+            "json",
+            "issues",
+            "read",
+            id,
+        ])
+        .output()
+        .expect("failed to execute lineark");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "issues read failed.\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    let detail: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let field = |name: &str| {
+        detail[name]
+            .as_f64()
+            .unwrap_or_else(|| panic!("{name} missing in issues read: {stdout}"))
+    };
+    (
+        field("sortOrder"),
+        field("prioritySortOrder"),
+        field("subIssueSortOrder"),
+    )
+}
+
+/// Helper: run `issues reorder` with `args`, retrying while Linear's indexes catch up.
+/// Returns the identifiers in the output order.
+fn reorder(token: &str, args: &[&str], expected_len: usize) -> Vec<String> {
+    retry_with_backoff(8, || {
+        let output = lineark()
+            .args([
+                "--api-token",
+                token,
+                "--format",
+                "json",
+                "issues",
+                "reorder",
+            ])
+            .args(args)
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !output.status.success() {
+            return Err(format!(
+                "issues reorder failed.\nstdout: {stdout}\nstderr: {stderr}"
+            ));
+        }
+        let issues: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+        if issues.len() != expected_len {
+            return Err(format!(
+                "expected {expected_len} issues in reorder output, got: {stdout}"
+            ));
+        }
+        Ok(issues
+            .iter()
+            .map(|i| i["identifier"].as_str().unwrap().to_string())
+            .collect())
+    })
+    .expect("issues reorder should succeed (after retries)")
+}
+
 test_with::runner!(online);
 
 #[test_with::module]
@@ -5075,5 +5182,169 @@ mod online {
             stderr.contains("not found") || stderr.contains("Error"),
             "stderr should contain an error message, got: {stderr}"
         );
+    }
+
+    // ── Issues reorder ──────────────────────────────────────────────────────
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_reorder_sets_all_three_order_fields() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        let (parent_id, _, _parent_guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] reorder parent {suffix}"),
+            &[],
+        );
+        // Same priority, so prioritySortOrder alone decides the order in Priority views.
+        let mut children = Vec::new();
+        for name in ["a", "b", "c"] {
+            children.push(create_test_issue(
+                &token,
+                &team.key,
+                &format!("[test] reorder child {name} {suffix}"),
+                &["-p", "3", "--parent", &parent_id],
+            ));
+        }
+        let (a, b, c) = (&children[0], &children[1], &children[2]);
+
+        // Wanted order: C, A, B.
+        let order = reorder(&token, &[&c.1, &a.1, &b.1], 3);
+        assert_eq!(order, vec![c.1.clone(), a.1.clone(), b.1.clone()]);
+
+        let values: Vec<(f64, f64, f64)> = [c, a, b]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+        for w in values.windows(2) {
+            assert!(w[0].0 < w[1].0, "sortOrder not ascending: {values:?}");
+            assert!(
+                w[0].1 < w[1].1,
+                "prioritySortOrder not ascending: {values:?}"
+            );
+            assert!(
+                w[0].2 < w[1].2,
+                "subIssueSortOrder not ascending: {values:?}"
+            );
+        }
+
+        // A re-run proposes the same values; it must not trip Linear's tie handling.
+        let order = reorder(&token, &[&b.1, &c.1, &a.1], 3);
+        assert_eq!(order, vec![b.1.clone(), c.1.clone(), a.1.clone()]);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_reorder_parent_changes_only_sub_issue_order() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        let (parent_id, parent_identifier, _parent_guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] reorder parent {suffix}"),
+            &[],
+        );
+        let mut children = Vec::new();
+        for name in ["a", "b", "c"] {
+            children.push(create_test_issue(
+                &token,
+                &team.key,
+                &format!("[test] reorder child {name} {suffix}"),
+                &["--parent", &parent_id],
+            ));
+        }
+
+        let before: Vec<(f64, f64, f64)> = children
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+
+        // Move B to the top. A and C keep their current relative order after it.
+        let b = &children[1];
+        let order = reorder(&token, &["--parent", &parent_identifier, &b.1], 3);
+        let mut rest: Vec<(f64, String)> = [0, 2]
+            .iter()
+            .map(|&i| (before[i].2, children[i].1.clone()))
+            .collect();
+        rest.sort_by(|x, y| x.0.total_cmp(&y.0));
+        let mut expected = vec![b.1.clone()];
+        expected.extend(rest.into_iter().map(|(_, identifier)| identifier));
+        assert_eq!(order, expected);
+
+        let mut sub_issue_values = Vec::new();
+        for identifier in &order {
+            let index = children.iter().position(|c| &c.1 == identifier).unwrap();
+            let after = read_sort_orders(&token, &children[index].0);
+            assert_eq!(
+                after.0, before[index].0,
+                "--parent must not change sortOrder"
+            );
+            assert_eq!(
+                after.1, before[index].1,
+                "--parent must not change prioritySortOrder"
+            );
+            sub_issue_values.push(after.2);
+        }
+        assert!(
+            sub_issue_values.windows(2).all(|w| w[0] < w[1]),
+            "subIssueSortOrder not ascending: {sub_issue_values:?}"
+        );
+
+        // A re-run with the grid already in place must still succeed.
+        let order = reorder(&token, &["--parent", &parent_identifier, &b.1], 3);
+        assert_eq!(order, expected);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_create_and_update_set_raw_sort_orders() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        // subIssueSortOrder is null on an issue without a parent.
+        let (parent_id, _, _parent_guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] raw sort order parent {suffix}"),
+            &[],
+        );
+        let (id, _, _guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] raw sort order {suffix}"),
+            &["--parent", &parent_id, "--priority-sort-order", "-4242.25"],
+        );
+        assert_eq!(read_sort_orders(&token, &id).1, -4242.25);
+
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "update",
+                &id,
+                "--sort-order",
+                "-1234.5",
+                "--sub-issue-sort-order",
+                "777",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues update failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+
+        let (sort_order, priority_sort_order, sub_issue_sort_order) = read_sort_orders(&token, &id);
+        assert_eq!(sort_order, -1234.5);
+        assert_eq!(priority_sort_order, -4242.25);
+        assert_eq!(sub_issue_sort_order, 777.0);
     }
 }

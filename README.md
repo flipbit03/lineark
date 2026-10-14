@@ -63,7 +63,7 @@ That's it! Your agent is ready to use lineark.
 
 | Area | Commands |
 |------|----------|
-| **Issues** | `list`, `read`, `search`, `find-branch`, `create`, `update`, `batch-update`, `archive`, `unarchive`, `delete` |
+| **Issues** | `list`, `read`, `search`, `find-branch`, `create`, `update`, `batch-update`, `reorder`, `archive`, `unarchive`, `delete` |
 | **Comments** | `create`, `update`, `resolve`, `unresolve`, `delete` |
 | **Relations** | `create` (blocks, blocked-by, related, duplicate, similar), `delete` |
 | **Labels** | `list`, `create`, `update`, `delete` (groups, parent labels, team-scoped) |

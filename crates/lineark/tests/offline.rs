@@ -825,6 +825,109 @@ fn issues_batch_update_clear_flags_conflict_with_setters() {
     }
 }
 
+// ── Issues reorder ─────────────────────────────────────────────────────────
+
+#[test]
+fn usage_mentions_issues_reorder() {
+    lineark()
+        .arg("usage")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("issues reorder"))
+        .stdout(predicate::str::contains("prioritySortOrder"))
+        .stdout(predicate::str::contains("--field all"));
+}
+
+#[test]
+fn issues_reorder_help_shows_flags() {
+    lineark()
+        .args(["issues", "reorder", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--parent"))
+        .stdout(predicate::str::contains("--field"))
+        .stdout(predicate::str::contains("sub-issue"))
+        .stdout(predicate::str::contains("subIssueSortOrder"));
+}
+
+#[test]
+fn issues_reorder_rejects_unknown_field() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake",
+            "issues",
+            "reorder",
+            "ENG-1",
+            "ENG-2",
+            "--field",
+            "bogus",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
+fn issues_reorder_single_issue_without_parent_errors() {
+    lineark()
+        .args(["--api-token", "fake", "issues", "reorder", "ENG-1"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("at least two issues"));
+}
+
+#[test]
+fn issues_reorder_parent_rejects_non_sub_issue_field() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake",
+            "issues",
+            "reorder",
+            "--parent",
+            "ENG-1",
+            "ENG-2",
+            "--field",
+            "manual",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--field sub-issue"));
+}
+
+#[test]
+fn issues_update_and_create_help_show_sort_order_flags() {
+    for cmd in ["update", "create"] {
+        lineark()
+            .args(["issues", cmd, "--help"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("--sort-order"))
+            .stdout(predicate::str::contains("--priority-sort-order"))
+            .stdout(predicate::str::contains("--sub-issue-sort-order"));
+    }
+}
+
+#[test]
+fn issues_update_accepts_negative_sort_order() {
+    // Fails at the API (fake token), not at argument parsing.
+    lineark()
+        .args([
+            "--api-token",
+            "fake",
+            "issues",
+            "update",
+            "ENG-123",
+            "--sort-order",
+            "-615877.5",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unexpected argument").not())
+        .stderr(predicate::str::contains("No update fields provided").not());
+}
+
 // ── Documents: filter flags ────────────────────────────────────────────────
 
 #[test]

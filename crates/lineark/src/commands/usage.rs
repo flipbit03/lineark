@@ -101,7 +101,14 @@ COMMANDS:
     [--parent ID] [--clear-parent]                 Set or remove parent
     [--project NAME-OR-ID] [--clear-project]       Set or remove project
     [--cycle NAME-OR-ID] [--clear-cycle]           Set or remove cycle
+    [--sort-order N] [--priority-sort-order N]     Raw order values (also on create;
+    [--sub-issue-sort-order N]                     prefer `issues reorder`)
   lineark issues batch-update ID [ID ...]          Batch update (--help for flags)
+  lineark issues reorder ID ID [ID ...]            Put issues in this order (top first). Linear has
+    [--field all|manual|priority|sub-issue]        3 order fields: sortOrder (Manual view),
+                                                   prioritySortOrder (Priority view), subIssueSortOrder
+                                                   (sub-issue list). Default: --field all
+    [--parent ID]                                  Only reorder that parent's sub-issue list
   lineark issues archive|unarchive|delete ...      Lifecycle ops (--help for flags)
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark comments update|resolve|unresolve|delete Manage comments (--help for flags)

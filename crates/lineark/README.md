@@ -108,10 +108,16 @@ lineark issues update <IDENTIFIER>               Update an issue
   [--project NAME-OR-ID] [--clear-project]       Set or remove project
   [--cycle NAME-OR-ID] [--clear-cycle]           Set or remove cycle
   [--parent ID] [--clear-parent] ...             See --help for all options
+  [--sort-order N] [--priority-sort-order N]     Raw order values (also on create);
+  [--sub-issue-sort-order N]                     prefer `issues reorder`
 lineark issues batch-update ID [ID ...]          Batch update multiple issues
   [-s NAME] [-p PRIORITY] [--assignee ...]       Status, priority, assignee
   [--clear-project] [--clear-cycle]              Clear relations in bulk
   [--clear-assignee]
+lineark issues reorder ID ID [ID ...]            Put issues in this order (top first)
+  [--field all|manual|priority|sub-issue]        Default all: sortOrder, prioritySortOrder,
+                                                 subIssueSortOrder
+  [--parent ID]                                  Only reorder that parent's sub-issue list
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue
