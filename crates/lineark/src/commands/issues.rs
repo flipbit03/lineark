@@ -36,6 +36,9 @@ pub enum IssuesAction {
         /// Filter by project name or UUID.
         #[arg(long)]
         project: Option<String>,
+        /// Only sub-issues of this parent issue (identifier or UUID).
+        #[arg(long)]
+        parent: Option<String>,
         /// Show only issues assigned to the authenticated user.
         #[arg(long, default_value = "false")]
         mine: bool,
@@ -68,7 +71,7 @@ pub enum IssuesAction {
         #[arg(long, visible_alias = "state", value_delimiter = ',')]
         status: Option<Vec<String>>,
     },
-    /// Create a new issue. Returns the created issue
+    /// Create a new issue. Returns the created issue (all fields this command sets, except the description)
     ///
     /// Examples:
     ///   lineark issues create "Fix the bug" --team ENG
@@ -200,7 +203,7 @@ pub enum IssuesAction {
         #[arg(long, default_value = "false", conflicts_with = "cycle")]
         clear_cycle: bool,
     },
-    /// Update an existing issue. Returns the updated issue
+    /// Update an existing issue. Returns the updated issue (all fields this command sets, except the description)
     ///
     /// Examples:
     ///   lineark issues update ENG-123 --status "In Progress"
@@ -276,15 +279,25 @@ pub enum IssuesAction {
     ///   subIssueSortOrder  The sub-issue list on the parent issue's page.
     ///
     /// Default (--field all): set all three, so the order holds whatever ordering the
-    /// viewer uses. The block starts at (or just after) the position of the topmost
-    /// listed issue, with values 0.01 apart, so it stays where that issue was.
-    /// subIssueSortOrder only orders siblings: listed issues that share a parent are
-    /// ordered among themselves, and issues without a parent are skipped for it.
-    /// A field already in the wanted order is left untouched.
+    /// viewer uses. subIssueSortOrder only orders siblings: listed issues that share a
+    /// parent are ordered among themselves, and issues without a parent are skipped for it.
+    ///
+    /// Only the relative order of the listed issues is set. A field already in the wanted
+    /// order is left untouched, so `reorder A Z` does nothing when A is already above Z.
+    /// List the issues in between to make them adjacent, or use --parent.
+    ///
+    /// When a field needs changing, the listed issues move as one block to the position of
+    /// the topmost of them. Unlisted issues that were above that position stay above the
+    /// block; the others, including any that sat between the listed issues, end up below.
+    /// Unlisted issues are those of the listed issues' teams (sortOrder, prioritySortOrder)
+    /// or the other children of the same parent (subIssueSortOrder). Values are 0.01 apart,
+    /// or closer when the gap to the issue above is too narrow for that. If there is no
+    /// room left, the nearest unlisted issues above are moved too, keeping their place.
     ///
     /// With --parent: reorder that parent's sub-issue list (subIssueSortOrder only).
-    /// Listed children go first, in the given order. Children not listed follow, in
-    /// their current relative order.
+    /// Listed children move to the top, in the given order, 0.01 apart. Children not
+    /// listed keep their values, so they follow in their current relative order;
+    /// children with no value yet get one at the bottom.
     ///
     /// Examples:
     ///   lineark issues reorder ENG-101 ENG-102 ENG-103
@@ -348,6 +361,12 @@ struct IssueRow {
     completed_at: Option<String>,
     #[tabled(skip)]
     canceled_at: Option<String>,
+    #[tabled(skip)]
+    sort_order: Option<f64>,
+    #[tabled(skip)]
+    priority_sort_order: Option<f64>,
+    #[tabled(skip)]
+    sub_issue_sort_order: Option<f64>,
 }
 
 fn format_labels(labels: &Option<LabelConnection>) -> String {
@@ -389,6 +408,9 @@ impl From<&IssueSummary> for IssueRow {
             url: i.url.clone().unwrap_or_default(),
             completed_at: i.completed_at.clone(),
             canceled_at: i.canceled_at.clone(),
+            sort_order: i.sort_order,
+            priority_sort_order: i.priority_sort_order,
+            sub_issue_sort_order: i.sub_issue_sort_order,
         }
     }
 }
@@ -419,6 +441,9 @@ impl From<&SearchSummary> for IssueRow {
             url: i.url.clone().unwrap_or_default(),
             completed_at: i.completed_at.clone(),
             canceled_at: i.canceled_at.clone(),
+            sort_order: i.sort_order,
+            priority_sort_order: i.priority_sort_order,
+            sub_issue_sort_order: i.sub_issue_sort_order,
         }
     }
 }
@@ -439,6 +464,9 @@ pub struct IssueSummary {
     pub url: Option<String>,
     pub completed_at: Option<String>,
     pub canceled_at: Option<String>,
+    pub sort_order: Option<f64>,
+    pub priority_sort_order: Option<f64>,
+    pub sub_issue_sort_order: Option<f64>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
     #[graphql(nested)]
@@ -463,6 +491,9 @@ pub struct SearchSummary {
     pub url: Option<String>,
     pub completed_at: Option<String>,
     pub canceled_at: Option<String>,
+    pub sort_order: Option<f64>,
+    pub priority_sort_order: Option<f64>,
+    pub sub_issue_sort_order: Option<f64>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
     #[graphql(nested)]
@@ -647,6 +678,9 @@ pub struct ChildrenConnection {
 pub struct ChildIssueRef {
     pub identifier: Option<String>,
     pub title: Option<String>,
+    pub sort_order: Option<f64>,
+    pub priority_sort_order: Option<f64>,
+    pub sub_issue_sort_order: Option<f64>,
     #[graphql(nested)]
     pub state: Option<StateRef>,
 }
@@ -670,6 +704,38 @@ pub struct CommentSummary {
     pub created_at: Option<String>,
 }
 
+/// Result type for `issues create` / `issues update`: every field those commands can set,
+/// except the description (often long).
+#[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
+#[graphql(full_type = Issue)]
+#[serde(rename_all = "camelCase", default)]
+struct IssueWriteResult {
+    id: Option<String>,
+    identifier: Option<String>,
+    title: Option<String>,
+    #[serde(rename(serialize = "priority"))]
+    priority_label: Option<String>,
+    estimate: Option<f64>,
+    url: Option<String>,
+    sort_order: Option<f64>,
+    priority_sort_order: Option<f64>,
+    sub_issue_sort_order: Option<f64>,
+    #[graphql(nested)]
+    state: Option<StateRef>,
+    #[graphql(nested)]
+    assignee: Option<UserRef>,
+    #[graphql(nested)]
+    team: Option<TeamRef>,
+    #[graphql(nested)]
+    project: Option<ProjectRef>,
+    #[graphql(nested)]
+    cycle: Option<CycleRef>,
+    #[graphql(nested)]
+    parent: Option<RelatedIssueRef>,
+    #[graphql(nested)]
+    labels: Option<LabelConnection>,
+}
+
 /// Lean result type for issue mutations.
 #[derive(Debug, Default, Serialize, Deserialize, GraphQLFields)]
 #[graphql(full_type = Issue)]
@@ -687,6 +753,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             limit,
             team,
             project,
+            parent,
             mine,
             show_done,
         } => {
@@ -709,6 +776,13 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
                 filter_map.insert(
                     "project".into(),
                     serde_json::json!({ "id": { "eq": project_id } }),
+                );
+            }
+            if let Some(ref parent_val) = parent {
+                let parent_id = resolve_issue_id(client, parent_val).await?;
+                filter_map.insert(
+                    "parent".into(),
+                    serde_json::json!({ "id": { "eq": parent_id } }),
                 );
             }
             if mine {
@@ -867,7 +941,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let issue = client
-                .issue_create::<IssueRef>(input)
+                .issue_create::<IssueWriteResult>(input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -1146,7 +1220,7 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             };
 
             let issue = client
-                .issue_update::<IssueRef>(input, issue_id)
+                .issue_update::<IssueWriteResult>(input, issue_id)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
@@ -1289,16 +1363,20 @@ async fn resolve_state_id(
 
 // ── Reorder ─────────────────────────────────────────────────────────────────
 
-/// Step between consecutive issues when anchoring at the group's current minimum.
-/// sortOrder and prioritySortOrder are shared across the team, and neighbouring
-/// issues are often less than 100 apart, so a small step keeps the block contiguous.
+/// Spacing between consecutive issues of a block when the gap allows it. sortOrder and
+/// prioritySortOrder are shared across the team, and neighbouring issues are often less
+/// than 100 apart, so a small step keeps the block next to where it was.
 const REORDER_STEP: f64 = 0.01;
 
-/// Step for a parent's sub-issue list. Every child gets rewritten, so absolute values are safe.
-const SUB_ISSUE_STEP: f64 = 1000.0;
+/// Smallest spacing a block may use. `tidy` rounds to 6 decimals, so this keeps rounded
+/// values apart and inside their gap.
+const MIN_SPACING: f64 = 1e-5;
 
-/// Random offsets to try before giving up on avoiding ties.
-const TIE_ATTEMPTS: usize = 32;
+/// Most unlisted issues pulled into a block to make room, before giving up.
+const MAX_PULLED: usize = 50;
+
+/// Fractions of the spacing to shift a block by when a value ties a pulled issue's value.
+const TIE_SHIFTS: [f64; 4] = [0.0, 0.5, 0.25, 0.75];
 
 /// Lean issue type for `issues reorder`: identity plus the three order fields.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Tabled, GraphQLFields)]
@@ -1321,6 +1399,10 @@ pub struct IssueOrder {
     #[tabled(skip)]
     #[graphql(nested)]
     pub parent: Option<IssueIdRef>,
+    #[serde(skip_serializing)]
+    #[tabled(skip)]
+    #[graphql(nested)]
+    pub team: Option<TeamRef>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, GraphQLFields)]
@@ -1352,6 +1434,10 @@ struct ChildOrderConnection {
 impl IssueOrder {
     fn parent_id(&self) -> Option<&str> {
         self.parent.as_ref().and_then(|p| p.id.as_deref())
+    }
+
+    fn team_id(&self) -> Option<&str> {
+        self.team.as_ref().and_then(|t| t.id.as_deref())
     }
 
     fn label(&self) -> String {
@@ -1416,95 +1502,142 @@ fn parse_order_value(s: &str) -> Result<f64, String> {
     }
 }
 
-/// Round to 6 decimals to drop binary noise (`-3189.9849999999997`); the step is far coarser.
+/// Round to 6 decimals to drop binary noise (`-3189.9849999999997`); MIN_SPACING is coarser.
 fn tidy(value: f64) -> f64 {
     (value * 1e6).round() / 1e6
 }
 
-/// A uniform random number in [0, 1), from the std library's randomly keyed hasher.
-fn random_fraction() -> f64 {
-    use std::hash::BuildHasher;
-    let bits = std::collections::hash_map::RandomState::new().hash_one(0u8);
-    (bits >> 11) as f64 / (1u64 << 53) as f64
+/// Whether every value is set and they strictly ascend.
+fn ascends(values: &[Option<f64>]) -> bool {
+    values.iter().all(Option::is_some) && values.windows(2).all(|w| w[0] < w[1])
 }
 
-/// New values for one group of issues, given in the wanted order.
-#[derive(Debug, PartialEq)]
-struct GroupValues {
-    values: Vec<f64>,
-    /// False when every offset tried tied with another issue's current value.
-    tie_free: bool,
-}
-
-/// Plan the values of one group of issues (`current`, in the wanted order).
+/// `count` ascending values strictly inside (lo, hi), where a missing bound is open-ended.
 ///
-/// Returns `None` when the current values already ascend in that order. Otherwise the
-/// values are `base + offset + i * step`, with `offset` a random fraction of a step.
-/// The offset is chosen so that no value ties the current value of another issue in
-/// the group: Linear moves an issue elsewhere when its new prioritySortOrder or
-/// subIssueSortOrder ties one that another issue still holds, and the writes are
-/// sequential. The random offset also keeps runs off a shared grid, so a later run
-/// is unlikely to tie with issues an earlier run placed and this one doesn't list.
-fn plan_group_values(
-    current: &[Option<f64>],
-    base: f64,
+/// The values are `step` apart and as close to `hi` as possible, or
+/// spread evenly across the interval when it is narrower than that. `shift` (in [0, 1))
+/// moves them down by that fraction of the spacing. Returns `None` when the values would
+/// be closer than MIN_SPACING, or float precision cannot keep them apart and inside.
+fn spread(
+    count: usize,
+    lo: Option<f64>,
+    hi: Option<f64>,
     step: f64,
-    mut random: impl FnMut() -> f64,
-) -> anyhow::Result<Option<GroupValues>> {
-    let ascending = current.windows(2).all(|w| match (w[0], w[1]) {
-        (Some(a), Some(b)) => a < b,
-        _ => false,
-    });
-    if ascending && current.iter().all(Option::is_some) {
+    shift: f64,
+) -> Option<Vec<f64>> {
+    let slots = (count + 1) as f64;
+    let (lo, hi) = match (lo, hi) {
+        (Some(lo), Some(hi)) => (lo.max(hi - slots * step), hi),
+        (None, Some(hi)) => (hi - slots * step, hi),
+        (Some(lo), None) => (lo, lo + slots * step),
+        (None, None) => (0.0, slots * step),
+    };
+    let spacing = (hi - lo) / slots;
+    if spacing.is_nan() || spacing < MIN_SPACING {
+        return None;
+    }
+    let values: Vec<f64> = (1..=count)
+        .map(|i| tidy(hi - spacing * (slots - i as f64 + shift)))
+        .collect();
+    let fits = values.iter().all(|v| v.is_finite() && lo < *v && *v < hi)
+        && values.windows(2).all(|w| w[0] < w[1]);
+    fits.then_some(values)
+}
+
+/// Where a block of issues goes.
+#[derive(Debug, PartialEq)]
+struct Block {
+    /// The old position of the block (the topmost listed issue's value). Neighbours below
+    /// it numerically (above it on screen) stay above the block; the others end up below.
+    /// `None` when no listed issue had a value: the block then goes below every neighbour.
+    anchor: Option<f64>,
+    /// Neighbours pulled into the block to make room, top first. They keep their order and
+    /// stay above the listed issues.
+    pulled: Vec<usize>,
+    /// New values for the pulled neighbours, then the listed issues.
+    values: Vec<f64>,
+}
+
+/// Plan one group: `current` holds the listed issues' values in the wanted order,
+/// `neighbours` the values of the unlisted issues that share an ordering with them.
+///
+/// Returns `None` when the current values already ascend. Otherwise the listed issues move
+/// as one block into the free gap right above the topmost of them (the lowest current
+/// value): every neighbour that was above that position stays above the block, and every
+/// other neighbour ends up below it. When the gap is too narrow, the nearest neighbours
+/// above are pulled into the block, in their current order, until it fits.
+///
+/// No value ties another issue's current value: Linear moves an issue elsewhere when its
+/// new prioritySortOrder or subIssueSortOrder ties one that another issue still holds.
+fn plan_block(
+    current: &[Option<f64>],
+    neighbours: &[Option<f64>],
+    step: f64,
+) -> anyhow::Result<Option<Block>> {
+    if ascends(current) {
         return Ok(None);
     }
-
-    let candidate = |offset: f64| -> Vec<f64> {
-        (0..current.len())
-            .map(|i| tidy(base + offset + i as f64 * step))
-            .collect()
-    };
-    let ties = |values: &[f64]| {
-        values.iter().enumerate().any(|(i, v)| {
-            current
-                .iter()
-                .enumerate()
-                .any(|(j, c)| i != j && *c == Some(*v))
-        })
+    let n = current.len();
+    let Some(anchor) = current.iter().flatten().copied().reduce(f64::min) else {
+        let lo = neighbours.iter().flatten().copied().reduce(f64::max);
+        let values = spread(n, lo, None, step, 0.0).ok_or_else(|| {
+            anyhow::anyhow!("Cannot place {n} issues {step} apart after {lo:?}: float precision is too low there.")
+        })?;
+        return Ok(Some(Block {
+            anchor: None,
+            pulled: Vec::new(),
+            values,
+        }));
     };
 
-    let mut values = candidate(0.0);
-    let mut tie_free = false;
-    for _ in 0..TIE_ATTEMPTS {
-        values = candidate(random() * step);
-        if !ties(&values) {
-            tie_free = true;
-            break;
+    // Neighbours above the anchor, nearest first.
+    let mut above: Vec<(usize, f64)> = neighbours
+        .iter()
+        .enumerate()
+        .filter_map(|(i, v)| v.filter(|v| *v < anchor).map(|v| (i, v)))
+        .collect();
+    above.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+    for pulled in 0..=above.len().min(MAX_PULLED) {
+        let lo = above.get(pulled).map(|&(_, v)| v);
+        // Old values inside the gap belong to the pulled neighbours only.
+        let inside: Vec<f64> = above[..pulled].iter().rev().map(|&(_, v)| v).collect();
+        let tie_free = TIE_SHIFTS
+            .iter()
+            .map_while(|&shift| spread(pulled + n, lo, Some(anchor), step, shift))
+            .find(|values| {
+                !values
+                    .iter()
+                    .enumerate()
+                    .any(|(i, v)| inside.iter().enumerate().any(|(j, u)| i != j && u == v))
+            });
+        if let Some(values) = tie_free {
+            return Ok(Some(Block {
+                anchor: Some(anchor),
+                pulled: above[..pulled].iter().rev().map(|&(i, _)| i).collect(),
+                values,
+            }));
         }
     }
-
-    if !values.windows(2).all(|w| w[0] < w[1]) || values.iter().any(|v| !v.is_finite()) {
-        return Err(anyhow::anyhow!(
-            "Cannot space issues {step} apart around {base}: the values are too large for float precision. Set them with `issues update --sort-order` etc. instead."
-        ));
-    }
-    Ok(Some(GroupValues { values, tie_free }))
+    Err(anyhow::anyhow!(
+        "No room to place {n} issues above {anchor}: the issues there are too close together for float precision. Set the values with `issues update --sort-order` etc. instead."
+    ))
 }
 
-/// Indexes of `issues` grouped by parent, in first-appearance order. Issues without a
-/// parent are left out: Linear keeps their subIssueSortOrder null.
-fn group_by_parent(issues: &[IssueOrder]) -> Vec<Vec<usize>> {
-    let mut groups: Vec<(&str, Vec<usize>)> = Vec::new();
+/// Indexes of `issues` grouped by parent, in first-appearance order, with the parent ID.
+/// Issues without a parent are left out: Linear keeps their subIssueSortOrder null.
+fn group_by_parent(issues: &[IssueOrder]) -> Vec<(String, Vec<usize>)> {
+    let mut groups: Vec<(String, Vec<usize>)> = Vec::new();
     for (i, issue) in issues.iter().enumerate() {
         let Some(parent) = issue.parent_id() else {
             continue;
         };
-        match groups.iter_mut().find(|(p, _)| *p == parent) {
+        match groups.iter_mut().find(|(p, _)| p == parent) {
             Some((_, members)) => members.push(i),
-            None => groups.push((parent, vec![i])),
+            None => groups.push((parent.to_string(), vec![i])),
         }
     }
-    groups.into_iter().map(|(_, members)| members).collect()
+    groups
 }
 
 /// Order `children` so that `listed` (indexes into `children`) come first, in the given
@@ -1528,59 +1661,99 @@ fn sub_issue_order(children: &[IssueOrder], listed: &[usize]) -> Vec<usize> {
     listed.iter().copied().chain(rest).collect()
 }
 
-/// The issues to write, in output order, and the order each group must end up in.
+/// What must hold on one order field after the writes.
+struct Check {
+    key: OrderKey,
+    /// Plan indexes that must strictly ascend, top first.
+    members: Vec<usize>,
+    /// Values of issues not written that must stay above the first member.
+    above: Vec<f64>,
+    /// Values of issues not written that must stay below the last member.
+    below: Vec<f64>,
+}
+
+/// The issues to write and what must hold afterwards.
 #[derive(Default)]
 struct ReorderPlan {
+    /// The issues to report first, then unlisted issues pulled into a block to make room.
     issues: Vec<IssueOrder>,
+    /// How many of `issues` to report.
+    reported: usize,
     /// New values per issue (same indexes as `issues`).
     values: Vec<Vec<(OrderKey, f64)>>,
-    /// Groups of issue indexes that must ascend on a key after the writes.
-    groups: Vec<(OrderKey, Vec<usize>)>,
+    checks: Vec<Check>,
 }
 
 impl ReorderPlan {
     fn new(issues: Vec<IssueOrder>) -> Self {
         let values = vec![Vec::new(); issues.len()];
         Self {
+            reported: issues.len(),
             issues,
             values,
-            groups: Vec::new(),
+            checks: Vec::new(),
         }
     }
 
-    /// Plan `key` for `members` (indexes, in the wanted order), starting at `base`
-    /// (the group's current minimum when `None`).
+    /// Plan `key` for `members` (plan indexes, in the wanted order) against `neighbours`,
+    /// the issues sharing that ordering (members among them are ignored).
     fn plan_group(
         &mut self,
         key: OrderKey,
         members: Vec<usize>,
-        base: Option<f64>,
-        step: f64,
+        neighbours: &[IssueOrder],
     ) -> anyhow::Result<()> {
-        if members.len() < 2 {
-            return Ok(());
-        }
+        let neighbours: Vec<&IssueOrder> = neighbours
+            .iter()
+            .filter(|o| !members.iter().any(|&i| self.issues[i].id == o.id))
+            .collect();
         let current: Vec<Option<f64>> = members.iter().map(|&i| key.get(&self.issues[i])).collect();
-        let base = base.unwrap_or_else(|| {
-            current
-                .iter()
-                .flatten()
-                .copied()
-                .reduce(f64::min)
-                .unwrap_or(0.0)
-        });
-        if let Some(planned) = plan_group_values(&current, base, step, random_fraction)? {
-            if !planned.tie_free {
-                eprintln!(
-                    "Warning: could not avoid a {} tie with another issue; Linear may place one issue slightly off. Re-run to retry.",
-                    key.name()
-                );
+        let neighbour_values: Vec<Option<f64>> = neighbours.iter().map(|o| key.get(o)).collect();
+        let Some(block) = plan_block(&current, &neighbour_values, REORDER_STEP)? else {
+            self.checks.push(Check {
+                key,
+                members,
+                above: Vec::new(),
+                below: Vec::new(),
+            });
+            return Ok(());
+        };
+
+        let mut block_members = Vec::with_capacity(block.values.len());
+        for &n in &block.pulled {
+            let issue = neighbours[n];
+            let index = match self.issues.iter().position(|i| i.id == issue.id) {
+                Some(index) => index,
+                None => {
+                    self.issues.push(issue.clone());
+                    self.values.push(Vec::new());
+                    self.issues.len() - 1
+                }
+            };
+            block_members.push(index);
+        }
+        block_members.extend(members);
+        for (&i, &value) in block_members.iter().zip(&block.values) {
+            self.values[i].push((key, value));
+        }
+
+        let (mut above, mut below) = (Vec::new(), Vec::new());
+        for (n, value) in neighbour_values.iter().enumerate() {
+            let Some(value) = *value else { continue };
+            if block.pulled.contains(&n) {
+                continue;
             }
-            for (&i, value) in members.iter().zip(planned.values) {
-                self.values[i].push((key, value));
+            match block.anchor {
+                Some(anchor) if value >= anchor => below.push(value),
+                _ => above.push(value),
             }
         }
-        self.groups.push((key, members));
+        self.checks.push(Check {
+            key,
+            members: block_members,
+            above,
+            below,
+        });
         Ok(())
     }
 
@@ -1592,7 +1765,8 @@ impl ReorderPlan {
     }
 }
 
-/// `issues reorder A B C`: anchor each selected field at the group's current minimum.
+/// `issues reorder A B C`: move the listed issues, per field, as one block to the position
+/// of the topmost of them.
 async fn reorder_issues(
     client: &Client,
     identifiers: &[String],
@@ -1621,29 +1795,90 @@ async fn reorder_issues(
     }
 
     let mut plan = ReorderPlan::new(issues);
+    // sortOrder and prioritySortOrder neighbours: the listed issues' teams, fetched once.
+    let mut team_issues: Option<Vec<IssueOrder>> = None;
     for &key in field.unwrap_or(OrderField::All).keys() {
         if key == OrderKey::SubIssue {
             // subIssueSortOrder only orders siblings: order each parent's listed children
-            // among themselves.
-            let groups = group_by_parent(&plan.issues);
-            if field == Some(OrderField::SubIssue) && groups.iter().all(|g| g.len() < 2) {
+            // among themselves, against the parent's other children.
+            let groups = group_by_parent(&plan.issues[..plan.reported]);
+            if field == Some(OrderField::SubIssue) && groups.iter().all(|(_, g)| g.len() < 2) {
                 return Err(anyhow::anyhow!(
                     "No two of these issues share a parent, so there is no sub-issue list to order. Use --parent to move a sub-issue within its parent's list."
                 ));
             }
-            for members in groups {
-                plan.plan_group(key, members, None, REORDER_STEP)?;
+            for (parent_id, members) in groups {
+                if members.len() < 2 {
+                    continue;
+                }
+                let siblings = if needs_writes(&plan, key, &members) {
+                    let parent = client
+                        .issue::<ParentWithChildren>(parent_id.clone())
+                        .await
+                        .map_err(|e| anyhow::anyhow!("Parent issue '{}': {}", parent_id, e))?;
+                    fetch_children(client, &parent_id, parent).await?
+                } else {
+                    Vec::new()
+                };
+                plan.plan_group(key, members, &siblings)?;
             }
         } else {
-            let members = (0..plan.issues.len()).collect();
-            plan.plan_group(key, members, None, REORDER_STEP)?;
+            let members: Vec<usize> = (0..plan.reported).collect();
+            if team_issues.is_none() && needs_writes(&plan, key, &members) {
+                let mut team_ids: Vec<String> = Vec::new();
+                for issue in &plan.issues[..plan.reported] {
+                    if let Some(team_id) = issue.team_id() {
+                        if !team_ids.iter().any(|t| t == team_id) {
+                            team_ids.push(team_id.to_string());
+                        }
+                    }
+                }
+                let filter = serde_json::json!({ "team": { "id": { "in": team_ids } } });
+                team_issues = Some(fetch_issues(client, filter).await?);
+            }
+            plan.plan_group(key, members, team_issues.as_deref().unwrap_or_default())?;
         }
     }
 
+    let pulled: Vec<String> = plan.issues[plan.reported..]
+        .iter()
+        .map(IssueOrder::label)
+        .collect();
+    if !pulled.is_empty() {
+        eprintln!(
+            "Note: also moved {} (not listed) to make room, keeping their place in the order.",
+            pulled.join(", ")
+        );
+    }
     apply_reorder(client, plan).await
 }
 
-/// `issues reorder --parent P A B`: rewrite the subIssueSortOrder of all of P's children.
+/// Whether `members` are out of order on `key`, so their neighbours are needed.
+fn needs_writes(plan: &ReorderPlan, key: OrderKey, members: &[usize]) -> bool {
+    let current: Vec<Option<f64>> = members.iter().map(|&i| key.get(&plan.issues[i])).collect();
+    !ascends(&current)
+}
+
+/// A parent's non-archived children: the union of its `children` connection (first page)
+/// and the paginated filter query, so a child missing from one source (the filter can lag
+/// behind a just-created child) is still included.
+async fn fetch_children(
+    client: &Client,
+    parent_id: &str,
+    parent: ParentWithChildren,
+) -> anyhow::Result<Vec<IssueOrder>> {
+    let filter = serde_json::json!({ "parent": { "id": { "eq": parent_id } } });
+    let mut children = fetch_issues(client, filter).await?;
+    for child in parent.children.map(|c| c.nodes).unwrap_or_default() {
+        if !children.iter().any(|c| c.id == child.id) {
+            children.push(child);
+        }
+    }
+    Ok(children)
+}
+
+/// `issues reorder --parent P A B`: move the listed children to the top of P's sub-issue
+/// list. Children not listed keep their values, so they follow in their current order.
 async fn reorder_sub_issues(
     client: &Client,
     parent: &str,
@@ -1662,9 +1897,11 @@ async fn reorder_sub_issues(
         .map_err(|e| anyhow::anyhow!("Parent issue '{}': {}", parent, e))?;
     let parent_id = parent_issue
         .id
+        .clone()
         .ok_or_else(|| anyhow::anyhow!("Parent issue '{}' not found", parent))?;
     let parent_label = parent_issue
         .identifier
+        .clone()
         .unwrap_or_else(|| parent.to_string());
 
     // Check membership on each listed issue itself: the children query below goes
@@ -1691,18 +1928,14 @@ async fn reorder_sub_issues(
         listed_issues.push(issue);
     }
 
-    // Union of the parent's children connection (first page) and the paginated filter
-    // query, so a child missing from one source is still rewritten.
-    let mut children = fetch_children(client, &parent_id).await?;
-    for child in parent_issue.children.map(|c| c.nodes).unwrap_or_default() {
-        if !children.iter().any(|c| c.id == child.id) {
-            children.push(child);
-        }
-    }
+    let mut children = fetch_children(client, &parent_id, parent_issue).await?;
     let mut listed: Vec<usize> = Vec::with_capacity(listed_issues.len());
     for issue in listed_issues {
         let idx = match children.iter().position(|c| c.id == issue.id) {
-            Some(idx) => idx,
+            Some(idx) => {
+                children[idx] = issue;
+                idx
+            }
             None => {
                 children.push(issue);
                 children.len() - 1
@@ -1714,23 +1947,79 @@ async fn reorder_sub_issues(
     let order = sub_issue_order(&children, &listed);
     let ordered: Vec<IssueOrder> = order.into_iter().map(|i| children[i].clone()).collect();
     let mut plan = ReorderPlan::new(ordered);
-    let members = (0..plan.issues.len()).collect();
-    plan.plan_group(
-        OrderKey::SubIssue,
-        members,
-        Some(SUB_ISSUE_STEP),
-        SUB_ISSUE_STEP,
-    )?;
+    let key = OrderKey::SubIssue;
+    let k = listed.len();
+    let values: Vec<Option<f64>> = plan.issues.iter().map(|i| key.get(i)).collect();
+    let rest_set: Vec<f64> = values[k..].iter().flatten().copied().collect();
+    let listed_on_top = ascends(&values[..k])
+        && rest_set
+            .iter()
+            .all(|r| values[..k].iter().flatten().all(|l| l < r));
+    // Children with no value yet go last, in their current order.
+    let unset: Vec<usize> = (k..plan.issues.len())
+        .filter(|&i| values[i].is_none())
+        .collect();
+    if !listed_on_top || !unset.is_empty() {
+        let mut finals: Vec<f64> = rest_set.clone();
+        if listed_on_top {
+            finals.extend(values[..k].iter().flatten());
+        } else {
+            // Above every child, REORDER_STEP apart.
+            let top = values.iter().flatten().copied().reduce(f64::min);
+            let new = spread(k, None, top, REORDER_STEP, 0.0).ok_or_else(|| {
+                anyhow::anyhow!("Cannot place {k} issues {REORDER_STEP} apart above {top:?}: float precision is too low there.")
+            })?;
+            for (i, &value) in new.iter().enumerate() {
+                plan.values[i].push((key, value));
+            }
+            finals.extend(new);
+        }
+        if !unset.is_empty() {
+            let bottom = finals.iter().copied().reduce(f64::max);
+            let new = spread(unset.len(), bottom, None, REORDER_STEP, 0.0).ok_or_else(|| {
+                anyhow::anyhow!("Cannot place {} issues {REORDER_STEP} apart below {bottom:?}: float precision is too low there.", unset.len())
+            })?;
+            for (&i, value) in unset.iter().zip(new) {
+                plan.values[i].push((key, value));
+            }
+        }
+    }
+    // Untouched children may tie among themselves; only check the moved ones against them.
+    let listed_members: Vec<usize> = (0..k).collect();
+    if rest_set.is_empty() {
+        plan.checks.push(Check {
+            key,
+            members: listed_members.into_iter().chain(unset).collect(),
+            above: Vec::new(),
+            below: Vec::new(),
+        });
+    } else {
+        plan.checks.push(Check {
+            key,
+            members: listed_members,
+            above: Vec::new(),
+            below: rest_set.clone(),
+        });
+        if !unset.is_empty() {
+            plan.checks.push(Check {
+                key,
+                members: unset,
+                above: rest_set,
+                below: Vec::new(),
+            });
+        }
+    }
 
     apply_reorder(client, plan).await
 }
 
-/// All non-archived children of a parent issue, following pagination.
-async fn fetch_children(client: &Client, parent_id: &str) -> anyhow::Result<Vec<IssueOrder>> {
-    let filter: IssueFilter =
-        serde_json::from_value(serde_json::json!({ "parent": { "id": { "eq": parent_id } } }))
-            .expect("valid IssueFilter");
-    let mut children = Vec::new();
+/// All non-archived issues matching `filter`, following pagination.
+async fn fetch_issues(
+    client: &Client,
+    filter: serde_json::Value,
+) -> anyhow::Result<Vec<IssueOrder>> {
+    let filter: IssueFilter = serde_json::from_value(filter).expect("valid IssueFilter");
+    let mut issues = Vec::new();
     let mut after: Option<String> = None;
     loop {
         let mut builder = client
@@ -1741,17 +2030,17 @@ async fn fetch_children(client: &Client, parent_id: &str) -> anyhow::Result<Vec<
             builder = builder.after(cursor);
         }
         let conn = builder.send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
-        children.extend(conn.nodes);
+        issues.extend(conn.nodes);
         match conn.page_info.end_cursor {
             Some(cursor) if conn.page_info.has_next_page => after = Some(cursor),
             _ => break,
         }
     }
-    Ok(children)
+    Ok(issues)
 }
 
 /// Write the planned values (one `issueUpdate` per issue whose values change), then read
-/// every issue back and check that each planned group now ascends in the wanted order.
+/// every issue back and check each planned group. Returns the reported issues, read back.
 async fn apply_reorder(client: &Client, plan: ReorderPlan) -> anyhow::Result<Vec<IssueOrder>> {
     let pending: Vec<usize> = (0..plan.issues.len())
         .filter(|&i| plan.changes(i))
@@ -1793,31 +2082,40 @@ async fn apply_reorder(client: &Client, plan: ReorderPlan) -> anyhow::Result<Vec
         result.push(fresh);
     }
 
-    for (key, members) in &plan.groups {
-        let values: Vec<Option<f64>> = members.iter().map(|&i| key.get(&result[i])).collect();
-        let ordered = values.windows(2).all(|w| match (w[0], w[1]) {
-            (Some(a), Some(b)) => a < b,
-            _ => false,
-        });
-        if !ordered {
-            let got: Vec<String> = members
+    for check in &plan.checks {
+        let values: Vec<Option<f64>> = check
+            .members
+            .iter()
+            .map(|&i| check.key.get(&result[i]))
+            .collect();
+        let (first, last) = (
+            values.first().copied().flatten(),
+            values.last().copied().flatten(),
+        );
+        let holds = ascends(&values)
+            && check.above.iter().all(|&v| first.is_some_and(|f| v < f))
+            && check.below.iter().all(|&v| last.is_some_and(|l| v > l));
+        if !holds {
+            let got: Vec<String> = check
+                .members
                 .iter()
                 .map(|&i| {
                     format!(
                         "{}={}",
                         result[i].label(),
-                        output::display_opt(&key.get(&result[i]))
+                        output::display_opt(&check.key.get(&result[i]))
                     )
                 })
                 .collect();
             return Err(anyhow::anyhow!(
                 "Verification failed: {} is not in the wanted order after the update: {}",
-                key.name(),
+                check.key.name(),
                 got.join(", ")
             ));
         }
     }
 
+    result.truncate(plan.reported);
     Ok(result)
 }
 
@@ -1891,81 +2189,147 @@ mod tests {
     }
 
     #[test]
-    fn plan_group_values_skips_groups_already_in_order() {
-        let planned = plan_group_values(&[Some(1.0), Some(2.0)], 1.0, 0.01, || 0.5).unwrap();
+    fn spread_packs_step_apart_against_hi() {
+        let values = spread(3, Some(-3100.0), Some(-3090.0), 0.01, 0.0).unwrap();
+        assert_eq!(values, vec![-3090.03, -3090.02, -3090.01]);
+        assert_eq!(
+            spread(2, None, Some(5.0), 0.5, 0.0).unwrap(),
+            vec![4.0, 4.5]
+        );
+        assert_eq!(
+            spread(2, Some(5.0), None, 0.5, 0.0).unwrap(),
+            vec![5.5, 6.0]
+        );
+        assert_eq!(spread(2, None, None, 0.5, 0.0).unwrap(), vec![0.5, 1.0]);
+    }
+
+    #[test]
+    fn spread_splits_a_narrow_gap_evenly() {
+        assert_eq!(
+            spread(3, Some(1.0), Some(1.01), 0.01, 0.0).unwrap(),
+            vec![1.0025, 1.005, 1.0075]
+        );
+    }
+
+    #[test]
+    fn spread_shift_moves_values_down_inside_the_gap() {
+        assert_eq!(
+            spread(1, Some(1.0), Some(1.01), 0.01, 0.5).unwrap(),
+            vec![1.0025]
+        );
+    }
+
+    #[test]
+    fn spread_refuses_gaps_below_min_spacing_or_precision() {
+        assert_eq!(
+            spread(1, Some(1.0), Some(1.0 + MIN_SPACING), 0.01, 0.0),
+            None
+        );
+        assert_eq!(spread(2, None, Some(1e17), 0.01, 0.0), None);
+    }
+
+    #[test]
+    fn plan_block_skips_groups_already_in_order() {
+        let planned = plan_block(&[Some(1.0), Some(2.0)], &[Some(1.5)], 0.01).unwrap();
         assert_eq!(planned, None);
     }
 
     #[test]
-    fn plan_group_values_anchors_at_base_plus_offset() {
-        let planned = plan_group_values(&[Some(5.0), Some(-3.0), None], -3.0, 0.5, || 0.5)
+    fn plan_block_places_the_block_right_above_the_topmost_issue() {
+        // No neighbour above: 0.01 apart, the last one 0.01 above the old topmost value.
+        let planned = plan_block(&[Some(5.0), Some(-3190.0), None], &[Some(7.0)], 0.01)
             .unwrap()
             .unwrap();
-        assert_eq!(planned.values, vec![-2.75, -2.25, -1.75]);
-        assert!(planned.tie_free);
+        assert_eq!(planned.anchor, Some(-3190.0));
+        assert_eq!(planned.pulled, Vec::<usize>::new());
+        assert_eq!(planned.values, vec![-3190.03, -3190.02, -3190.01]);
     }
 
     #[test]
-    fn plan_group_values_detect_tie_with_the_minimum_holder() {
-        // Offset 0 would give the first issue -3.0 while the second still holds it.
-        let planned = plan_group_values(&[Some(5.0), Some(-3.0)], -3.0, 0.5, || 0.0)
-            .unwrap()
-            .unwrap();
-        assert!(!planned.tie_free);
-    }
+    fn plan_block_partial_reorder_does_not_interleave_with_unlisted_issues() {
+        // A full reorder packed A..N 0.01 apart; now move N to the top, then A.
+        let packed: Vec<f64> = (0..14)
+            .map(|i| tidy(-615799.99766 + i as f64 * 0.01))
+            .collect();
+        let current = [Some(packed[13]), Some(packed[0])];
+        // Unlisted: B..M, an issue above the block and one far below.
+        let mut neighbours: Vec<Option<f64>> = packed[1..13].iter().copied().map(Some).collect();
+        neighbours.push(Some(-615850.0));
+        neighbours.push(Some(-615000.0));
 
-    #[test]
-    fn plan_group_values_have_no_binary_noise() {
-        let planned = plan_group_values(&[None, None, None], -3190.0, 0.01, || 0.0)
-            .unwrap()
-            .unwrap();
-        assert_eq!(planned.values, vec![-3190.0, -3189.99, -3189.98]);
-    }
-
-    #[test]
-    fn plan_group_values_retries_offsets_that_tie() {
-        // Re-run with the order reversed: offset 0 ties every value with another issue's.
-        let mut offsets = vec![0.25, 0.0].into_iter();
-        let planned = plan_group_values(
-            &[Some(3000.0), Some(2000.0), Some(1000.0)],
-            1000.0,
-            1000.0,
-            || offsets.next_back().unwrap(),
-        )
-        .unwrap()
-        .unwrap();
-        assert_eq!(planned.values, vec![1250.0, 2250.0, 3250.0]);
-        assert!(planned.tie_free);
-    }
-
-    #[test]
-    fn plan_group_values_ignores_an_issues_own_value() {
-        let planned = plan_group_values(&[Some(1000.0), Some(5.0)], 1000.0, 1000.0, || 0.0)
-            .unwrap()
-            .unwrap();
-        assert_eq!(planned.values, vec![1000.0, 2000.0]);
-        assert!(planned.tie_free);
-    }
-
-    #[test]
-    fn plan_group_values_reports_unavoidable_ties() {
-        let planned = plan_group_values(&[Some(2.0), Some(1.0)], 1.0, 1.0, || 0.0)
-            .unwrap()
-            .unwrap();
-        assert!(!planned.tie_free);
-    }
-
-    #[test]
-    fn plan_group_values_rejects_lost_precision() {
-        assert!(plan_group_values(&[Some(2e17), Some(1e17)], 1e17, 0.01, || 0.0).is_err());
-    }
-
-    #[test]
-    fn random_fraction_is_in_unit_interval() {
-        for _ in 0..1000 {
-            let r = random_fraction();
-            assert!((0.0..1.0).contains(&r));
+        let planned = plan_block(&current, &neighbours, 0.01).unwrap().unwrap();
+        assert_eq!(planned.pulled, Vec::<usize>::new());
+        let (first, last) = (planned.values[0], planned.values[1]);
+        assert!(first < last);
+        for v in neighbours.iter().flatten() {
+            assert!(
+                *v < first || *v > last,
+                "unlisted value {v} falls inside the block {:?}",
+                planned.values
+            );
         }
+        // B..M stay below the block, the issue above stays above.
+        assert!(packed[1] > last);
+        assert!(-615850.0 < first);
+    }
+
+    #[test]
+    fn plan_block_splits_the_gap_to_a_close_neighbour() {
+        let planned = plan_block(&[Some(2.0), Some(1.0)], &[Some(0.997), Some(1.5)], 0.01)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.values, vec![0.998, 0.999]);
+    }
+
+    #[test]
+    fn plan_block_pulls_neighbours_in_when_the_gap_is_too_small() {
+        // Neighbour 0 sits a hair above the topmost listed issue, neighbour 1 further up.
+        let neighbours = [Some(1.0 - 1e-6), Some(0.5), Some(3.0)];
+        let planned = plan_block(&[Some(2.0), Some(1.0)], &neighbours, 0.01)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.pulled, vec![0]);
+        assert_eq!(planned.values, vec![0.97, 0.98, 0.99]);
+    }
+
+    #[test]
+    fn plan_block_never_ties_a_pulled_neighbours_value() {
+        // Every shift of the 4-pulled block puts a listed issue on 0.99996, which pulled
+        // neighbour 0 still holds while the listed issues are written.
+        let current: Vec<Option<f64>> = (0..10).rev().map(|i| Some(1.0 + i as f64)).collect();
+        let neighbours = [
+            Some(0.99996),
+            Some(0.99995),
+            Some(0.99994),
+            Some(0.99993),
+            Some(0.9994),
+        ];
+        let planned = plan_block(&current, &neighbours, 0.01).unwrap().unwrap();
+        let pulled_old: Vec<f64> = planned
+            .pulled
+            .iter()
+            .map(|&i| neighbours[i].unwrap())
+            .collect();
+        for (i, v) in planned.values.iter().enumerate() {
+            for (j, u) in pulled_old.iter().enumerate() {
+                assert!(i == j || u != v, "value {v} ties pulled neighbour {j}");
+            }
+        }
+        assert!(planned.values.windows(2).all(|w| w[0] < w[1]));
+    }
+
+    #[test]
+    fn plan_block_goes_after_the_neighbours_when_nothing_has_a_value() {
+        let planned = plan_block(&[None, None], &[Some(3.0), None], 0.5)
+            .unwrap()
+            .unwrap();
+        assert_eq!(planned.anchor, None);
+        assert_eq!(planned.values, vec![3.5, 4.0]);
+    }
+
+    #[test]
+    fn plan_block_rejects_lost_precision() {
+        assert!(plan_block(&[Some(2e17), Some(1e17)], &[], 0.01).is_err());
     }
 
     #[test]
@@ -1984,7 +2348,10 @@ mod tests {
             issue(Some("p2"), None),
             issue(Some("p1"), None),
         ];
-        assert_eq!(group_by_parent(&issues), vec![vec![0, 3], vec![2]]);
+        assert_eq!(
+            group_by_parent(&issues),
+            vec![("p1".to_string(), vec![0, 3]), ("p2".to_string(), vec![2])]
+        );
     }
 
     #[test]
