@@ -94,6 +94,7 @@ lineark cycles list [-l N] [--team KEY]          List cycles
 lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, number)
 lineark issues list [-l N] [--team KEY]          Active issues, newest first
   [--mine] [--show-done]                         Filter by assignee / state
+  [--parent ID]                                  Only sub-issues of ID
 lineark issues read <IDENTIFIER>                 Full issue detail incl. sub-issues & comments
 lineark issues find-branch <BRANCH>              Find issue by Git branch name
 lineark issues search <QUERY> [-l N]             Full-text search
@@ -118,6 +119,7 @@ lineark issues reorder ID ID [ID ...]            Put issues in this order (top f
   [--field all|manual|priority|sub-issue]        Default all: sortOrder, prioritySortOrder,
                                                  subIssueSortOrder
   [--parent ID]                                  Only reorder that parent's sub-issue list
+                                                 Sets relative order only; see --help
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue
 lineark issues delete <IDENTIFIER>               Delete (trash) an issue

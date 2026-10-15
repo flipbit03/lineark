@@ -5239,9 +5239,134 @@ mod online {
             );
         }
 
-        // A re-run proposes the same values; it must not trip Linear's tie handling.
+        // A second reorder moves the block again; it must not trip Linear's tie handling.
         let order = reorder(&token, &[&b.1, &c.1, &a.1], 3);
         assert_eq!(order, vec![b.1.clone(), c.1.clone(), a.1.clone()]);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_reorder_partial_does_not_interleave_with_unlisted_issues() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        let (parent_id, _, _parent_guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] partial reorder parent {suffix}"),
+            &[],
+        );
+        let mut children = Vec::new();
+        for name in ["a", "b", "c", "d"] {
+            children.push(create_test_issue(
+                &token,
+                &team.key,
+                &format!("[test] partial reorder child {name} {suffix}"),
+                &["-p", "3", "--parent", &parent_id],
+            ));
+        }
+        let ids: Vec<&str> = children.iter().map(|c| c.1.as_str()).collect();
+
+        // A full reorder packs A..D 0.01 apart; then move D to the top, with A after it.
+        reorder(&token, &ids, 4);
+        let order = reorder(&token, &[ids[3], ids[0]], 2);
+        assert_eq!(order, vec![ids[3], ids[0]]);
+
+        // Every field must read D, A, B, C: B and C were not listed and must not end up
+        // between D and A.
+        let values: Vec<(f64, f64, Option<f64>)> = [3, 0, 1, 2]
+            .iter()
+            .map(|&i| read_sort_orders(&token, &children[i].0))
+            .collect();
+        for w in values.windows(2) {
+            assert!(w[0].0 < w[1].0, "sortOrder not D, A, B, C: {values:?}");
+            assert!(
+                w[0].1 < w[1].1,
+                "prioritySortOrder not D, A, B, C: {values:?}"
+            );
+            assert!(
+                w[0].2.unwrap() < w[1].2.unwrap(),
+                "subIssueSortOrder not D, A, B, C: {values:?}"
+            );
+        }
+
+        // `issues list --parent` shows the same order values, without reading each child.
+        retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "issues",
+                    "list",
+                    "--parent",
+                    &parent_id,
+                ])
+                .output()
+                .expect("failed to execute lineark");
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(
+                output.status.success(),
+                "issues list failed.\nstdout: {stdout}\nstderr: {stderr}"
+            );
+            let rows: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+            // The filter index can lag: retry until every child shows the values just read.
+            for (&i, value) in [3, 0, 1, 2].iter().zip(&values) {
+                let Some(row) = rows
+                    .iter()
+                    .find(|r| r["identifier"].as_str() == Some(ids[i]))
+                else {
+                    return Err(format!("{} missing from issues list: {stdout}", ids[i]));
+                };
+                let got = (
+                    row["sortOrder"].as_f64(),
+                    row["prioritySortOrder"].as_f64(),
+                    row["subIssueSortOrder"].as_f64(),
+                );
+                if got != (Some(value.0), Some(value.1), value.2) {
+                    return Err(format!("{} has {got:?}, expected {value:?}", ids[i]));
+                }
+            }
+            Ok(())
+        })
+        .expect("issues list --parent should show every child's order values (after retries)");
+
+        // One field at a time: C before B in Manual order only.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "--format",
+                "json",
+                "issues",
+                "reorder",
+                ids[2],
+                ids[1],
+                "--field",
+                "manual",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "issues reorder --field manual failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let after: Vec<(f64, f64, Option<f64>)> = [3, 0, 2, 1]
+            .iter()
+            .map(|&i| read_sort_orders(&token, &children[i].0))
+            .collect();
+        assert!(
+            after.windows(2).all(|w| w[0].0 < w[1].0),
+            "sortOrder not D, A, C, B: {after:?}"
+        );
+        // prioritySortOrder and subIssueSortOrder are untouched: still D, A, B, C.
+        assert_eq!(after[2].1, values[3].1, "{after:?}");
+        assert_eq!(after[3].1, values[2].1, "{after:?}");
+        assert_eq!(after[2].2, values[3].2, "{after:?}");
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
@@ -5280,6 +5405,18 @@ mod online {
             values.iter().all(|v| v.2.is_none()),
             "subIssueSortOrder should stay null: {values:?}"
         );
+
+        // Partial reorder of team neighbours: A before B, with C (not listed) staying below.
+        let order = reorder(&token, &[&a.1, &b.1], 2);
+        assert_eq!(order, vec![a.1.clone(), b.1.clone()]);
+        let values: Vec<(f64, f64, Option<f64>)> = [a, b, c]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+        for w in values.windows(2) {
+            assert!(w[0].0 < w[1].0, "sortOrder not A, B, C: {values:?}");
+            assert!(w[0].1 < w[1].1, "prioritySortOrder not A, B, C: {values:?}");
+        }
 
         // --field sub-issue has nothing to order here.
         let output = lineark()
@@ -5404,6 +5541,24 @@ mod online {
         assert!(
             output.status.success(),
             "issues update failed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        // The update output carries the stored order values.
+        let updated: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        assert_eq!(updated["sortOrder"].as_f64(), Some(-1234.5), "{stdout}");
+        assert_eq!(
+            updated["prioritySortOrder"].as_f64(),
+            Some(-4242.25),
+            "{stdout}"
+        );
+        assert_eq!(
+            updated["subIssueSortOrder"].as_f64(),
+            Some(777.0),
+            "{stdout}"
+        );
+        assert_eq!(
+            updated["parent"]["id"].as_str(),
+            Some(parent_id.as_str()),
+            "{stdout}"
         );
 
         let (sort_order, priority_sort_order, sub_issue_sort_order) = read_sort_orders(&token, &id);

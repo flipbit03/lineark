@@ -82,6 +82,7 @@ COMMANDS:
   lineark cycles read <ID> [--team KEY]            Read cycle (UUID, name, or number)
   lineark issues list [-l N] [--team KEY]          Active issues (done/canceled hidden), newest first
     [--project NAME-OR-ID] [--mine]                Filter by project, assignee
+    [--parent ID]                                  Only sub-issues of ID (JSON has order fields)
     [--show-done]                                  Include done/canceled issues
   lineark issues read <IDENTIFIER>                 Full issue detail incl. project, sub-issues, comments, relations
   lineark issues find-branch <BRANCH>              Find issue by Git branch name
@@ -109,6 +110,7 @@ COMMANDS:
                                                    prioritySortOrder (Priority view), subIssueSortOrder
                                                    (sub-issue list). Default: --field all
     [--parent ID]                                  Only reorder that parent's sub-issue list
+                                                   Sets relative order only; see --help
   lineark issues archive|unarchive|delete ...      Lifecycle ops (--help for flags)
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark comments update|resolve|unresolve|delete Manage comments (--help for flags)
