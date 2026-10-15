@@ -73,8 +73,10 @@ jobs:
 
   test-online:
     name: Tests (Online)
-    # Skip on fork PRs — secrets are unavailable. Use safe-to-test label instead.
-    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # PRs only: online tests hit the live Linear API and flake on its errors and
+    # rate limits, so pushes to main skip them. Fork PRs have no secrets; they
+    # use the safe-to-test label (ci-online-fork.yml) instead.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     # Online tests share a single Linear workspace — never run two at the same time.
     # cancel-in-progress: false queues new runs and waits for the current one to finish,
     # so we don't kill a run mid-flight and leak resources.
