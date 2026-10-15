@@ -20,7 +20,7 @@ check:
 
 # Run offline tests (unit + integration). Safe, fast, no API token needed.
 test:
-	cargo test --workspace --lib
+	cargo test --workspace --lib --bins
 	cargo test --workspace --test offline
 
 # Run online tests against the live Linear API. Requires ~/.linear_api_token_test.
