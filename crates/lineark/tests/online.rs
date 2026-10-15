@@ -5291,7 +5291,7 @@ mod online {
         }
 
         // `issues list --parent` shows the same order values, without reading each child.
-        let listed = retry_with_backoff(8, || {
+        retry_with_backoff(8, || {
             let output = lineark()
                 .args([
                     "--api-token",
@@ -5312,21 +5312,26 @@ mod online {
                 "issues list failed.\nstdout: {stdout}\nstderr: {stderr}"
             );
             let rows: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
-            if rows.len() != 4 {
-                return Err(format!("expected 4 children, got: {stdout}"));
+            // The filter index can lag: retry until every child shows the values just read.
+            for (&i, value) in [3, 0, 1, 2].iter().zip(&values) {
+                let Some(row) = rows
+                    .iter()
+                    .find(|r| r["identifier"].as_str() == Some(ids[i]))
+                else {
+                    return Err(format!("{} missing from issues list: {stdout}", ids[i]));
+                };
+                let got = (
+                    row["sortOrder"].as_f64(),
+                    row["prioritySortOrder"].as_f64(),
+                    row["subIssueSortOrder"].as_f64(),
+                );
+                if got != (Some(value.0), Some(value.1), value.2) {
+                    return Err(format!("{} has {got:?}, expected {value:?}", ids[i]));
+                }
             }
-            Ok(rows)
+            Ok(())
         })
-        .expect("issues list --parent should list every child (after retries)");
-        for (&i, value) in [3, 0, 1, 2].iter().zip(&values) {
-            let row = listed
-                .iter()
-                .find(|r| r["identifier"].as_str() == Some(ids[i]))
-                .unwrap_or_else(|| panic!("{} missing from issues list: {listed:?}", ids[i]));
-            assert_eq!(row["sortOrder"].as_f64(), Some(value.0), "{row}");
-            assert_eq!(row["prioritySortOrder"].as_f64(), Some(value.1), "{row}");
-            assert_eq!(row["subIssueSortOrder"].as_f64(), value.2, "{row}");
-        }
+        .expect("issues list --parent should show every child's order values (after retries)");
 
         // One field at a time: C before B in Manual order only.
         let output = lineark()
