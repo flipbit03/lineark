@@ -119,6 +119,9 @@ lineark issues reorder ID ID [ID ...]            Put issues in this order (top f
   [--field all|manual|priority|sub-issue]        Default all: sortOrder, prioritySortOrder,
                                                  subIssueSortOrder
   [--parent ID]                                  Only reorder that parent's sub-issue list
+  [--set-priority LEVEL]                         Priority views group by priority first:
+                                                 warns if the order fights it; this flag
+                                                 gives all listed issues one priority
                                                  Sets relative order only; see --help
 lineark issues archive <IDENTIFIER>              Archive an issue
 lineark issues unarchive <IDENTIFIER>            Unarchive an issue

@@ -186,6 +186,19 @@ fn read_sort_orders(token: &str, id: &str) -> (f64, f64, Option<f64>) {
 /// Retries only while Linear's children index catches up (fewer issues than expected).
 /// Any command failure, including a failed order verification, fails the test at once.
 fn reorder(token: &str, args: &[&str], expected_len: usize) -> Vec<String> {
+    let (issues, _) = reorder_output(token, args, expected_len);
+    issues
+        .iter()
+        .map(|i| i["identifier"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// Helper: like `reorder`, but return the output rows and stderr (warnings, notes).
+fn reorder_output(
+    token: &str,
+    args: &[&str],
+    expected_len: usize,
+) -> (Vec<serde_json::Value>, String) {
     retry_with_backoff(8, || {
         let output = lineark()
             .args([
@@ -211,10 +224,7 @@ fn reorder(token: &str, args: &[&str], expected_len: usize) -> Vec<String> {
                 "expected {expected_len} issues in reorder output, got: {stdout}"
             ));
         }
-        Ok(issues
-            .iter()
-            .map(|i| i["identifier"].as_str().unwrap().to_string())
-            .collect())
+        Ok((issues, stderr.to_string()))
     })
     .expect("issues reorder should list every issue (after retries)")
 }
@@ -5437,7 +5447,7 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
-    fn issues_reorder_parent_changes_only_sub_issue_order() {
+    fn issues_reorder_parent_field_sub_issue_changes_only_sub_issue_order() {
         let token = test_token();
         let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let team = create_test_team();
@@ -5465,7 +5475,8 @@ mod online {
 
         // Move B to the top. A and C keep their current relative order after it.
         let b = &children[1];
-        let order = reorder(&token, &["--parent", &parent_identifier, &b.1], 3);
+        let args = ["--parent", &parent_identifier, &b.1, "--field", "sub-issue"];
+        let order = reorder(&token, &args, 3);
         let mut rest: Vec<(f64, String)> = [0, 2]
             .iter()
             .map(|&i| (before[i].2.unwrap(), children[i].1.clone()))
@@ -5481,11 +5492,11 @@ mod online {
             let after = read_sort_orders(&token, &children[index].0);
             assert_eq!(
                 after.0, before[index].0,
-                "--parent must not change sortOrder"
+                "--field sub-issue must not change sortOrder"
             );
             assert_eq!(
                 after.1, before[index].1,
-                "--parent must not change prioritySortOrder"
+                "--field sub-issue must not change prioritySortOrder"
             );
             sub_issue_values.push(after.2.unwrap());
         }
@@ -5495,8 +5506,158 @@ mod online {
         );
 
         // A re-run with the grid already in place must still succeed.
-        let order = reorder(&token, &["--parent", &parent_identifier, &b.1], 3);
+        let order = reorder(&token, &args, 3);
         assert_eq!(order, expected);
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_reorder_warns_when_priority_fights_the_order() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        let mut issues = Vec::new();
+        for (name, priority) in [("low", "4"), ("none", "0"), ("medium", "3")] {
+            issues.push(create_test_issue(
+                &token,
+                &team.key,
+                &format!("[test] reorder priority {name} {suffix}"),
+                &["-p", priority],
+            ));
+        }
+        let (low, none, medium) = (&issues[0], &issues[1], &issues[2]);
+
+        // Low and No priority above Medium: a Priority view shows Medium first.
+        let (_, stderr) = reorder_output(&token, &[&low.1, &none.1, &medium.1], 3);
+        assert!(stderr.contains("Warning"), "expected a warning: {stderr}");
+        assert!(
+            stderr.contains(&format!("{} (Low) is above {} (Medium)", low.1, medium.1)),
+            "{stderr}"
+        );
+        assert!(
+            stderr.contains(&format!(
+                "{} (No priority) is above {} (Medium)",
+                none.1, medium.1
+            )),
+            "{stderr}"
+        );
+
+        // Priorities that go Medium, Low, No priority fit the order: no warning.
+        let (_, stderr) = reorder_output(&token, &[&medium.1, &low.1, &none.1], 3);
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+
+        // --field manual targets Manual views only: no warning.
+        let (_, stderr) = reorder_output(&token, &[&none.1, &medium.1, "--field", "manual"], 2);
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+
+        // --set-priority puts them in one group, ordered by prioritySortOrder.
+        let (rows, stderr) = reorder_output(
+            &token,
+            &[&none.1, &low.1, &medium.1, "--set-priority", "high"],
+            3,
+        );
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+        let identifiers: Vec<&str> = rows
+            .iter()
+            .map(|r| r["identifier"].as_str().unwrap())
+            .collect();
+        assert_eq!(identifiers, vec![&none.1, &low.1, &medium.1]);
+        assert!(
+            rows.iter().all(|r| r["priority"].as_str() == Some("High")),
+            "every listed issue should be High: {rows:?}"
+        );
+        let values: Vec<f64> = [none, low, medium]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0).1)
+            .collect();
+        assert!(
+            values.windows(2).all(|w| w[0] < w[1]),
+            "prioritySortOrder not ascending: {values:?}"
+        );
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn issues_reorder_parent_sets_priority_order_within_groups() {
+        let token = test_token();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let team = create_test_team();
+
+        let (parent_id, parent_identifier, _parent_guard) = create_test_issue(
+            &token,
+            &team.key,
+            &format!("[test] reorder priority parent {suffix}"),
+            &[],
+        );
+        let mut children = Vec::new();
+        for (name, priority) in [("a", "3"), ("b", "3"), ("c", "3"), ("d", "4")] {
+            children.push(create_test_issue(
+                &token,
+                &team.key,
+                &format!("[test] reorder priority child {name} {suffix}"),
+                &["-p", priority, "--parent", &parent_id],
+            ));
+        }
+        let (a, b, c, d) = (&children[0], &children[1], &children[2], &children[3]);
+        let before: Vec<(f64, f64, Option<f64>)> = children
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+
+        // C, B to the top of the Medium group: right above A, the other Medium child.
+        let (_, stderr) = reorder_output(&token, &["--parent", &parent_identifier, &c.1, &b.1], 4);
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+        let after: Vec<(f64, f64, Option<f64>)> = children
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+        assert!(
+            after[2].1 < after[1].1 && after[1].1 < after[0].1,
+            "prioritySortOrder not C, B, A: {after:?}"
+        );
+        assert!(
+            after[2].2.unwrap() < after[1].2.unwrap(),
+            "subIssueSortOrder not C, B: {after:?}"
+        );
+        for (i, (old, new)) in before.iter().zip(&after).enumerate() {
+            assert_eq!(
+                old.0, new.0,
+                "--parent must not change sortOrder of child {i}"
+            );
+        }
+
+        // D (Low) on top: the Medium children still come first in a Priority view.
+        let (_, stderr) = reorder_output(&token, &["--parent", &parent_identifier, &d.1], 4);
+        assert!(
+            stderr.contains(&format!("{} (Low) is above", d.1)) && stderr.contains("not listed"),
+            "expected a warning about D: {stderr}"
+        );
+
+        // --set-priority medium moves D into the Medium group, above C.
+        let (rows, stderr) = reorder_output(
+            &token,
+            &[
+                "--parent",
+                &parent_identifier,
+                &d.1,
+                "--set-priority",
+                "medium",
+            ],
+            4,
+        );
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+        let d_row = rows
+            .iter()
+            .find(|r| r["identifier"].as_str() == Some(d.1.as_str()))
+            .unwrap();
+        assert_eq!(d_row["priority"].as_str(), Some("Medium"), "{rows:?}");
+        let values: Vec<f64> = [d, c, b, a]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0).1)
+            .collect();
+        assert!(
+            values.windows(2).all(|w| w[0] < w[1]),
+            "prioritySortOrder not D, C, B, A: {values:?}"
+        );
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
