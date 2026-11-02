@@ -281,9 +281,10 @@ pub enum IssuesAction {
     /// Views ordered by priority, the sub-issue list included, group issues by priority
     /// first (Urgent, High, Medium, Low, No priority) and use prioritySortOrder only inside
     /// a group. They can show the wanted order only if no issue is listed above one with a
-    /// higher priority; reorder prints a warning naming them when one is. Dragging an issue in
-    /// Linear's UI changes its priority to fit its new neighbours; --set-priority gives every
-    /// listed issue one priority before reordering, which does the same explicitly.
+    /// higher priority; when prioritySortOrder is set (not with --field manual or sub-issue),
+    /// reorder prints a warning naming such issues. Dragging an issue in Linear's UI changes
+    /// its priority to fit its new neighbours; --set-priority gives every listed issue one
+    /// priority before reordering, which does the same explicitly.
     ///
     /// Default (--field all): set all three. subIssueSortOrder only orders siblings: listed
     /// issues that share a parent are ordered among themselves, and issues without a parent
@@ -310,8 +311,9 @@ pub enum IssuesAction {
     ///                      Children not listed keep their values, so they follow in their
     ///                      current relative order; children with no value yet go last.
     ///   prioritySortOrder  In each priority group, listed children go right above the
-    ///                      topmost unlisted child with that priority. This moves them in
-    ///                      the team's Priority views too.
+    ///                      topmost unlisted child with that priority, unless they are
+    ///                      already above it in the given order. This moves them in the
+    ///                      team's Priority views too.
     /// Default: both; --field sub-issue or --field priority sets one.
     ///
     /// Examples:
@@ -350,7 +352,7 @@ pub enum LabelMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OrderField {
-    /// All three order fields.
+    /// All order fields (with --parent: subIssueSortOrder and prioritySortOrder).
     All,
     /// sortOrder: views with Ordering: Manual.
     Manual,
@@ -1617,21 +1619,24 @@ fn priority_warning(issues: &[IssueOrder], listed: usize) -> Option<String> {
             )
         })
         .collect();
-    // Unlisted siblings keep their priority: the listed ones need at least the highest of them.
-    let highest_unlisted = conflicts
+    // Unlisted issues keep their priority: to go above every unlisted one that outranks a
+    // listed issue, the listed ones need at least the highest priority among those.
+    let lowest_listed = priorities[..listed]
         .iter()
-        .map(|&(_, j)| j)
-        .filter(|&j| j >= listed)
+        .map(|&p| priority_rank(p))
+        .fold(f64::MIN, f64::max);
+    let highest_unlisted = (listed..issues.len())
+        .filter(|&j| priority_rank(priorities[j]) < lowest_listed)
         .min_by(|&a, &b| priority_rank(priorities[a]).total_cmp(&priority_rank(priorities[b])));
     let level = match highest_unlisted {
         Some(j) => format!(
-            " (to go above the unlisted ones: {} or higher)",
+            " To go above the unlisted ones, use {} or higher.",
             issues[j].priority_name()
         ),
         None => String::new(),
     };
     Some(format!(
-        "Warning: views ordered by priority show higher priorities first, so they will not show this order: {}. Give the issues priorities that fit the order (--set-priority LEVEL sets one for every listed issue{}, `issues update ID --priority LEVEL` one at a time), then re-run reorder.",
+        "Warning: views ordered by priority show higher priorities first, so they will not show this order: {}. Give the issues priorities that fit the order with --set-priority LEVEL (one for every listed issue) or `issues update ID --priority LEVEL`, then re-run reorder.{}",
         pairs.join("; "),
         level
     ))
@@ -1950,10 +1955,21 @@ async fn reorder_issues(
             "No two of these issues share a parent, so there is no sub-issue list to order. Use --parent to move a sub-issue within its parent's list."
         ));
     }
-    if let Some(priority) = set_priority {
-        set_priorities(client, &mut issues, priority).await?;
-    }
+    let priority_set = match set_priority {
+        Some(priority) => set_priorities(client, &mut issues, priority).await?,
+        None => Vec::new(),
+    };
+    order_issues(client, issues, field)
+        .await
+        .map_err(|e| note_priority_set(e, &priority_set))
+}
 
+/// Plan and write the order for `reorder_issues`, once the listed issues are fetched.
+async fn order_issues(
+    client: &Client,
+    issues: Vec<IssueOrder>,
+    field: Option<OrderField>,
+) -> anyhow::Result<Vec<IssueOrder>> {
     let keys = field.unwrap_or(OrderField::All).keys();
     if keys.contains(&OrderKey::Priority) {
         if let Some(warning) = priority_warning(&issues, issues.len()) {
@@ -2042,11 +2058,12 @@ fn note_pulled(plan: &ReorderPlan) {
 
 /// Give every issue `priority` (one `issueUpdate` per issue whose priority differs), then
 /// read the changed ones back: Linear may move prioritySortOrder when the priority changes.
+/// Returns the labels of the issues whose priority changed.
 async fn set_priorities(
     client: &Client,
     issues: &mut [IssueOrder],
     priority: i64,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<String>> {
     let mut updated: Vec<String> = Vec::new();
     for issue in issues.iter_mut() {
         if issue.priority == Some(priority as f64) {
@@ -2079,7 +2096,19 @@ async fn set_priorities(
             .await
             .map_err(|e| anyhow::anyhow!("Reading back {}: {}", issue.label(), e))?;
     }
-    Ok(())
+    Ok(updated)
+}
+
+/// Add to a reorder error which issues --set-priority already changed.
+fn note_priority_set(error: anyhow::Error, priority_set: &[String]) -> anyhow::Error {
+    if priority_set.is_empty() {
+        return error;
+    }
+    anyhow::anyhow!(
+        "{}\nPriority already set on: {}. Re-run the same command to finish.",
+        error,
+        priority_set.join(", ")
+    )
 }
 
 /// The non-archived issues of every team that one of `issues` belongs to, only those with
@@ -2178,11 +2207,24 @@ async fn reorder_sub_issues(
         }
         listed_issues.push(issue);
     }
-    if let Some(priority) = set_priority {
-        set_priorities(client, &mut listed_issues, priority).await?;
-    }
+    let priority_set = match set_priority {
+        Some(priority) => set_priorities(client, &mut listed_issues, priority).await?,
+        None => Vec::new(),
+    };
+    order_children(client, &parent_id, parent_issue, listed_issues, keys)
+        .await
+        .map_err(|e| note_priority_set(e, &priority_set))
+}
 
-    let mut children = fetch_children(client, &parent_id, parent_issue).await?;
+/// Plan and write the order for `reorder_sub_issues`, once the listed children are fetched.
+async fn order_children(
+    client: &Client,
+    parent_id: &str,
+    parent_issue: ParentWithChildren,
+    listed_issues: Vec<IssueOrder>,
+    keys: &[OrderKey],
+) -> anyhow::Result<Vec<IssueOrder>> {
+    let mut children = fetch_children(client, parent_id, parent_issue).await?;
     let mut listed: Vec<usize> = Vec::with_capacity(listed_issues.len());
     for issue in listed_issues {
         let idx = match children.iter().position(|c| c.id == issue.id) {
@@ -2297,8 +2339,9 @@ async fn plan_priority_on_top(
         .iter()
         .any(|g| needs_writes(plan, OrderKey::Priority, &g.members, g.below))
     {
+        // The listed children's teams; unlisted children are added by plan_priority_groups.
         let priorities: Vec<f64> = groups.iter().filter_map(|g| g.priority).collect();
-        fetch_team_issues(client, &plan.issues[..plan.reported], Some(&priorities)).await?
+        fetch_team_issues(client, &plan.issues[..k], Some(&priorities)).await?
     } else {
         Vec::new()
     };
@@ -2350,9 +2393,11 @@ impl ReorderPlan {
         team: &[IssueOrder],
     ) -> anyhow::Result<()> {
         for group in groups {
+            let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
             let mut neighbours: Vec<IssueOrder> = Vec::new();
             for issue in self.issues[..self.reported].iter().chain(team) {
-                if issue.priority == group.priority && !neighbours.iter().any(|n| n.id == issue.id)
+                if issue.priority == group.priority
+                    && seen.insert(issue.id.as_deref().unwrap_or_default())
                 {
                     neighbours.push(issue.clone());
                 }
@@ -2864,6 +2909,16 @@ mod tests {
             "{warning}"
         );
         assert!(warning.contains("High or higher"), "{warning}");
+
+        // A (Low) conflicts with listed B (High) only, but unlisted C (Medium) outranks A.
+        let issues2 = vec![
+            prioritized("A", 4.0, "Low", 1.0),
+            prioritized("B", 2.0, "High", 2.0),
+            prioritized("C", 3.0, "Medium", 3.0),
+        ];
+        let warning = priority_warning(&issues2, 2).unwrap();
+        assert!(warning.contains("A (Low) is above B (High)"), "{warning}");
+        assert!(warning.contains("use Medium or higher"), "{warning}");
 
         // Already in priority order: no warning.
         let in_order = [issues[3].clone(), issues[2].clone(), issues[0].clone()];

@@ -5517,7 +5517,12 @@ mod online {
         let team = create_test_team();
 
         let mut issues = Vec::new();
-        for (name, priority) in [("low", "4"), ("none", "0"), ("medium", "3")] {
+        for (name, priority) in [
+            ("low", "4"),
+            ("none", "0"),
+            ("medium", "3"),
+            ("medium2", "3"),
+        ] {
             issues.push(create_test_issue(
                 &token,
                 &team.key,
@@ -5525,7 +5530,7 @@ mod online {
                 &["-p", priority],
             ));
         }
-        let (low, none, medium) = (&issues[0], &issues[1], &issues[2]);
+        let (low, none, medium, medium2) = (&issues[0], &issues[1], &issues[2], &issues[3]);
 
         // Low and No priority above Medium: a Priority view shows Medium first.
         let (_, stderr) = reorder_output(&token, &[&low.1, &none.1, &medium.1], 3);
@@ -5579,6 +5584,35 @@ mod online {
             .map(|issue| read_sort_orders(&token, &issue.0).1)
             .collect();
         assert_eq!(before, after, "prioritySortOrder should not change");
+
+        // --field priority with two Medium issues around a Low one: the Medium pair is
+        // ordered as its own block, and the Low issue (alone in its group) does not move.
+        // List the pair against their current order so a write is needed.
+        let (first, last) =
+            if read_sort_orders(&token, &medium.0).1 < read_sort_orders(&token, &medium2.0).1 {
+                (medium2, medium)
+            } else {
+                (medium, medium2)
+            };
+        let before = read_sort_orders(&token, &low.0);
+        let (_, stderr) = reorder_output(
+            &token,
+            &[&first.1, &low.1, &last.1, "--field", "priority"],
+            3,
+        );
+        assert!(
+            stderr.contains(&format!("{} (Low) is above {} (Medium)", low.1, last.1)),
+            "{stderr}"
+        );
+        assert!(
+            read_sort_orders(&token, &first.0).1 < read_sort_orders(&token, &last.0).1,
+            "the Medium pair should be in the given order"
+        );
+        assert_eq!(
+            read_sort_orders(&token, &low.0),
+            before,
+            "Low should not move"
+        );
 
         // --field manual targets Manual views only: no warning.
         let (_, stderr) = reorder_output(&token, &[&none.1, &medium.1, "--field", "manual"], 2);
