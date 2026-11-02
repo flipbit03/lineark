@@ -310,10 +310,10 @@ pub enum IssuesAction {
     ///   subIssueSortOrder  Listed children go first, in the given order, 0.01 apart.
     ///                      Children not listed keep their values, so they follow in their
     ///                      current relative order; children with no value yet go last.
-    ///   prioritySortOrder  In each priority group, listed children go right above the
-    ///                      topmost unlisted child with that priority, unless they are
-    ///                      already above it in the given order. This moves them in the
-    ///                      team's Priority views too.
+    ///   prioritySortOrder  In each priority group, listed children go above every unlisted
+    ///                      child with that priority, right above the topmost of them all,
+    ///                      unless already in that order. This moves them in the team's
+    ///                      Priority views too.
     /// Default: both; --field sub-issue or --field priority sets one.
     ///
     /// Examples:
@@ -1619,14 +1619,10 @@ fn priority_warning(issues: &[IssueOrder], listed: usize) -> Option<String> {
             )
         })
         .collect();
-    // Unlisted issues keep their priority: to go above every unlisted one that outranks a
-    // listed issue, the listed ones need at least the highest priority among those.
-    let lowest_listed = priorities[..listed]
-        .iter()
-        .map(|&p| priority_rank(p))
-        .fold(f64::MIN, f64::max);
+    // Unlisted issues keep their priority: to go above all of them, the listed ones need at
+    // least the highest priority among them (any priority is enough against No priority).
     let highest_unlisted = (listed..issues.len())
-        .filter(|&j| priority_rank(priorities[j]) < lowest_listed)
+        .filter(|&j| priority_rank(priorities[j]) < priority_rank(None))
         .min_by(|&a, &b| priority_rank(priorities[a]).total_cmp(&priority_rank(priorities[b])));
     let level = match highest_unlisted {
         Some(j) => format!(
@@ -2091,10 +2087,14 @@ async fn set_priorities(
                 )
             })?;
         updated.push(issue.label());
-        *issue = client
-            .issue::<IssueOrder>(id)
-            .await
-            .map_err(|e| anyhow::anyhow!("Reading back {}: {}", issue.label(), e))?;
+        *issue = client.issue::<IssueOrder>(id).await.map_err(|e| {
+            anyhow::anyhow!(
+                "Reading back {}: {}\nPriority already set on: {}.",
+                issue.label(),
+                e,
+                updated.join(", ")
+            )
+        })?;
     }
     Ok(updated)
 }
@@ -2105,7 +2105,7 @@ fn note_priority_set(error: anyhow::Error, priority_set: &[String]) -> anyhow::E
         return error;
     }
     anyhow::anyhow!(
-        "{}\nPriority already set on: {}. Re-run the same command to finish.",
+        "{}\nPriority already set on: {}.",
         error,
         priority_set.join(", ")
     )
@@ -2326,9 +2326,9 @@ fn plan_sub_issues_on_top(plan: &mut ReorderPlan, k: usize) -> anyhow::Result<()
 }
 
 /// `--parent`, prioritySortOrder: in each priority group, put the listed children (the first
-/// `k` of the plan) right above the topmost unlisted child with that priority, so a sub-issue
-/// list ordered by priority shows them first in their group. prioritySortOrder is shared
-/// across the team, so the team's other issues with that priority are neighbours too.
+/// `k` of the plan) above every unlisted child with that priority, so a sub-issue list ordered
+/// by priority shows them first in their group. prioritySortOrder is not per parent: the other
+/// issues with that priority in the listed children's teams are neighbours too.
 async fn plan_priority_on_top(
     client: &Client,
     plan: &mut ReorderPlan,
@@ -2918,6 +2918,16 @@ mod tests {
         ];
         let warning = priority_warning(&issues2, 2).unwrap();
         assert!(warning.contains("A (Low) is above B (High)"), "{warning}");
+        assert!(warning.contains("use Medium or higher"), "{warning}");
+
+        // A (Medium) above B (High), both listed; unlisted C is Medium. Only listed issues
+        // conflict, but --set-priority still needs Medium or higher to stay above C.
+        let issues3 = vec![
+            prioritized("A", 3.0, "Medium", 1.0),
+            prioritized("B", 2.0, "High", 2.0),
+            prioritized("C", 3.0, "Medium", 3.0),
+        ];
+        let warning = priority_warning(&issues3, 2).unwrap();
         assert!(warning.contains("use Medium or higher"), "{warning}");
 
         // Already in priority order: no warning.
