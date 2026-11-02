@@ -109,11 +109,12 @@ COMMANDS:
     [--field all|manual|priority|sub-issue]        3 order fields: sortOrder (Manual view),
                                                    prioritySortOrder (Priority view), subIssueSortOrder
                                                    (sub-issue list). Default: --field all
-    [--parent ID]                                  Only reorder that parent's sub-issue list
+                                                   Sets relative order only; see --help
+    [--parent ID]                                  Move them to the top of that parent's
+                                                   sub-issue list (sub-issue + priority order)
     [--set-priority LEVEL]                         Priority views group by priority first:
                                                    warns if the order fights it; this flag
                                                    gives all listed issues one priority
-                                                   Sets relative order only; see --help
   lineark issues archive|unarchive|delete ...      Lifecycle ops (--help for flags)
   lineark comments create <ISSUE-ID> --body TEXT   Comment on an issue
   lineark comments update|resolve|unresolve|delete Manage comments (--help for flags)

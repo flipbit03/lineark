@@ -5542,9 +5542,43 @@ mod online {
             "{stderr}"
         );
 
-        // Priorities that go Medium, Low, No priority fit the order: no warning.
-        let (_, stderr) = reorder_output(&token, &[&medium.1, &low.1, &none.1], 3);
+        // A validation error comes before --set-priority writes anything.
+        let output = lineark()
+            .args([
+                "--api-token",
+                &token,
+                "issues",
+                "reorder",
+                &low.1,
+                &none.1,
+                "--field",
+                "sub-issue",
+                "--set-priority",
+                "urgent",
+            ])
+            .output()
+            .expect("failed to execute lineark");
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("share a parent"));
+
+        // Priorities that go Medium, Low, No priority fit the order: no warning. Each issue
+        // is alone in its priority group, so prioritySortOrder has nothing to change.
+        let before: Vec<f64> = [medium, low, none]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0).1)
+            .collect();
+        let (rows, stderr) = reorder_output(&token, &[&medium.1, &low.1, &none.1], 3);
         assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+        let priorities: Vec<&str> = rows
+            .iter()
+            .map(|r| r["priority"].as_str().unwrap())
+            .collect();
+        assert_eq!(priorities, vec!["Medium", "Low", "No priority"]);
+        let after: Vec<f64> = [medium, low, none]
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0).1)
+            .collect();
+        assert_eq!(before, after, "prioritySortOrder should not change");
 
         // --field manual targets Manual views only: no warning.
         let (_, stderr) = reorder_output(&token, &[&none.1, &medium.1, "--field", "manual"], 2);
@@ -5625,12 +5659,26 @@ mod online {
             );
         }
 
+        // A re-run changes nothing and still passes verification.
+        let (_, stderr) = reorder_output(&token, &["--parent", &parent_identifier, &c.1, &b.1], 4);
+        assert!(!stderr.contains("Warning"), "unexpected warning: {stderr}");
+        let rerun: Vec<(f64, f64, Option<f64>)> = children
+            .iter()
+            .map(|issue| read_sort_orders(&token, &issue.0))
+            .collect();
+        assert_eq!(after, rerun, "a re-run should not change any value");
+
         // D (Low) on top: the Medium children still come first in a Priority view.
         let (_, stderr) = reorder_output(&token, &["--parent", &parent_identifier, &d.1], 4);
+        // The unlisted children follow in sub-issue order: C first.
         assert!(
-            stderr.contains(&format!("{} (Low) is above", d.1)) && stderr.contains("not listed"),
+            stderr.contains(&format!(
+                "{} (Low) is above {} (Medium, not listed)",
+                d.1, c.1
+            )),
             "expected a warning about D: {stderr}"
         );
+        assert!(stderr.contains("Medium or higher"), "{stderr}");
 
         // --set-priority medium moves D into the Medium group, above C.
         let (rows, stderr) = reorder_output(
