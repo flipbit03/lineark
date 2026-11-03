@@ -4,7 +4,7 @@ use lineark_sdk::generated::inputs::{
 };
 use lineark_sdk::generated::types::{
     Comment, CommentConnection, Issue, IssueConnection, IssueLabel, IssueLabelConnection,
-    IssueRelation, IssueRelationConnection, IssueSearchResult, User, WorkflowState,
+    IssueRelation, IssueRelationConnection, IssueSearchResult, PageInfo, User, WorkflowState,
 };
 use lineark_sdk::{Client, GraphQLFields, MaybeUndefined};
 use serde::{Deserialize, Serialize};
@@ -1262,8 +1262,10 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             field,
             set_priority,
         } => {
+            // --parent --field manual has its own error in reorder_sub_issues.
             if set_priority.is_some()
-                && matches!(field, Some(OrderField::Manual | OrderField::SubIssue))
+                && (field == Some(OrderField::SubIssue)
+                    || (field == Some(OrderField::Manual) && parent.is_none()))
             {
                 return Err(anyhow::anyhow!(
                     "--set-priority only helps views ordered by priority, and --field {} does not set prioritySortOrder. Drop --field, or use --field priority.",
@@ -1487,6 +1489,15 @@ struct ParentWithChildren {
 struct ChildOrderConnection {
     #[graphql(nested)]
     nodes: Vec<IssueOrder>,
+    #[graphql(nested)]
+    page_info: Option<ChildPageInfo>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, GraphQLFields)]
+#[graphql(full_type = PageInfo)]
+#[serde(rename_all = "camelCase", default)]
+struct ChildPageInfo {
+    has_next_page: Option<bool>,
 }
 
 impl IssueOrder {
@@ -1962,7 +1973,7 @@ async fn reorder_issues(
         }
         issues.push(issue);
     }
-    // Validate before --set-priority writes anything.
+    // Validate before fetching anything else or writing.
     if field == Some(OrderField::SubIssue)
         && group_by_parent(&issues).iter().all(|(_, g)| g.len() < 2)
     {
@@ -2157,29 +2168,39 @@ async fn fetch_team_issues(
     fetch_issues(client, filter).await
 }
 
-/// Linear's default page size, which the `children` connection of `ParentWithChildren` uses.
-const CHILDREN_PAGE: usize = 50;
-
 /// A parent's non-archived children: its `children` connection (first page, read with the
-/// parent), plus, when that page is full, any child only the paginated filter query returns.
-/// The connection wins: the filter can lag behind a just-created, just-moved or just-changed
-/// child.
+/// parent), plus, when there are more pages, the children only the paginated filter query
+/// returns. The connection wins: the filter can lag behind a just-created, just-moved or
+/// just-changed child.
 async fn fetch_children(
     client: &Client,
     parent_id: &str,
     parent: ParentWithChildren,
 ) -> anyhow::Result<Vec<IssueOrder>> {
-    let mut children = parent.children.map(|c| c.nodes).unwrap_or_default();
-    if children.len() < CHILDREN_PAGE {
-        return Ok(children);
+    let connection = parent.children.unwrap_or_default();
+    let more = connection
+        .page_info
+        .and_then(|p| p.has_next_page)
+        .unwrap_or(false);
+    if !more {
+        return Ok(connection.nodes);
     }
     let filter = serde_json::json!({ "parent": { "id": { "eq": parent_id } } });
-    for child in fetch_issues(client, filter).await? {
+    Ok(merge_children(
+        connection.nodes,
+        fetch_issues(client, filter).await?,
+    ))
+}
+
+/// `first_page` (the parent's children connection), then the `filtered` children it lacks.
+fn merge_children(first_page: Vec<IssueOrder>, filtered: Vec<IssueOrder>) -> Vec<IssueOrder> {
+    let mut children = first_page;
+    for child in filtered {
         if !children.iter().any(|c| c.id == child.id) {
             children.push(child);
         }
     }
-    Ok(children)
+    children
 }
 
 /// `issues reorder --parent P A B`: move the listed children to the top of P's sub-issue
@@ -2215,8 +2236,8 @@ async fn reorder_sub_issues(
         .clone()
         .unwrap_or_else(|| parent.to_string());
 
-    // Check membership on each listed issue itself: the children query below goes
-    // through a filter, which can lag behind a just-created child.
+    // Check membership on each listed issue itself, read directly: the children read below
+    // may come partly from a filter, which can lag behind a just-created child.
     let mut listed_issues: Vec<IssueOrder> = Vec::with_capacity(identifiers.len());
     for ident in identifiers {
         let issue = client
@@ -2818,6 +2839,28 @@ mod tests {
         assert_eq!(
             group_by_parent(&issues),
             vec![("p1".to_string(), vec![0, 3]), ("p2".to_string(), vec![2])]
+        );
+    }
+
+    #[test]
+    fn merge_children_keeps_the_first_page_copy() {
+        let mut fresh = issue(None, Some(1.0));
+        fresh.id = Some("a".to_string());
+        let mut stale = issue(None, Some(9.0));
+        stale.id = Some("a".to_string());
+        let mut only_filtered = issue(None, Some(2.0));
+        only_filtered.id = Some("b".to_string());
+        let merged = merge_children(vec![fresh], vec![stale, only_filtered]);
+        let got: Vec<(Option<String>, Option<f64>)> = merged
+            .iter()
+            .map(|c| (c.id.clone(), c.sub_issue_sort_order))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                (Some("a".to_string()), Some(1.0)),
+                (Some("b".to_string()), Some(2.0))
+            ]
         );
     }
 
