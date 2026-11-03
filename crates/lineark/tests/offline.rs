@@ -876,7 +876,49 @@ fn issues_reorder_help_shows_flags() {
         .stdout(predicate::str::contains("--parent"))
         .stdout(predicate::str::contains("--field"))
         .stdout(predicate::str::contains("sub-issue"))
-        .stdout(predicate::str::contains("subIssueSortOrder"));
+        .stdout(predicate::str::contains("subIssueSortOrder"))
+        .stdout(predicate::str::contains("--set-priority"))
+        .stdout(predicate::str::contains("group issues by priority"));
+}
+
+#[test]
+fn issues_reorder_set_priority_rejects_fields_without_priority_order() {
+    for field in ["manual", "sub-issue"] {
+        lineark()
+            .args([
+                "--api-token",
+                "fake",
+                "issues",
+                "reorder",
+                "ENG-1",
+                "ENG-2",
+                "--field",
+                field,
+                "--set-priority",
+                "high",
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("--set-priority only helps"));
+    }
+}
+
+#[test]
+fn issues_reorder_rejects_unknown_priority() {
+    lineark()
+        .args([
+            "--api-token",
+            "fake",
+            "issues",
+            "reorder",
+            "ENG-1",
+            "ENG-2",
+            "--set-priority",
+            "bogus",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid priority"));
 }
 
 #[test]
@@ -907,7 +949,7 @@ fn issues_reorder_single_issue_without_parent_errors() {
 }
 
 #[test]
-fn issues_reorder_parent_rejects_non_sub_issue_field() {
+fn issues_reorder_parent_rejects_manual_field() {
     lineark()
         .args([
             "--api-token",
@@ -922,7 +964,9 @@ fn issues_reorder_parent_rejects_non_sub_issue_field() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--field sub-issue"));
+        .stderr(predicate::str::contains(
+            "--field sub-issue or --field priority",
+        ));
 }
 
 #[test]
