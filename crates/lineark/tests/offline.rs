@@ -882,6 +882,28 @@ fn issues_reorder_help_shows_flags() {
 }
 
 #[test]
+fn issues_reorder_set_priority_rejects_fields_without_priority_order() {
+    for field in ["manual", "sub-issue"] {
+        lineark()
+            .args([
+                "--api-token",
+                "fake",
+                "issues",
+                "reorder",
+                "ENG-1",
+                "ENG-2",
+                "--field",
+                field,
+                "--set-priority",
+                "high",
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("--set-priority only helps"));
+    }
+}
+
+#[test]
 fn issues_reorder_rejects_unknown_priority() {
     lineark()
         .args([

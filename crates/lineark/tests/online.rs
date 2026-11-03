@@ -5547,25 +5547,6 @@ mod online {
             "{stderr}"
         );
 
-        // A validation error comes before --set-priority writes anything.
-        let output = lineark()
-            .args([
-                "--api-token",
-                &token,
-                "issues",
-                "reorder",
-                &low.1,
-                &none.1,
-                "--field",
-                "sub-issue",
-                "--set-priority",
-                "urgent",
-            ])
-            .output()
-            .expect("failed to execute lineark");
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("share a parent"));
-
         // Priorities that go Medium, Low, No priority fit the order: no warning. Each issue
         // is alone in its priority group, so prioritySortOrder has nothing to change.
         let before: Vec<f64> = [medium, low, none]

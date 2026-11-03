@@ -335,6 +335,7 @@ pub enum IssuesAction {
         #[arg(long, value_enum)]
         field: Option<OrderField>,
         /// First give every listed issue this priority: none, urgent, high, medium, low, or 0-4.
+        /// Not with --field manual or sub-issue, which don't set prioritySortOrder.
         #[arg(long, value_parser = parse_priority)]
         set_priority: Option<i64>,
     },
@@ -1261,6 +1262,14 @@ pub async fn run(cmd: IssuesCmd, client: &Client, format: Format) -> anyhow::Res
             field,
             set_priority,
         } => {
+            if set_priority.is_some()
+                && matches!(field, Some(OrderField::Manual | OrderField::SubIssue))
+            {
+                return Err(anyhow::anyhow!(
+                    "--set-priority only helps views ordered by priority, and --field {} does not set prioritySortOrder. Drop --field, or use --field priority.",
+                    if field == Some(OrderField::Manual) { "manual" } else { "sub-issue" }
+                ));
+            }
             let issues = match parent {
                 Some(ref p) => {
                     reorder_sub_issues(client, p, &identifiers, field, set_priority).await?
@@ -2107,11 +2116,11 @@ async fn set_priorities(
 /// What a --set-priority failure leaves behind: which priorities changed, no order did.
 fn priority_set_status(updated: &[String]) -> String {
     let set = if updated.is_empty() {
-        "none".to_string()
+        String::new()
     } else {
-        updated.join(", ")
+        format!(" Priority already set on: {}.", updated.join(", "))
     };
-    format!("\nPriority already set on: {set}. No order was changed. Re-run the same command to finish.")
+    format!("\nNo order was changed.{set} Re-run the same command to finish.")
 }
 
 /// Add to a reorder error which issues --set-priority already changed.
@@ -2148,15 +2157,22 @@ async fn fetch_team_issues(
     fetch_issues(client, filter).await
 }
 
+/// Linear's default page size, which the `children` connection of `ParentWithChildren` uses.
+const CHILDREN_PAGE: usize = 50;
+
 /// A parent's non-archived children: its `children` connection (first page, read with the
-/// parent), plus any child only the paginated filter query returns. The connection's copies
-/// win: the filter can lag behind a just-created child or a just-changed field.
+/// parent), plus, when that page is full, any child only the paginated filter query returns.
+/// The connection wins: the filter can lag behind a just-created, just-moved or just-changed
+/// child.
 async fn fetch_children(
     client: &Client,
     parent_id: &str,
     parent: ParentWithChildren,
 ) -> anyhow::Result<Vec<IssueOrder>> {
     let mut children = parent.children.map(|c| c.nodes).unwrap_or_default();
+    if children.len() < CHILDREN_PAGE {
+        return Ok(children);
+    }
     let filter = serde_json::json!({ "parent": { "id": { "eq": parent_id } } });
     for child in fetch_issues(client, filter).await? {
         if !children.iter().any(|c| c.id == child.id) {
