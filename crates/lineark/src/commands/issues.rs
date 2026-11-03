@@ -1626,8 +1626,13 @@ fn priority_warning(issues: &[IssueOrder], listed: usize) -> Option<String> {
         .min_by(|&a, &b| priority_rank(priorities[a]).total_cmp(&priority_rank(priorities[b])));
     let level = match highest_unlisted {
         Some(j) => format!(
-            " To go above the unlisted ones, use {} or higher.",
-            issues[j].priority_name()
+            " To go above the unlisted ones, use {}{}.",
+            issues[j].priority_name(),
+            if priority_rank(priorities[j]) > 1.0 {
+                " or higher"
+            } else {
+                ""
+            }
         ),
         None => String::new(),
     };
@@ -2074,29 +2079,34 @@ async fn set_priorities(
             .issue_update::<IssueRef>(input, id.clone())
             .await
             .map_err(|e| {
-                let done = if updated.is_empty() {
-                    "none".to_string()
-                } else {
-                    updated.join(", ")
-                };
                 anyhow::anyhow!(
-                    "Failed to set the priority of {}: {}\nPriority already set: {}\nNo order was changed. Re-run the same command to finish.",
+                    "Failed to set the priority of {}: {}{}",
                     issue.label(),
                     e,
-                    done
+                    priority_set_status(&updated)
                 )
             })?;
         updated.push(issue.label());
         *issue = client.issue::<IssueOrder>(id).await.map_err(|e| {
             anyhow::anyhow!(
-                "Reading back {}: {}\nPriority already set on: {}.",
+                "Reading back {}: {}{}",
                 issue.label(),
                 e,
-                updated.join(", ")
+                priority_set_status(&updated)
             )
         })?;
     }
     Ok(updated)
+}
+
+/// What a --set-priority failure leaves behind: which priorities changed, no order did.
+fn priority_set_status(updated: &[String]) -> String {
+    let set = if updated.is_empty() {
+        "none".to_string()
+    } else {
+        updated.join(", ")
+    };
+    format!("\nPriority already set on: {set}. No order was changed. Re-run the same command to finish.")
 }
 
 /// Add to a reorder error which issues --set-priority already changed.
@@ -2392,16 +2402,22 @@ impl ReorderPlan {
         groups: Vec<PriorityGroup>,
         team: &[IssueOrder],
     ) -> anyhow::Result<()> {
+        // The team query can lag behind a priority change: take reported issues only from
+        // the plan, which holds fresh reads, so none lands in its old priority's group.
+        let reported: std::collections::HashSet<String> = self.issues[..self.reported]
+            .iter()
+            .filter_map(|i| i.id.clone())
+            .collect();
         for group in groups {
-            let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
-            let mut neighbours: Vec<IssueOrder> = Vec::new();
-            for issue in self.issues[..self.reported].iter().chain(team) {
-                if issue.priority == group.priority
-                    && seen.insert(issue.id.as_deref().unwrap_or_default())
-                {
-                    neighbours.push(issue.clone());
-                }
-            }
+            let neighbours: Vec<IssueOrder> = self.issues[..self.reported]
+                .iter()
+                .chain(
+                    team.iter()
+                        .filter(|o| o.id.as_ref().is_none_or(|id| !reported.contains(id))),
+                )
+                .filter(|o| o.priority == group.priority)
+                .cloned()
+                .collect();
             self.plan_group(OrderKey::Priority, group.members, group.below, &neighbours)?;
         }
         Ok(())
@@ -2965,6 +2981,39 @@ mod tests {
         assert!(priority_groups(&issues, 6)
             .iter()
             .all(|g| g.below.is_none()));
+    }
+
+    #[test]
+    fn plan_priority_groups_ignores_stale_team_copies_of_listed_issues() {
+        // A was just changed to Medium; the team query still has it as Low, a hair above the
+        // Low group's anchor, where it would be pulled into the C, D block.
+        let issues = vec![
+            prioritized("A", 3.0, "Medium", 7.0),
+            prioritized("C", 4.0, "Low", 1.0),
+            prioritized("D", 4.0, "Low", 0.5),
+        ];
+        let team = vec![prioritized("A", 4.0, "Low", 0.5 - 1e-6)];
+        let mut plan = ReorderPlan::new(issues.clone());
+        plan.plan_priority_groups(priority_groups(&issues, 3), &team)
+            .unwrap();
+        assert!(
+            plan.values[0].is_empty(),
+            "A must not move: {:?}",
+            plan.values
+        );
+        assert_eq!(plan.issues.len(), 3, "nothing pulled");
+        let (c, d) = (plan.values[1][0].1, plan.values[2][0].1);
+        assert!(c < d && d < 0.5, "C, D above the old anchor: {c}, {d}");
+    }
+
+    #[test]
+    fn priority_warning_does_not_say_higher_than_urgent() {
+        let issues = vec![
+            prioritized("A", 4.0, "Low", 1.0),
+            prioritized("U", 1.0, "Urgent", 2.0),
+        ];
+        let warning = priority_warning(&issues, 1).unwrap();
+        assert!(warning.contains("use Urgent."), "{warning}");
     }
 
     #[test]

@@ -118,7 +118,7 @@ lineark issues batch-update ID [ID ...]          Batch update multiple issues
 lineark issues reorder ID ID [ID ...]            Put issues in this order (top first)
   [--field all|manual|priority|sub-issue]        Default all: sortOrder, prioritySortOrder,
                                                  subIssueSortOrder
-                                                 Sets relative order only; see --help
+                                                 Without --parent: relative order only (--help)
   [--parent ID]                                  Move them to the top of that parent's
                                                  sub-issue list (sub-issue + priority order)
   [--set-priority LEVEL]                         Priority views group by priority first:

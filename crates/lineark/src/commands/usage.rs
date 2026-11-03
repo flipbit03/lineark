@@ -109,7 +109,7 @@ COMMANDS:
     [--field all|manual|priority|sub-issue]        3 order fields: sortOrder (Manual view),
                                                    prioritySortOrder (Priority view), subIssueSortOrder
                                                    (sub-issue list). Default: --field all
-                                                   Sets relative order only; see --help
+                                                   Without --parent: relative order only (--help)
     [--parent ID]                                  Move them to the top of that parent's
                                                    sub-issue list (sub-issue + priority order)
     [--set-priority LEVEL]                         Priority views group by priority first:
