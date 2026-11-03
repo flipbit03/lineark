@@ -2930,7 +2930,7 @@ mod tests {
         // Same priority, or priorities that already go Urgent → No priority: no conflict.
         assert!(priority_conflicts(&[medium, medium, medium], 3).is_empty());
         assert!(priority_conflicts(&[urgent, high, high, low, none], 5).is_empty());
-        // No priority above Medium and Low (the E-2400 case): Medium wins, it ranks highest.
+        // No priority above Medium and Low: Medium wins, it ranks highest.
         assert_eq!(
             priority_conflicts(&[none, low, medium], 3),
             vec![(0, 2), (1, 2)]
