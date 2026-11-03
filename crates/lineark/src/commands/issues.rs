@@ -1605,8 +1605,10 @@ fn priority_warning(issues: &[IssueOrder], listed: usize) -> Option<String> {
     if conflicts.is_empty() {
         return None;
     }
-    let pairs: Vec<String> = conflicts
+    const MAX_PAIRS: usize = 5;
+    let mut pairs: Vec<String> = conflicts
         .iter()
+        .take(MAX_PAIRS)
         .map(|&(i, j)| {
             let unlisted = if j >= listed { ", not listed" } else { "" };
             format!(
@@ -1619,6 +1621,9 @@ fn priority_warning(issues: &[IssueOrder], listed: usize) -> Option<String> {
             )
         })
         .collect();
+    if conflicts.len() > MAX_PAIRS {
+        pairs.push(format!("and {} more", conflicts.len() - MAX_PAIRS));
+    }
     // Unlisted issues keep their priority: to go above all of them, the listed ones need at
     // least the highest priority among them (any priority is enough against No priority).
     let highest_unlisted = (listed..issues.len())
@@ -1979,9 +1984,9 @@ async fn order_issues(
     }
     let mut plan = ReorderPlan::new(issues);
     // sortOrder and prioritySortOrder neighbours: the listed issues' teams, fetched once.
-    // prioritySortOrder alone only needs the issues with a listed priority.
-    let team_priorities: Option<Vec<f64>> = (!keys.contains(&OrderKey::Manual))
-        .then(|| plan.issues.iter().filter_map(|i| i.priority).collect());
+    // sortOrder comes first; when prioritySortOrder is the first to need them, only the
+    // issues with a listed priority are fetched.
+    let listed_priorities: Vec<f64> = plan.issues.iter().filter_map(|i| i.priority).collect();
     let mut team_issues: Option<Vec<IssueOrder>> = None;
     for &key in keys {
         if key == OrderKey::SubIssue {
@@ -2019,7 +2024,7 @@ async fn order_issues(
                     fetch_team_issues(
                         client,
                         &plan.issues[..plan.reported],
-                        team_priorities.as_deref(),
+                        (key == OrderKey::Priority).then_some(listed_priorities.as_slice()),
                     )
                     .await?,
                 );
@@ -2143,17 +2148,17 @@ async fn fetch_team_issues(
     fetch_issues(client, filter).await
 }
 
-/// A parent's non-archived children: the union of its `children` connection (first page)
-/// and the paginated filter query, so a child missing from one source (the filter can lag
-/// behind a just-created child) is still included.
+/// A parent's non-archived children: its `children` connection (first page, read with the
+/// parent), plus any child only the paginated filter query returns. The connection's copies
+/// win: the filter can lag behind a just-created child or a just-changed field.
 async fn fetch_children(
     client: &Client,
     parent_id: &str,
     parent: ParentWithChildren,
 ) -> anyhow::Result<Vec<IssueOrder>> {
+    let mut children = parent.children.map(|c| c.nodes).unwrap_or_default();
     let filter = serde_json::json!({ "parent": { "id": { "eq": parent_id } } });
-    let mut children = fetch_issues(client, filter).await?;
-    for child in parent.children.map(|c| c.nodes).unwrap_or_default() {
+    for child in fetch_issues(client, filter).await? {
         if !children.iter().any(|c| c.id == child.id) {
             children.push(child);
         }
@@ -3004,6 +3009,21 @@ mod tests {
         assert_eq!(plan.issues.len(), 3, "nothing pulled");
         let (c, d) = (plan.values[1][0].1, plan.values[2][0].1);
         assert!(c < d && d < 0.5, "C, D above the old anchor: {c}, {d}");
+    }
+
+    #[test]
+    fn priority_warning_caps_the_pairs() {
+        let mut issues: Vec<IssueOrder> = (0..7)
+            .map(|i| prioritized(&format!("L{i}"), 4.0, "Low", i as f64))
+            .collect();
+        issues.push(prioritized("U", 1.0, "Urgent", 9.0));
+        let warning = priority_warning(&issues, 8).unwrap();
+        assert!(
+            warning.contains("L4 (Low) is above U (Urgent)"),
+            "{warning}"
+        );
+        assert!(!warning.contains("L5 (Low)"), "{warning}");
+        assert!(warning.contains("; and 2 more"), "{warning}");
     }
 
     #[test]
