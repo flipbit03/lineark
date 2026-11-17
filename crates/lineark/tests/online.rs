@@ -3949,6 +3949,105 @@ mod online {
     }
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
+    fn teams_create_private() {
+        let token = test_token();
+
+        // `private` is no longer on TeamCreateInput's public schema, so the CLI
+        // applies it with a follow-up teamUpdate. Verify the end state.
+        let unique_name = format!(
+            "[test] tm-private {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        let (output, used_name) = run_lineark_with_retry(&[
+            "--api-token",
+            &token,
+            "--format",
+            "json",
+            "teams",
+            "create",
+            &unique_name,
+            "--private",
+            "true",
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        // Free-plan workspaces can't have private teams. There the CLI must
+        // fail cleanly and roll back the team it created, not leave a public one.
+        if !output.status.success() && stderr.contains("privateTeams") {
+            assert!(
+                stderr.contains("so it was not kept"),
+                "failed private create should report the rollback.\nstderr: {stderr}"
+            );
+            // The list is eventually consistent, so give the delete time to show.
+            retry_with_backoff(8, || {
+                let output = lineark()
+                    .args(["--api-token", &token, "--format", "json", "teams", "list"])
+                    .output()
+                    .unwrap();
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                if !output.status.success() {
+                    return Err(format!("teams list failed: {stdout}"));
+                }
+                let teams: serde_json::Value =
+                    serde_json::from_str(&stdout).map_err(|e| e.to_string())?;
+                let listed = teams
+                    .as_array()
+                    .ok_or("not an array")?
+                    .iter()
+                    .any(|t| t["name"].as_str() == Some(used_name.as_str()));
+                if listed {
+                    Err(format!("rolled-back team still listed: {used_name}"))
+                } else {
+                    Ok(())
+                }
+            })
+            .expect("rolled-back team should not be listed (after retries)");
+            return;
+        }
+
+        assert!(
+            output.status.success(),
+            "teams create --private should succeed.\nstdout: {stdout}\nstderr: {stderr}"
+        );
+        let created: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+        let team_id = created["id"].as_str().unwrap().to_string();
+        let _team_guard = TeamGuard {
+            token: token.clone(),
+            id: team_id.clone(),
+        };
+
+        let detail = retry_with_backoff(8, || {
+            let output = lineark()
+                .args([
+                    "--api-token",
+                    &token,
+                    "--format",
+                    "json",
+                    "teams",
+                    "read",
+                    &team_id,
+                ])
+                .output()
+                .unwrap();
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if !output.status.success() {
+                return Err(format!("teams read failed: {stdout}\n{stderr}"));
+            }
+            let detail: serde_json::Value =
+                serde_json::from_str(&stdout).map_err(|e| e.to_string())?;
+            if detail["private"].as_bool() == Some(true) {
+                Ok(detail)
+            } else {
+                Err(format!("team not private yet: {detail}"))
+            }
+        })
+        .expect("created team should be private (after retries)");
+        assert_eq!(detail["id"].as_str(), Some(team_id.as_str()));
+    }
+
+    #[test_with::runtime_ignore_if(no_online_test_token)]
     fn teams_members_add_and_remove() {
         let token = test_token();
 

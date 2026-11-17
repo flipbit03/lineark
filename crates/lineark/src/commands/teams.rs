@@ -1,7 +1,7 @@
 use clap::Args;
 use lineark_sdk::generated::inputs::{TeamCreateInput, TeamMembershipCreateInput, TeamUpdateInput};
 use lineark_sdk::generated::types::{Team, TeamMembership, User, UserConnection};
-use lineark_sdk::{Client, GraphQLFields};
+use lineark_sdk::{Client, GraphQLFields, LinearError};
 use serde::{Deserialize, Serialize};
 use tabled::Tabled;
 
@@ -265,16 +265,78 @@ pub async fn run(cmd: TeamsCmd, client: &Client, format: Format) -> anyhow::Resu
                 icon: icon.into(),
                 color: color.into(),
                 timezone: timezone.into(),
-                private: private.into(),
                 cycles_enabled: cycles_enabled.into(),
                 triage_enabled: triage_enabled.into(),
                 ..Default::default()
             };
 
-            let team = client
+            let mut team = client
                 .team_create::<TeamRef>(None, input)
                 .await
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            // Linear no longer exposes `private` on TeamCreateInput in its public
+            // schema (only on TeamUpdateInput), so privacy is applied right after
+            // creation. New teams are public by default, so only `true` needs it.
+            // If that step fails (e.g. the plan lacks private teams), delete the
+            // just-created team so we don't leave behind a public team the user
+            // never asked for.
+            if private == Some(true) {
+                let team_id = team.id.clone().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Team was created but Linear returned no ID; cannot make it private"
+                    )
+                })?;
+                let input = TeamUpdateInput {
+                    private: true.into(),
+                    ..Default::default()
+                };
+                match client
+                    .team_update::<TeamRef>(None, input, team_id.clone())
+                    .await
+                {
+                    Ok(updated) => team = updated,
+                    // Network/5xx/rate-limit errors are ambiguous: the update may
+                    // have landed. Never delete in that case; tell the user instead.
+                    // GraphQL errors (HTTP 200), 403s and other 4xx responses mean
+                    // Linear definitely rejected it.
+                    Err(update_err)
+                        if !match &update_err {
+                            LinearError::GraphQL { .. } | LinearError::Forbidden(_) => true,
+                            LinearError::HttpError { status, body } => {
+                                (400..500).contains(status) && !body.contains("RATELIMITED")
+                            }
+                            _ => false,
+                        } =>
+                    {
+                        return Err(anyhow::anyhow!(
+                            "Team {} was created, but making it private may not have applied: {}. \
+                             Check with `lineark teams read {}` and, if needed, run \
+                             `lineark teams update {} --private true`.",
+                            team_id,
+                            update_err,
+                            team_id,
+                            team_id
+                        ));
+                    }
+                    // Linear rejected the update (e.g. plan lacks private teams).
+                    Err(update_err) => {
+                        return Err(match client.team_delete(team_id.clone()).await {
+                            Ok(_) => anyhow::anyhow!(
+                                "Could not make the team private, so it was not kept: {}",
+                                update_err
+                            ),
+                            Err(delete_err) => anyhow::anyhow!(
+                                "Team {} was created but could not be made private: {}. \
+                                 Deleting it also failed ({}); it still exists as a public team.",
+                                team_id,
+                                update_err,
+                                delete_err
+                            ),
+                        });
+                    }
+                }
+            }
 
             output::print_one(&team, format);
         }

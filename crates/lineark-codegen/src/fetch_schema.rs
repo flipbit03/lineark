@@ -24,11 +24,13 @@ query IntrospectionQuery {
         isDeprecated
         deprecationReason
       }
-      inputFields {
+      inputFields(includeDeprecated: true) {
         name
         description
         type { ...TypeRef }
         defaultValue
+        isDeprecated
+        deprecationReason
       }
       interfaces { ...TypeRef }
       enumValues(includeDeprecated: true) {
@@ -167,6 +169,7 @@ fn introspection_to_sdl(schema: &Value) -> String {
                         let ftype = render_type_ref(&f["type"]);
                         sdl.push_str(&format!("  {}: {}", fname, ftype));
                         emit_default(&mut sdl, f);
+                        emit_deprecated(&mut sdl, f);
                         sdl.push('\n');
                     }
                 }

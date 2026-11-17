@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the activity's user must satisfy.
@@ -40,13 +40,13 @@ pub struct ActivityCollectionFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the activity's user must satisfy.
@@ -59,130 +59,73 @@ pub struct ActivityFilter {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ActivityFilter>>,
 }
-/// Input for creating an agent activity.
+/// An activity to publish to a session owned by your authenticated agent app. Choose the content type for the step you want to show, and supply signalMetadata when using an auth or select signal. Linear creates user prompt activities itself; this input accepts only agent output.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentActivityCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The agent session this activity belongs to.
+    /// The UUID of the unarchived session to publish to. The session’s appUser must be the user represented by your agent token; an app cannot publish activities to another agent’s session.
     pub agent_session_id: String,
-    /// An optional modifier that provides additional instructions on how the activity should be interpreted.
+    /// An optional instruction for handling the content. Use continue only with a response to keep the turn active. Use auth or select only with an elicitation, and provide the matching signalMetadata. stop is reserved for user prompts and cannot be published through agentActivityCreate. Omit this field for normal handling.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub signal: MaybeUndefined<AgentActivitySignal>,
-    /// Metadata about this agent activity's signal.
+    /// Details required by auth and select signals. For auth, provide a valid url, optionally providerName, and optionally a userId UUID identifying who should authenticate. That userId limits the authentication control in Linear, not access to the activity. For select, provide options: an array of 1–100 objects with a nonempty value and optional label, each up to 256 characters. Omit this field for other signals.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub signal_metadata: MaybeUndefined<serde_json::Value>,
-    /// `Internal` Metadata about user-provided contextual information for this agent activity.
+    /// Metadata about user-provided contextual information for this agent activity.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contextual_metadata: MaybeUndefined<serde_json::Value>,
-    /// The content payload of the agent activity. This object is not strictly typed.
-    /// See <https://linear.app/developers/agent-interaction#activity-content-payload> for typing details.
+    /// The activity as a JSON object. Use {type: "thought", body: "Searching the repository"} for progress, response for an answer, error for a failure, or elicitation to ask for input. These types require a Markdown body. An action instead requires action and parameter strings, and may include a Markdown result. body and result each accept up to 250,000 characters. A response normally completes the turn; add signal: continue when more work follows.
     pub content: serde_json::Value,
-    /// Whether the activity is ephemeral, and should disappear after the next activity. Defaults to false.
+    /// Hide this activity after the next activity. Defaults to false; only thought and action activities can be ephemeral.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ephemeral: MaybeUndefined<bool>,
 }
-/// `Internal` Input for creating prompt-type agent activities (created by users).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentActivityCreatePromptInput {
-    /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub id: MaybeUndefined<String>,
-    /// The agent session this activity belongs to.
-    pub agent_session_id: String,
-    /// An optional modifier that provides additional instructions on how the activity should be interpreted.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub signal: MaybeUndefined<AgentActivitySignal>,
-    /// Metadata about this agent activity's signal.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub signal_metadata: MaybeUndefined<serde_json::Value>,
-    /// `Internal` Metadata about user-provided contextual information for this agent activity.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub contextual_metadata: MaybeUndefined<serde_json::Value>,
-    /// The content payload of the prompt agent activity.
-    pub content: AgentActivityPromptCreateInputContent,
-    /// The comment that contains the content of this activity.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub source_comment_id: MaybeUndefined<String>,
-    /// `Internal` If true, the activity is queued and will be sent to the agent when it finishes its current task.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub queued: MaybeUndefined<bool>,
-}
-/// Agent activity filtering options.
+/// Filters agent activities by their session, content type, source comment, or common entity fields. Use agentSessionId with an equality comparison to read activities for one session; combine conditions with and or or for more specific results.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentActivityFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the agent session ID.
+    /// Compares the UUID of the session containing the activity, for example {eq: "session-uuid"}.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub agent_session_id: MaybeUndefined<StringComparator>,
-    /// Comparator for the agent activity's content type.
+    /// Compares the content type: thought, action, response, prompt, error, or elicitation. This is the activity's type, not its session status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
-    /// Filters that the source comment must satisfy.
+    /// Filters the comment that originated the activity. Use {null: true} to select activities without a source comment.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub source_comment: MaybeUndefined<NullableCommentFilter>,
-    /// Compound filters, all of which need to be matched by the agent activity.
+    /// Compound filters, all of which need to be matched by the agent activity. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<AgentActivityFilter>>,
-    /// Compound filters, one of which need to be matched by the agent activity.
+    /// Compound filters, at least one of which needs to be matched by the agent activity. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<AgentActivityFilter>>,
 }
-/// `Internal` Input for creating prompt-type agent activities (created by users).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentActivityPromptCreateInputContent {
-    /// The type of activity.
-    pub r#type: AgentActivityType,
-    /// A message requesting additional information or action from user in markdown format.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body: MaybeUndefined<String>,
-    /// `Internal` The prompt content as a ProseMirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
-}
-/// `Internal` Input for creating an agent session on behalf of the current user.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentSessionCreateInput {
-    /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub id: MaybeUndefined<String>,
-    /// The issue that this session will be associated with. Can be a UUID or issue identifier (e.g., 'LIN-123').
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub issue_id: MaybeUndefined<String>,
-    /// The app user (agent) to create a session for.
-    pub app_user_id: String,
-    /// `Internal` No longer supported.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub context: MaybeUndefined<serde_json::Value>,
-}
-/// Input for creating an agent session on a root comment.
+/// Starts your agent on an existing issue comment thread. The comment must be an unarchived root comment with no existing session. Include external links if users should be able to follow the work in your application.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSessionCreateOnComment {
-    /// The root comment that this session will be associated with.
+    /// UUID of an unarchived root comment on an issue. Replies and comments with an existing agent session are not accepted.
     pub comment_id: String,
     /// The URL of an external agent-hosted page associated with this session.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_link: MaybeUndefined<String>,
-    /// URLs of external resources associated with this session.
+    /// External links to associate with the new session. Each entry contains a url and label; URLs must be unique within the list. If omitted, a supplied externalLink is added with the agent’s name as its label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
 }
-/// Input for creating an agent session on an issue.
+/// Starts your agent on an issue and creates a comment thread for the session. Supply the issue UUID or identifier, such as ENG-123. You can include labeled links to the agent’s work outside Linear.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSessionCreateOnIssue {
@@ -191,11 +134,11 @@ pub struct AgentSessionCreateOnIssue {
     /// The URL of an external agent-hosted page associated with this session.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_link: MaybeUndefined<String>,
-    /// URLs of external resources associated with this session.
+    /// External links to associate with the new session. Each entry contains a url and label; URLs must be unique within the list. If omitted, a supplied externalLink is added with the agent’s name as its label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
 }
-/// Input for an external URL associated with an agent session.
+/// A labeled link to work or context hosted outside Linear, such as the agent’s own session page. URLs must use HTTP or HTTPS. Use distinct URLs within a list; the URL identifies the entry when adding or removing links.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSessionExternalUrlInput {
@@ -204,94 +147,79 @@ pub struct AgentSessionExternalUrlInput {
     /// Label for the URL.
     pub label: String,
 }
-/// Input for updating the external URLs of an agent session.
+/// Changes to the links shown for your agent session. Supply externalUrls to replace the whole list, or use addedExternalUrls, removedExternalUrls, or both for incremental changes. Do not combine replacement with incremental changes. Omitted fields remain unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSessionUpdateExternalUrlInput {
-    /// The URL of an external agent-hosted page associated with this session.
+    /// The agent’s external session URL. Setting a URL also adds it to externalUrls with the agent’s name as its label. Null clears this field but leaves entries in externalUrls; use removedExternalUrls to remove those links.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_link: MaybeUndefined<String>,
-    /// URLs of external resources associated with this session. Replaces existing URLs.
+    /// Replaces all external URLs. Pass an empty list to clear them; cannot be combined with addedExternalUrls or removedExternalUrls.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
-    /// URLs of external resources to be added to this session.
+    /// Adds URLs or updates labels for existing URLs. Cannot be combined with externalUrls.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
-    /// URLs to be removed from this session.
+    /// Removes exact URL matches. A URL cannot also be added in the same request.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub removed_external_urls: MaybeUndefined<Vec<String>>,
 }
-/// Input for updating an agent session.
+/// Changes to a session owned by your agent app. Omitted fields keep their current values. Use summary for its display title, plan for its current steps, and the external URL fields for links to your application. A title-only update does not acknowledge a pending session; other updates can mark a pending or stale session active.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSessionUpdateInput {
-    /// The session title, displayed as its summary. Must contain 1 to 255 characters, including a non-whitespace character, with no line breaks or NUL bytes. Set to null to clear it and allow automatic title generation. Updating only this field does not acknowledge the session. Only updatable by the OAuth application that owns the session.
+    /// The session title, displayed as its summary. Must contain 1 to 255 characters, including a non-whitespace character, with no line breaks or NUL bytes. Set to null to clear it and allow automatic title generation. Updating only this field does not acknowledge the session. Only updatable by the OAuth application that owns the session or by the user who created the session.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub summary: MaybeUndefined<String>,
-    /// The URL of an external agent-hosted page associated with this session. Only updatable by the OAuth application that owns the session.
+    /// The agent’s external session URL. Setting a URL also adds it to externalUrls with the agent’s name as its label. Null clears this field but leaves entries in externalUrls; use removedExternalUrls to remove those links.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_link: MaybeUndefined<String>,
-    /// URLs of external resources associated with this session. Replaces existing URLs. Only updatable by the OAuth application that owns the session. If supplied, addedExternalUrls and removedExternalUrls are ignored.
+    /// Replaces all external URLs. Pass an empty list to clear them. Cannot be combined with addedExternalUrls or removedExternalUrls; only the owning app can update this field.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
-    /// URLs of external resources to be added to this session. Only updatable by the OAuth application that owns the session.
+    /// Adds URLs or updates labels for existing URLs. Cannot be combined with externalUrls; only the owning app can update this field.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_external_urls: MaybeUndefined<Vec<AgentSessionExternalUrlInput>>,
-    /// URLs to be removed from this session. Only updatable by the OAuth application that owns the session.
+    /// Removes exact URL matches. A URL cannot also be added in the same request; only the owning app can update this field.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub removed_external_urls: MaybeUndefined<Vec<String>>,
-    /// A dynamically updated list of the agent's execution strategy. Only updatable by the OAuth application that owns the session.
+    /// Replacement JSON array of 1 to 100 plan entries. Each entry must contain only content (1 to 10,000 characters) and status (pending, inProgress, completed, or canceled). Only the owning app can update it. Null clears the plan, while omission keeps it unchanged. Non-null plan updates are ignored while the session is in its error state.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub plan: MaybeUndefined<serde_json::Value>,
-    /// `Internal` The time at which the agent session was dismissed. Set to null to un-dismiss. Only updatable by internal clients.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub dismissed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` User-specific state for the agent session. Only updatable by internal clients.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub user_state: MaybeUndefined<Vec<AgentSessionUserStateInput>>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentSessionUserStateInput {
-    /// The ID of the user this state belongs to.
-    pub user_id: String,
-    /// The time at which the user most recently viewed the session.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub last_read_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-}
-/// Input for creating an agent skill.
+/// Instructions and optional display details for a new agent skill. body is required and accepts Markdown. Omit teamId to create a personal skill owned by the authenticated user, or supply a team UUID to make it available to that team. Team skills require the team’s agent skill management permission.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSkillCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The team to associate the skill with.
+    /// Team UUID. Omit to create a personal skill.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The title of the skill.
+    /// The title of the skill. Defaults to an empty string when omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The skill instructions in markdown format.
+    /// The instructions the Linear Agent receives when the skill is used, in Markdown. Describe the task or behavior the skill should guide. On update, this replaces the entire existing instruction body.
     pub body: String,
-    /// The icon of the skill.
+    /// Decorative icon name or custom emoji identifier for the skill.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the skill icon.
+    /// Hex color for the skill icon, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
 }
-/// Agent skill filtering options.
+/// Filters agent skills by owner, workspace sharing, team, or common entity fields. A skill without a team can be personal or shared with the workspace; use shared to distinguish those cases.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSkillFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the skill owner's user ID.
@@ -300,126 +228,41 @@ pub struct AgentSkillFilter {
     /// Comparator for whether the skill is shared with the workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub shared: MaybeUndefined<BooleanComparator>,
-    /// Filters that the skill's team must satisfy.
+    /// Filters the Linear team that owns the skill. Use {null: true} to select skills without a team, then shared to distinguish workspace skills from personal skills.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<NullableTeamFilter>,
-    /// Compound filters, all of which need to be matched by the agent skill.
+    /// Compound filters, all of which need to be matched by the agent skill. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<AgentSkillFilter>>,
-    /// Compound filters, one of which need to be matched by the agent skill.
+    /// Compound filters, at least one of which needs to be matched by the agent skill. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<AgentSkillFilter>>,
 }
-/// Input for updating an agent skill.
+/// Changes to an existing agent skill. Supply at least one field; omitted fields keep their current values. A supplied body replaces all instructions rather than appending to them. You cannot edit an inherited copy directly; update the skill on the team that owns its source.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSkillUpdateInput {
-    /// The team to associate the skill with.
+    /// The UUID of the team that should have this skill. Moving a skill requires permission to manage agent skills in its current team and the destination team. Set null to remove the team association, or omit the field to keep its current scope.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The skill instructions in markdown format.
+    /// The instructions the Linear Agent receives when the skill is used, in Markdown. Describe the task or behavior the skill should guide. On update, this replaces the entire existing instruction body.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
     /// The title of the skill.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The icon of the skill.
+    /// Decorative icon name or custom emoji identifier for the skill.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the skill icon.
+    /// Hex color for the skill icon, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
 }
-/// `Internal` AI prompt progress filtering options.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AiPromptProgressFilter {
-    /// Comparator for the identifier.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub updated_at: MaybeUndefined<DateComparator>,
-    /// `Internal` Comparator for the AI prompt workflow type.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub r#type: MaybeUndefined<AiPromptTypeComparator>,
-    /// `Internal` Comparator for the AI prompt workflow status.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub status: MaybeUndefined<AiPromptProgressStatusComparator>,
-    /// `Internal` Compound filters, all of which need to be matched by the AI prompt progress.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub and: MaybeUndefined<Vec<AiPromptProgressFilter>>,
-    /// `Internal` Compound filters, one of which need to be matched by the AI prompt progress.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub or: MaybeUndefined<Vec<AiPromptProgressFilter>>,
-}
-/// `Internal` Comparator for the AI prompt workflow status.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AiPromptProgressStatusComparator {
-    /// Equals constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub eq: MaybeUndefined<AiPromptProgressStatus>,
-    /// Not-equals constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub neq: MaybeUndefined<AiPromptProgressStatus>,
-    /// In-array constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub r#in: MaybeUndefined<Vec<AiPromptProgressStatus>>,
-    /// Not-in-array constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub nin: MaybeUndefined<Vec<AiPromptProgressStatus>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub null: MaybeUndefined<bool>,
-}
-/// `Internal` Filter for AI prompt progress subscription events.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AiPromptProgressSubscriptionFilter {
-    /// `Internal` Filter by issue ID.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub issue_id: MaybeUndefined<IDComparator>,
-    /// `Internal` Filter by comment ID.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub comment_id: MaybeUndefined<IDComparator>,
-    /// `Internal` Filter by pull request comment ID.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub pull_request_comment_id: MaybeUndefined<IDComparator>,
-    /// `Internal` Filter by prompt workflow type.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub r#type: MaybeUndefined<AiPromptTypeComparator>,
-    /// `Internal` Filter by prompt workflow status.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub status: MaybeUndefined<AiPromptProgressStatusComparator>,
-}
-/// `Internal` Comparator for the AI prompt workflow type.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AiPromptTypeComparator {
-    /// Equals constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub eq: MaybeUndefined<AiPromptType>,
-    /// Not-equals constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub neq: MaybeUndefined<AiPromptType>,
-    /// In-array constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub r#in: MaybeUndefined<Vec<AiPromptType>>,
-    /// Not-in-array constraint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub nin: MaybeUndefined<Vec<AiPromptType>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub null: MaybeUndefined<bool>,
-}
+/// Registers a key that Airbyte can use to export workspace data. Generate and keep the key before calling this mutation; Linear stores its hash and does not return the original key.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AirbyteConfigurationInput {
-    /// Linear export API key.
+    /// Linear export API key. Must be 40 random letters and digits, optionally prefixed with `lin_integration_`.
     pub api_key: String,
 }
 /// Customer approximate need count sorting options.
@@ -444,124 +287,121 @@ pub struct AssigneeSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Attachment collection filtering options.
+/// Conditions on a collection of attachments. Use some to require a matching item, every to check the whole collection, or length to check its size. Direct attachment fields act as some only when no and, or, some, every, or length clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachmentCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the title.
+    /// Conditions on the attachment’s display title, independent of the title at the linked URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// Comparator for the subtitle.
+    /// Conditions on the attachment’s secondary display text. Use null: true for attachments without a subtitle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subtitle: MaybeUndefined<NullableStringComparator>,
-    /// Comparator for the url.
+    /// Conditions on the external URL attached to the issue. An exact URL comparison matches the stored value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub url: MaybeUndefined<StringComparator>,
-    /// Filters that the attachments creator must satisfy.
+    /// Conditions on the user who added the attachment. Use null: true when no user is recorded.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Comparator for the source type.
+    /// Conditions on the integration or application that created the attachment, such as github or slack. This uses recorded source metadata rather than inferring a service from the URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub source_type: MaybeUndefined<SourceTypeComparator>,
-    /// Compound filters, all of which need to be matched by the attachment.
+    /// Collection conditions that must all match. Different some branches can be satisfied by different attachments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<AttachmentCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the attachment.
+    /// Alternative collection conditions; at least one must match. Other collection clauses at this level still apply. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<AttachmentCollectionFilter>>,
-    /// Filters that needs to be matched by some attachments.
+    /// Requires at least one related attachment to match these conditions. An empty collection does not match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<Box<AttachmentFilter>>,
-    /// Filters that needs to be matched by all attachments.
+    /// Requires at least one related attachment and requires every related attachment to match these conditions. Use length: { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<AttachmentFilter>>,
-    /// Comparator for the collection length.
+    /// Conditions on the total number of related attachments, independent of some or every. Use eq: 0 to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new issue attachment.
+/// The URL and display details to attach to an issue. If that URL is already attached to the issue, the existing attachment is updated. A supplied commentBody creates a linked comment only when a new attachment is created.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachmentCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The attachment title.
+    /// Title displayed for the attachment, up to 2,048 characters.
     pub title: String,
-    /// The attachment subtitle.
+    /// Subtitle displayed below the title, up to 2,048 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subtitle: MaybeUndefined<String>,
-    /// Attachment location which is also used as an unique identifier for the attachment. If another attachment is created with the same `url` value, existing record is updated instead.
+    /// Resource URL. If the same URL is already attached to issueId, that attachment is updated.
     pub url: String,
     /// The issue to associate the attachment with. Can be a UUID or issue identifier (e.g., 'LIN-123').
     pub issue_id: String,
     /// An icon url to display with the attachment. Should be of jpg or png format. Maximum of 1MB in size. Dimensions should be 20x20px for optimal display quality.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon_url: MaybeUndefined<String>,
-    /// Attachment metadata object with string and number values.
+    /// Custom data to display with the attachment. messages is an array of objects with optional subject, Markdown body, and timestamp strings; attributes is an array of name/value string pairs. id may be a string or number and title a string; other top-level keys are allowed. When updating an existing URL, this replaces its metadata.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub metadata: MaybeUndefined<serde_json::Value>,
     /// Indicates if attachments for the same source application should be grouped in the Linear UI.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_by_source: MaybeUndefined<bool>,
-    /// Create a linked comment with markdown body.
+    /// Markdown for a linked comment. Ignored when updating an attachment with the same URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comment_body: MaybeUndefined<String>,
-    /// `Internal` Create a linked comment with Prosemirror body. Please use `commentBody` instead.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub comment_body_data: MaybeUndefined<serde_json::Value>,
-    /// Create attachment as a user with the provided name. This option is only available to OAuth applications creating attachments in `actor=application` mode.
+    /// Display name credited with creating the attachment. Available only to OAuth applications using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub create_as_user: MaybeUndefined<String>,
-    /// Provide an external user avatar URL. Can only be used in conjunction with the `createAsUser` options. This option is only available to OAuth applications creating attachments in `actor=app` mode.
+    /// Avatar URL for createAsUser. Requires createAsUser and an OAuth application using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_icon_url: MaybeUndefined<String>,
 }
-/// Attachment filtering options.
+/// Conditions used to select attachments. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachmentFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the title.
+    /// Conditions on the attachment’s display title, independent of the title at the linked URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// Comparator for the subtitle.
+    /// Conditions on the attachment’s secondary display text. Use null: true for attachments without a subtitle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subtitle: MaybeUndefined<NullableStringComparator>,
-    /// Comparator for the url.
+    /// Conditions on the external URL attached to the issue. An exact URL comparison matches the stored value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub url: MaybeUndefined<StringComparator>,
-    /// Filters that the attachments creator must satisfy.
+    /// Conditions on the user who added the attachment. Use null: true when no user is recorded.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Comparator for the source type.
+    /// Conditions on the integration or application that created the attachment, such as github or slack. This uses recorded source metadata rather than inferring a service from the URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub source_type: MaybeUndefined<SourceTypeComparator>,
-    /// Compound filters, all of which need to be matched by the attachment.
+    /// Conditions that the attachment must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<AttachmentFilter>>,
-    /// Compound filters, one of which need to be matched by the attachment.
+    /// Alternative conditions; the attachment must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<AttachmentFilter>>,
 }
-/// Input for updating an existing issue attachment.
+/// The display details to update on an existing attachment. title is required; omitted optional fields keep their values. Supplied metadata replaces the entire object. The attachment’s URL and issue cannot be changed through this input.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachmentUpdateInput {
@@ -570,62 +410,62 @@ pub struct AttachmentUpdateInput {
     /// The attachment subtitle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subtitle: MaybeUndefined<String>,
-    /// Attachment metadata object with string and number values.
+    /// Replacement attachment data. messages accepts optional subject, body (Markdown), and timestamp strings; attributes accepts name/value string pairs. Include existing keys that should be kept.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub metadata: MaybeUndefined<serde_json::Value>,
     /// An icon url to display with the attachment. Should be of jpg or png format. Maximum of 1MB in size. Dimensions should be 20x20px for optimal display quality.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon_url: MaybeUndefined<String>,
 }
-/// Audit entry filtering options.
+/// Filters audit events by action type, actor, request IP or country, and selected event metadata. Metadata filters match only events that recorded those particular keys; they do not search every resource mentioned by an event.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditEntryFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the type.
+    /// Compares the audit action identifier. Query auditEntryTypes for supported identifiers and their descriptions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
     /// Comparator for the IP address.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ip: MaybeUndefined<StringComparator>,
-    /// Comparator for the country code.
+    /// Compares the two-letter country code inferred from the recorded request IP address.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub country_code: MaybeUndefined<StringComparator>,
-    /// Comparator for the audited entity ID stored in metadata.
+    /// Compares metadata.entityId when the action records that key. This does not also match IDs stored under other keys such as metadata.id.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub entity_id: MaybeUndefined<StringComparator>,
-    /// Comparator for the audited entity type stored in metadata.
+    /// Compares metadata.entityType when the action records that key. Available values depend on the audit event type.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub entity_type: MaybeUndefined<StringComparator>,
-    /// Comparator for the audited entity identifier stored in metadata.
+    /// Compares metadata.entityIdentifier when the action records that key, such as a resource's human-readable identifier. This is separate from metadata.entityId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub entity_identifier: MaybeUndefined<StringComparator>,
     /// Filters that the audit entry actor must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub actor: MaybeUndefined<NullableUserFilter>,
-    /// Compound filters, all of which need to be matched by the issue.
+    /// Audit-event filters that must all match. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<AuditEntryFilter>>,
-    /// Compound filters, one of which need to be matched by the issue.
+    /// Audit-event filters where at least one must match. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<AuditEntryFilter>>,
 }
-/// Comparator for booleans.
+/// Filters a boolean field. Use `{ eq: true }` to require it to be enabled, or `{ eq: false }` to require it to be disabled. A missing value does not match either condition.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BooleanComparator {
-    /// Equals constraint.
+    /// Matches this boolean value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<bool>,
-    /// Not equals constraint.
+    /// Matches the opposite boolean value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<bool>,
 }
@@ -638,94 +478,91 @@ pub struct CandidateRepository {
     /// Hostname of the Git service (e.g., 'github.com', 'github.company.com').
     pub hostname: String,
 }
-/// Comment filtering options.
+/// Conditions on a collection of comments. Use some to require a matching item, every to check the whole collection, or length to check its size. Direct comment fields act as some only when no and, or, some, every, or length clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the comment's body.
+    /// Conditions on the stored comment body text. This filters the comment itself, not its quoted text or replies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<StringComparator>,
-    /// Filters that the comment's creator must satisfy.
+    /// Conditions on the user recorded as the comment’s author. This does not match an app’s separate display attribution.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user: MaybeUndefined<Box<UserFilter>>,
-    /// Filters that the comment's issue must satisfy.
+    /// Conditions on the issue directly associated with the comment. Use documentContent to filter comments attached to an issue’s description content instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<NullableIssueFilter>>,
-    /// Filters that the comment's project update must satisfy.
+    /// Conditions on the project update being discussed. Use null: false to select comments on project updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update: MaybeUndefined<Box<NullableProjectUpdateFilter>>,
-    /// Filters that the comment's initiative update must satisfy.
+    /// Conditions on the initiative update being discussed. Use null: false to select comments on initiative updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update: MaybeUndefined<Box<NullableInitiativeUpdateFilter>>,
-    /// Filters that the comment parent must satisfy.
+    /// Conditions on the thread’s root comment. Use null: true to return root comments, or null: false to return replies. An ID condition selects replies in one thread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableCommentFilter>>,
-    /// Filters that the comment's document content must satisfy.
+    /// Conditions on the rich-text content being discussed, such as a document body or issue description. Use its issue or document filter to choose the enclosing resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document_content: MaybeUndefined<Box<NullableDocumentContentFilter>>,
-    /// `Internal` Filters that the comment's project must satisfy.
+    /// Filters that the comment's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// `Internal` Filters that the comment's initiative must satisfy.
+    /// Filters that the comment's initiative must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative: MaybeUndefined<Box<NullableInitiativeFilter>>,
-    /// Filters that the comment's reactions must satisfy.
+    /// Conditions on the comment’s emoji reactions. Use some with an emoji condition to find comments that received that reaction, or length to test the total reaction count.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the comment's customer needs must satisfy.
+    /// Conditions on customer requests linked to the comment. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the comment.
+    /// Collection conditions that must all match. Different some branches can be satisfied by different comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CommentCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the comment.
+    /// Alternative collection conditions; at least one must match. Other collection clauses at this level still apply. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CommentCollectionFilter>>,
-    /// Filters that needs to be matched by some comments.
+    /// Requires at least one related comment to match these conditions. An empty collection does not match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<Box<CommentFilter>>,
-    /// Filters that needs to be matched by all comments.
+    /// Requires at least one related comment and requires every related comment to match these conditions. Use length: { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<CommentFilter>>,
-    /// Comparator for the collection length.
+    /// Conditions on the total number of related comments, independent of some or every. Use eq: 0 to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new comment.
+/// The Markdown body and destination for a new comment. Supply exactly one parent resource, such as issueId or documentContentId. To reply, also set parentId to the thread’s root comment and use the same resource as that thread.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The comment content in markdown format.
+    /// The comment’s message in Markdown. Required for public API creation. User mentions are processed when the comment is saved and can notify or subscribe the mentioned users.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The comment content as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
     /// The issue to associate the comment with. Can be a UUID or issue identifier (e.g., 'LIN-123').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// The project update to associate the comment with.
+    /// The UUID of the project update to discuss. An update has one root discussion thread; use its root comment as parentId when adding a reply to an existing thread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_id: MaybeUndefined<String>,
-    /// The initiative update to associate the comment with.
+    /// The UUID of the initiative update to discuss. An update has one root discussion thread; use its root comment as parentId when adding a reply to an existing thread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_id: MaybeUndefined<String>,
-    /// The post to associate the comment with.
+    /// The UUID of the post to discuss. A post has one root discussion thread; use its root comment as parentId when adding a reply.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub post_id: MaybeUndefined<String>,
-    /// The document content to associate the comment with.
+    /// The UUID of the DocumentContent to discuss, such as a document’s content or an issue description. Supply this instead of another parent resource; it is a content ID, not the enclosing document’s UUID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document_content_id: MaybeUndefined<String>,
     /// The project to associate the comment with. Can be a UUID or project identifier (e.g., 'P-LIN-123').
@@ -734,109 +571,91 @@ pub struct CommentCreateInput {
     /// The initiative to associate the comment with. Can be a UUID or initiative identifier (e.g., 'I-12').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_id: MaybeUndefined<String>,
-    /// The parent comment under which to nest a current comment.
+    /// The UUID of the thread’s root comment when creating a reply. Use the root even when replying to another reply, and supply the same parent resource as the thread. Omit this to start a thread; it cannot be combined with createOnSyncedSlackThread. Synced Intercom threads cannot receive replies through this mutation.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// Create comment as a user with the provided name. This option is only available to OAuth applications creating comments in `actor=app` mode.
+    /// Display name credited with creating the comment. Available only to OAuth applications using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub create_as_user: MaybeUndefined<String>,
-    /// Provide an external user avatar URL. Can only be used in conjunction with the `createAsUser` options. This option is only available to OAuth applications creating comments in `actor=app` mode.
+    /// Avatar URL for createAsUser. Requires createAsUser and an OAuth application using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_icon_url: MaybeUndefined<String>,
-    /// The time at which the comment was created (e.g. if importing from another system). Must be a time in the past. If none is provided, the backend will generate the time as now.
+    /// Creation time for imported comments. Must be in the past. Defaults to the current time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// Flag to prevent auto subscription to the issue the comment is created on.
+    /// Skip automatically subscribing the author to the issue. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub do_not_subscribe_to_issue: MaybeUndefined<bool>,
-    /// Flag to indicate this comment should be created on the issue's synced Slack comment thread. If no synced Slack comment thread exists, the mutation will fail. If there are multiple synced Slack threads on the issue, the oldest one will be targeted.
+    /// Whether to add the comment as a reply to the issue’s oldest synced Slack thread, so the reply participates in that sync. Requires an issue with an existing synced Slack thread and cannot be combined with parentId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub create_on_synced_slack_thread: MaybeUndefined<bool>,
     /// The text that this comment references. Only defined for inline comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub quoted_text: MaybeUndefined<String>,
-    /// `INTERNAL` The identifiers of the users subscribing to this comment thread.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub subscriber_ids: MaybeUndefined<Vec<String>>,
 }
-/// Comment filtering options.
+/// Conditions used to select comments. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the comment's body.
+    /// Conditions on the stored comment body text. This filters the comment itself, not its quoted text or replies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<StringComparator>,
-    /// Filters that the comment's creator must satisfy.
+    /// Conditions on the user recorded as the comment’s author. This does not match an app’s separate display attribution.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user: MaybeUndefined<Box<UserFilter>>,
-    /// Filters that the comment's issue must satisfy.
+    /// Conditions on the issue directly associated with the comment. Use documentContent to filter comments attached to an issue’s description content instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<NullableIssueFilter>>,
-    /// Filters that the comment's project update must satisfy.
+    /// Conditions on the project update being discussed. Use null: false to select comments on project updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update: MaybeUndefined<Box<NullableProjectUpdateFilter>>,
-    /// Filters that the comment's initiative update must satisfy.
+    /// Conditions on the initiative update being discussed. Use null: false to select comments on initiative updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update: MaybeUndefined<Box<NullableInitiativeUpdateFilter>>,
-    /// Filters that the comment parent must satisfy.
+    /// Conditions on the thread’s root comment. Use null: true to return root comments, or null: false to return replies. An ID condition selects replies in one thread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableCommentFilter>>,
-    /// Filters that the comment's document content must satisfy.
+    /// Conditions on the rich-text content being discussed, such as a document body or issue description. Use its issue or document filter to choose the enclosing resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document_content: MaybeUndefined<Box<NullableDocumentContentFilter>>,
-    /// `Internal` Filters that the comment's project must satisfy.
+    /// Filters that the comment's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// `Internal` Filters that the comment's initiative must satisfy.
+    /// Filters that the comment's initiative must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative: MaybeUndefined<Box<NullableInitiativeFilter>>,
-    /// Filters that the comment's reactions must satisfy.
+    /// Conditions on the comment’s emoji reactions. Use some with an emoji condition to find comments that received that reaction, or length to test the total reaction count.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the comment's customer needs must satisfy.
+    /// Conditions on customer requests linked to the comment. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the comment.
+    /// Conditions that the comment must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CommentFilter>>,
-    /// Compound filters, one of which need to be matched by the comment.
+    /// Alternative conditions; the comment must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CommentFilter>>,
 }
-/// Input for updating an existing comment.
+/// The replacement Markdown body for an existing comment. Omit body to leave the content unchanged. quotedText is accepted by this input but is not currently applied by commentUpdate.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentUpdateInput {
-    /// The comment content.
+    /// The replacement message in Markdown. Send an empty string to clear the body or omit it to keep the current content; null is not accepted. Content edits normally update editedAt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The comment content as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
-    /// `INTERNAL` The user who resolved this thread.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resolving_user_id: MaybeUndefined<String>,
-    /// `INTERNAL` The child comment that resolves this thread.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resolving_comment_id: MaybeUndefined<String>,
-    /// The text that this comment references. Only defined for inline comments.
+    /// The passage associated with an inline comment. This field is accepted but is not currently changed by commentUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub quoted_text: MaybeUndefined<String>,
-    /// `INTERNAL` The identifiers of the users subscribing to this comment.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub subscriber_ids: MaybeUndefined<Vec<String>>,
-    /// `INTERNAL` Flag to prevent auto subscription to the issue the comment is updated on.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub do_not_subscribe_to_issue: MaybeUndefined<bool>,
 }
 /// Issue completion date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -849,11 +668,11 @@ pub struct CompletedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for submitting a support contact message from an authenticated user.
+/// A message to Linear support from the authenticated user. Choose a message category and provide the message itself. Optional device, browser, and client details help support understand the context.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContactCreateInput {
-    /// The type of support contact.
+    /// Message category: support, question, feedback, sales, exitSurvey, mobilePreorder, or lead. prioritySupport is deprecated.
     pub r#type: String,
     /// The feedback or support message submitted by the user.
     pub message: String,
@@ -873,36 +692,6 @@ pub struct ContactCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub disappointment_rating: MaybeUndefined<i64>,
 }
-/// `INTERNAL` Input for submitting a sales or pricing inquiry to the Linear sales team. Small companies are routed to Intercom support, while larger companies are routed to HubSpot.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContactSalesCreateInput {
-    /// Full name of the person submitting the sales inquiry.
-    pub name: String,
-    /// Work email address of the person submitting the sales inquiry.
-    pub email: String,
-    /// The size of the inquiring company (e.g., '1-19', '20-99', '100-499'). Used to route the inquiry to the appropriate sales channel.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub company_size: MaybeUndefined<String>,
-    /// An optional message from the user describing their needs or questions.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub message: MaybeUndefined<String>,
-    /// The page URL from which the sales inquiry was submitted, for attribution tracking.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub url: MaybeUndefined<String>,
-    /// PostHog distinct ID for correlating this inquiry with anonymous analytics events.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub distinct_id: MaybeUndefined<String>,
-    /// PostHog session ID for correlating this inquiry with the user's browsing session.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub session_id: MaybeUndefined<String>,
-    /// JSON serialized last-touch UTM parameters captured from the `utm` cookie at form submission.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub utm: MaybeUndefined<String>,
-    /// JSON serialized first-touch UTM parameters captured from the `utm_first` cookie at form submission.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub utm_first_touch: MaybeUndefined<String>,
-}
 /// `Internal` Comparator for content.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -913,26 +702,6 @@ pub struct ContentComparator {
     /// `Internal` Not-contains constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateOrganizationInput {
-    /// The name of the organization.
-    pub name: String,
-    /// The URL key of the organization.
-    pub url_key: String,
-    /// Whether the organization should allow email domain access.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub domain_access: MaybeUndefined<bool>,
-    /// The timezone of the organization, passed in by client.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub timezone: MaybeUndefined<String>,
-    /// JSON serialized UTM parameters associated with the creation of the workspace.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub utm: MaybeUndefined<String>,
-    /// JSON serialized UTM parameters captured on the user's first visit to the marketing site (first-touch attribution).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub utm_first_touch: MaybeUndefined<String>,
 }
 /// Issue creation date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -945,7 +714,7 @@ pub struct CreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for creating a new custom view. A name is required. Optionally scope the view to a team, project, or initiative.
+/// The name, scope, and filters for a saved view. The current user owns the new view, which is personal unless shared is true. Choose the filter field for the kind of items you want to show; an issue view with no filter matches all issues in its scope that the viewer can access.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomViewCreateInput {
@@ -957,37 +726,40 @@ pub struct CustomViewCreateInput {
     /// The description of the custom view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The icon of the custom view.
+    /// Emoji name or decorative icon identifier for the view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the icon of the custom view.
+    /// Hex color for the view’s icon, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The id of the team associated with the custom view.
+    /// UUID of the team to place the view in.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The id of the project associated with the custom view.
+    /// UUID of the project to place the view in.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// The id of the initiative associated with the custom view.
+    /// UUID of the initiative to place the view in.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_id: MaybeUndefined<String>,
-    /// The owner of the custom view.
+    /// UUID of the owner. Must be the current user; defaults to the current user.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The filter applied to issues in the custom view.
+    /// The filters applied to issues in the custom view.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub filters: MaybeUndefined<serde_json::Value>,
+    /// The criteria for an issue view. Use the same IssueFilter structure accepted by the issues query. Omit it for an unfiltered issue view within the view’s scope.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub filter_data: MaybeUndefined<IssueFilter>,
-    /// The project filter applied to issues in the custom view.
+    /// Filter for a view of projects. Sets the view’s modelName to Project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_filter_data: MaybeUndefined<ProjectFilter>,
-    /// `ALPHA` The initiative filter applied to issues in the custom view.
+    /// `ALPHA` Filter for a view of initiatives. Sets the view’s modelName to Initiative when no project filter is set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_filter_data: MaybeUndefined<InitiativeFilter>,
-    /// The feed item filter applied to issues in the custom view.
+    /// Filter for a view of updates. Sets the view’s modelName to FeedItem when no project or initiative filter is set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub feed_item_filter_data: MaybeUndefined<FeedItemFilter>,
-    /// Whether the custom view is shared with everyone in the workspace.
+    /// Whether to make the view shared in its scope. Defaults to false for a personal view. Sharing the view does not change access to the items it contains.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub shared: MaybeUndefined<bool>,
 }
@@ -1002,41 +774,41 @@ pub struct CustomViewCreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Custom view filtering options.
+/// Conditions used to select saved views. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomViewFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the custom view name.
+    /// Conditions on the saved view’s name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the custom view model name.
+    /// Conditions on the kind of items the view displays: Issue, Project, Initiative, or FeedItem. This is derived from the saved filter configuration, not the view’s name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub model_name: MaybeUndefined<StringComparator>,
-    /// Filters that the custom view's team must satisfy.
+    /// Conditions on the team associated with the view. Use null: true for views without a team; these may still belong to a project or initiative.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<NullableTeamFilter>,
-    /// Filters that the custom view creator must satisfy.
+    /// Conditions on the user who created the saved view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<UserFilter>,
-    /// Comparator for whether the custom view is shared.
+    /// Whether the saved view is shared with others. Sharing the view does not grant access to its underlying issues or projects.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub shared: MaybeUndefined<BooleanComparator>,
-    /// `INTERNAL` Filter based on whether the custom view has a facet.
+    /// Filter based on whether the custom view has a facet.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_facet: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the custom view.
+    /// Conditions that the saved view must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomViewFilter>>,
-    /// Compound filters, one of which need to be matched by the custom view.
+    /// Alternative conditions; the saved view must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomViewFilter>>,
 }
@@ -1062,23 +834,24 @@ pub struct CustomViewSharedSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
+/// Sorts views by a single property. Supply exactly one sort option per entry.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomViewSortInput {
-    /// Sort by custom view name.
+    /// Sorts by view name. Defaults to ascending order.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<CustomViewNameSort>,
-    /// Sort by custom view creation date.
+    /// Sorts by creation time. Defaults to newest first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<CustomViewCreatedAtSort>,
-    /// Sort by custom view shared status.
+    /// Sorts by whether the view is shared. Defaults to personal views first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub shared: MaybeUndefined<CustomViewSharedSort>,
-    /// Sort by custom view update date.
+    /// Sorts by last meaningful update time. Defaults to newest first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<CustomViewUpdatedAtSort>,
 }
-/// Input for updating an existing custom view. All fields are optional; only provided fields will be updated.
+/// The changes to a saved view’s name, appearance, scope, or filters. Omitted fields keep their values. Each supplied filter object replaces that saved filter rather than merging individual conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomViewUpdateInput {
@@ -1088,37 +861,34 @@ pub struct CustomViewUpdateInput {
     /// The description of the custom view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The icon of the custom view.
+    /// Emoji name or decorative icon identifier for the view. Null clears the icon.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the icon of the custom view.
+    /// Hex color for the view’s icon, such as #5E6AD2. Null clears the color.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The id of the team associated with the custom view.
+    /// UUID of the team to place the view in. Null removes the team scope.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// `Internal` The id of the project associated with the custom view.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project_id: MaybeUndefined<String>,
-    /// `Internal` The id of the initiative associated with the custom view.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_id: MaybeUndefined<String>,
-    /// The owner of the custom view.
+    /// UUID of the workspace user who will own the view. Transferring a personal view can remove your access to it; omit this field to keep its current owner.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The filter applied to issues in the custom view.
+    /// The filters applied to issues in the custom view.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub filters: MaybeUndefined<serde_json::Value>,
+    /// The complete replacement issue filter. Send an empty object to remove issue-filter conditions, or omit it to keep the current filter. It is used only when the view’s modelName is Issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub filter_data: MaybeUndefined<IssueFilter>,
-    /// The project filter applied to issues in the custom view.
+    /// The complete replacement project filter. A non-null value makes this a project view and takes precedence over initiative and update filters. Pass null to remove it, or omit the field to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_filter_data: MaybeUndefined<ProjectFilter>,
-    /// `ALPHA` The initiative filter applied to issues in the custom view.
+    /// `ALPHA` The complete replacement initiative filter. Used when no project filter is set. Pass null to remove it, or omit the field to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_filter_data: MaybeUndefined<InitiativeFilter>,
-    /// The feed item filter applied to issues in the custom view.
+    /// The complete replacement update filter. Used when no project or initiative filter is set. Pass null to remove it, or omit the field to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub feed_item_filter_data: MaybeUndefined<FeedItemFilter>,
-    /// Whether the custom view is shared with everyone in the workspace.
+    /// Whether to share the view with people who can access its team, project, initiative, or workspace scope. False makes it personal to the owner. Views used in some pinned tabs cannot be made personal.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub shared: MaybeUndefined<bool>,
 }
@@ -1144,7 +914,7 @@ pub struct CustomerCountSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for creating a new customer in the workspace.
+/// The account details for a new customer. Provide its name, and optionally business domains or external-system IDs for matching requests. Domains and external IDs must be unique across customers in the workspace, including archived customers.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerCreateInput {
@@ -1156,19 +926,19 @@ pub struct CustomerCreateInput {
     /// The email domains associated with this customer (e.g., 'acme.com'). Public email domains are not allowed. Defaults to an empty array.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub domains: MaybeUndefined<Vec<String>>,
-    /// Identifiers for this customer in external systems (e.g., CRM IDs). Defaults to an empty array.
+    /// External-system customer IDs, unique across customers in the workspace, including archived customers. Defaults to an empty array.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_ids: MaybeUndefined<Vec<String>>,
     /// The ID of the Slack channel to link to this customer.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_channel_id: MaybeUndefined<String>,
-    /// The identifier of the user to assign as the owner of the customer.
+    /// The customer owner’s user UUID. Application accounts cannot own customers.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The identifier of the customer status to set.
+    /// Customer status UUID. Defaults to the first status by position.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_id: MaybeUndefined<String>,
-    /// The annual revenue generated by the customer, in dollars.
+    /// Annual revenue in whole units of the workspace’s configured revenue currency. Must be a nonnegative integer.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub revenue: MaybeUndefined<i64>,
     /// The size of the customer organization (e.g., number of employees).
@@ -1180,7 +950,7 @@ pub struct CustomerCreateInput {
     /// The URL of the customer's logo image.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub logo_url: MaybeUndefined<String>,
-    /// The primary external source ID for customers with multiple sources. Must be one of the values provided in externalIds.
+    /// The external ID to select as the primary data source. Must be one of the values provided in externalIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub main_source_id: MaybeUndefined<String>,
 }
@@ -1195,17 +965,17 @@ pub struct CustomerCreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Customer filtering options.
+/// Filters customers by name, domains, owner, customer needs, revenue, size, status, or tier. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the customer name.
@@ -1238,10 +1008,10 @@ pub struct CustomerFilter {
     /// Filters that the customer's tier must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub tier: MaybeUndefined<CustomerTierFilter>,
-    /// Compound filters, all of which need to be matched by the customer.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomerFilter>>,
-    /// Compound filters, one of which need to be matched by the customer.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomerFilter>>,
 }
@@ -1256,26 +1026,26 @@ pub struct CustomerImportantCountSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Customer needs filtering options.
+/// Filters a related collection of customer needs. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerNeedCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the customer need priority.
+    /// The need’s importance: 0 for Not important or 1 for Important.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NumberComparator>,
-    /// Filters that the need's project must satisfy.
+    /// Conditions on the project linked to the need. Use { null: true } for needs without a project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filters that the need's issue must satisfy.
+    /// Conditions on the issue linked to the need. Use { null: true } for needs without an issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<NullableIssueFilter>>,
     /// Filters that the need's comment must satisfy.
@@ -1284,10 +1054,10 @@ pub struct CustomerNeedCollectionFilter {
     /// Filters that the need's customer must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer: MaybeUndefined<Box<NullableCustomerFilter>>,
-    /// Compound filters, all of which need to be matched by the customer needs.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomerNeedCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the customer needs.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomerNeedCollectionFilter>>,
     /// Filters that needs to be matched by some customer needs.
@@ -1296,7 +1066,7 @@ pub struct CustomerNeedCollectionFilter {
     /// Filters that needs to be matched by all customer needs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<CustomerNeedFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
@@ -1307,7 +1077,7 @@ pub struct CustomerNeedCreateFromAttachmentInput {
     /// The UUID of the existing issue attachment to create a customer need from.
     pub attachment_id: String,
 }
-/// Input for creating a customer need linked to an issue or project. Either issueId or projectId must be provided.
+/// The feedback and optional customer and work links for a new request. Requests may be created without a linked issue, project, or signal when Customer Signals is enabled. You can include Markdown feedback and a source attachment, and identify the customer by either its UUID or external-system ID.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerNeedCreateInput {
@@ -1320,12 +1090,9 @@ pub struct CustomerNeedCreateInput {
     /// The external system ID of the customer this need belongs to. Cannot be used together with customerId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_external_id: MaybeUndefined<String>,
-    /// The issue to link this need to. Accepts a UUID or issue identifier (e.g., 'LIN-123'). Either issueId or projectId must be provided.
+    /// The optional issue UUID or identifier, such as LIN-123.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// `INTERNAL` The project to link this need to. Accepts a UUID or project identifier (e.g., 'P-LIN-123'). Either issueId or projectId must be provided.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project_id: MaybeUndefined<String>,
     /// The UUID of an existing comment to associate with this need for additional context.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comment_id: MaybeUndefined<String>,
@@ -1335,12 +1102,9 @@ pub struct CustomerNeedCreateInput {
     /// Whether the customer need is important or not. 0 = Not important, 1 = Important.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<f64>,
-    /// The body content of the need in Markdown format. Cannot be used together with bodyData.
+    /// The feedback in Markdown.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The body content of the need as a Prosemirror document JSON string. Cannot be used together with body.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
     /// A URL to create an attachment from and associate with this customer need as its source.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub attachment_url: MaybeUndefined<String>,
@@ -1354,26 +1118,26 @@ pub struct CustomerNeedCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
 }
-/// Customer filtering options.
+/// Filters customer needs by priority or the linked customer, issue, project, or comment. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerNeedFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the customer need priority.
+    /// The need’s importance: 0 for Not important or 1 for Important.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NumberComparator>,
-    /// Filters that the need's project must satisfy.
+    /// Conditions on the project linked to the need. Use { null: true } for needs without a project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filters that the need's issue must satisfy.
+    /// Conditions on the issue linked to the need. Use { null: true } for needs without an issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<NullableIssueFilter>>,
     /// Filters that the need's comment must satisfy.
@@ -1382,18 +1146,18 @@ pub struct CustomerNeedFilter {
     /// Filters that the need's customer must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer: MaybeUndefined<Box<NullableCustomerFilter>>,
-    /// Compound filters, all of which need to be matched by the customer need.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomerNeedFilter>>,
-    /// Compound filters, one of which need to be matched by the customer need.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomerNeedFilter>>,
 }
-/// Input for updating a customer need. Supports reassigning the customer, moving to a different issue or project, changing priority, and updating body content.
+/// Changes to an existing customer request. Omit fields to keep their current values. Moving the request to another issue also moves its source attachment, and applyPriorityToRelatedNeeds can update other requests from the same customer.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerNeedUpdateInput {
-    /// An optional identifier in UUID v4 format. If provided, will be set as the customer need's ID.
+    /// Ignored. The mutation's id argument selects the customer need to update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
     /// The UUID of the customer to reassign this need to. Cannot be used together with customerExternalId.
@@ -1405,22 +1169,16 @@ pub struct CustomerNeedUpdateInput {
     /// The issue to move this need to. Accepts a UUID or issue identifier (e.g., 'LIN-123'). The need's attachment will also be moved to the target issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// `INTERNAL` The project to move this need to. Accepts a UUID or project identifier (e.g., 'P-LIN-123').
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project_id: MaybeUndefined<String>,
     /// Whether the customer need is important or not. 0 = Not important, 1 = Important.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<f64>,
-    /// When true and priority is also set, applies the same priority update to all other needs from the same customer on the same issue or project.
+    /// Whether to apply the supplied priority to other needs from the same customer on the same issue or project. This only has an effect when priority is also supplied. The mutation returns the additional changed needs in updatedRelatedNeeds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub apply_priority_to_related_needs: MaybeUndefined<bool>,
-    /// The updated body content of the need in Markdown format. Set to null to clear the body. Cannot be used together with bodyData.
+    /// The replacement feedback in Markdown. Null clears the manually supplied body; source attachment content may still be returned by content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The updated body content of the need as a Prosemirror document JSON string. Set to null to clear the body. Cannot be used together with body.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
-    /// A URL to create a new attachment from and set as the source for this customer need. Replaces any existing manually-added attachment.
+    /// An HTTP or HTTPS URL to replace the request’s source attachment. Only manually added sources can be changed; omit this field for sources managed by an integration. For editable sources, null leaves the source unchanged; use clearAttachment to remove it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub attachment_url: MaybeUndefined<String>,
 }
@@ -1475,7 +1233,7 @@ pub struct CustomerSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub approximate_need_count: MaybeUndefined<ApproximateNeedCountSort>,
 }
-/// Input for creating a customer status in the workspace's customer lifecycle flow.
+/// The name and display details for a new customer lifecycle status. Supply at least one of name or displayName; when name is omitted, displayName is used as its name. Omit position to add the status at the end.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerStatusCreateInput {
@@ -1497,17 +1255,17 @@ pub struct CustomerStatusCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<String>,
 }
-/// Customer status filtering options.
+/// Filters customer statuses by name, type, display position, color, or description. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerStatusFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the customer status name.
@@ -1525,10 +1283,10 @@ pub struct CustomerStatusFilter {
     /// Comparator for the customer status color.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the customer status.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomerStatusFilter>>,
-    /// Compound filters, one of which needs to be matched by the customer status.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomerStatusFilter>>,
 }
@@ -1543,7 +1301,7 @@ pub struct CustomerStatusSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for updating an existing customer status.
+/// Changes to a customer lifecycle status. Omitted fields keep their current values. The updated name or display name must not conflict with another status.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerStatusUpdateInput {
@@ -1563,7 +1321,7 @@ pub struct CustomerStatusUpdateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<String>,
 }
-/// Input for creating a customer tier in the workspace's customer tier ordering.
+/// The name and display details for a customer tier. Supply at least one of name or displayName; when name is omitted, displayName is used as its name. Omit position to add the tier at the end.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerTierCreateInput {
@@ -1585,19 +1343,25 @@ pub struct CustomerTierCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<String>,
 }
-/// Customer tier filtering options.
+/// Filters customer tiers by display name, position, color, or description. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerTierFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub null: MaybeUndefined<bool>,
+    /// `Deprecated` Comparator for the customer tier name.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub name: MaybeUndefined<StringComparator>,
     /// Comparator for the customer tier display name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<StringComparator>,
@@ -1610,14 +1374,14 @@ pub struct CustomerTierFilter {
     /// Comparator for the customer tier color.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the customer tier.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CustomerTierFilter>>,
-    /// Compound filters, one of which needs to be matched by the customer tier.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CustomerTierFilter>>,
 }
-/// Input for updating an existing customer tier.
+/// Changes to a customer tier. Omitted fields keep their current values. The updated name or display name must not conflict with another tier.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerTierUpdateInput {
@@ -1637,58 +1401,58 @@ pub struct CustomerTierUpdateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<String>,
 }
-/// Input for updating an existing customer.
+/// Changes to an existing customer. Omit fields to keep their values; domains and externalIds replace their respective lists. For integration-managed customers, fields controlled by the integration are ignored, and a request with no editable fields fails.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerUpdateInput {
     /// The updated name of the customer.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The updated list of email domains associated with this customer. Replaces the existing domains.
+    /// The replacement list of business email domains, such as acme.com. Use [] to remove all domains, or omit to keep them. Public email domains and domains used by another customer, including an archived customer, are not allowed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub domains: MaybeUndefined<Vec<String>>,
-    /// The updated list of external system identifiers for this customer. New IDs will be appended with source metadata.
+    /// The replacement list of external-system customer IDs. Use [] to remove them, or omit to keep them. IDs must be unique across the workspace; if mainSourceId is set, keep that ID in this list or change or clear mainSourceId in the same request.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_ids: MaybeUndefined<Vec<String>>,
     /// The ID of the Slack channel to link to this customer. Set to null to unlink the current channel.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_channel_id: MaybeUndefined<String>,
-    /// The identifier of the user to assign as the owner of the customer.
+    /// The customer owner’s user UUID. Null removes the owner; application accounts cannot own customers.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
     /// The identifier of the customer status to set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_id: MaybeUndefined<String>,
-    /// The annual revenue generated by the customer, in dollars.
+    /// Annual revenue in whole units of the workspace’s configured revenue currency. Null clears the value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub revenue: MaybeUndefined<i64>,
     /// The size of the customer organization (e.g., number of employees).
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub size: MaybeUndefined<i64>,
-    /// The identifier of the customer tier to assign.
+    /// The customer tier UUID. Null removes the tier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub tier_id: MaybeUndefined<String>,
     /// The URL of the customer's logo image.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub logo_url: MaybeUndefined<String>,
-    /// The primary external source ID for customers with multiple sources. Must be one of the values in externalIds.
+    /// The primary external ID. Must remain in externalIds; null clears it. May also change the customer name to the source’s name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub main_source_id: MaybeUndefined<String>,
 }
-/// Input for upserting a customer. Matches against existing customers using id, externalId, slackChannelId, or domains. Creates a new customer if no match is found.
+/// Identifiers and account details for finding or creating a customer. Supply matching information through id, externalId, slackChannelId, or domains. If no match is found, name is required. Updates through this input can override integration-managed fields.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomerUpsertInput {
-    /// The identifier in UUID v4 format. Used to match an existing customer for upsert.
+    /// The customer UUID to match. If no customer matches the supplied identifiers, this becomes the new customer’s UUID; omit to generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
     /// The name of the customer. Required when creating a new customer.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The email domains associated with this customer.
+    /// Business email domains used to find the customer. For an existing match, this replaces the customer’s domain list; use [] to remove the domains. Public email domains and domains assigned to another customer are not allowed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub domains: MaybeUndefined<Vec<String>>,
-    /// An external system identifier for this customer. Used for matching existing customers during upsert.
+    /// An external-system ID used to find the customer. Added to externalIds when creating a customer; does not add or replace externalIds on an existing match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_id: MaybeUndefined<String>,
     /// The ID of the Slack channel to link to this customer.
@@ -1700,7 +1464,7 @@ pub struct CustomerUpsertInput {
     /// The identifier of the customer status to set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_id: MaybeUndefined<String>,
-    /// The annual revenue generated by the customer, in dollars.
+    /// Annual revenue in whole units of the workspace’s configured revenue currency. Null clears the value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub revenue: MaybeUndefined<i64>,
     /// The size of the customer organization (e.g., number of employees).
@@ -1712,61 +1476,11 @@ pub struct CustomerUpsertInput {
     /// The URL of the customer's logo image.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub logo_url: MaybeUndefined<String>,
-    /// The name of the customer tier to assign. A new tier will be created if one with this name does not exist. Cannot be used together with tierId.
+    /// The customer tier’s name or display name. An existing matching tier is reused; otherwise a tier is created. Use this when importing named tiers, or use tierId to select a known tier. The two fields cannot be combined.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub tier_name: MaybeUndefined<String>,
 }
-/// `Internal` Configuration for the customer attributes data source.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomersAttributesDataSourceConfigurationInput {
-    /// `Internal` How customer attribute values are sourced: 'manual' or 'integration'.
-    pub source_type: String,
-    /// `Internal` Whether to allow manual edits to customer attributes when no source is configured.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub allow_manual_edits: MaybeUndefined<bool>,
-    /// `Internal` Integration details (when sourceType is 'integration').
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub integration: MaybeUndefined<CustomersAttributesDataSourceIntegrationInput>,
-    /// `Internal` Mapping from customer attribute keys (owner, revenue, size, status, tier, externalId) to external field IDs.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub attributes_mapping: MaybeUndefined<serde_json::Value>,
-    /// `Internal` Errors encountered while syncing customer attributes (set by sync workers).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub attributes_errors: MaybeUndefined<serde_json::Value>,
-}
-/// `Internal` Integration providing customer attribute data.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomersAttributesDataSourceIntegrationInput {
-    /// `Internal` The integration service that manages customer attributes.
-    pub service: IntegrationService,
-}
-/// `Internal` Input for updating workspace Customers feature configuration.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomersConfigurationInput {
-    /// `Internal` The team to use to create default issues for new request items.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub default_team_id: MaybeUndefined<String>,
-    /// `Internal` Domains or email addresses excluded entirely from the Customers feature.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub exclude_list: MaybeUndefined<Vec<String>>,
-    /// `Internal` Domains or email addresses ignored when matching to a customer.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ignore_list: MaybeUndefined<Vec<String>>,
-    /// `Internal` How customer revenue should be displayed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub revenue_display: MaybeUndefined<String>,
-    /// `Internal` The currency code used for customer revenue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub revenue_currency_code: MaybeUndefined<String>,
-    /// `Internal` Configuration for the customer attributes data source.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub attributes_data_source_configuration:
-        MaybeUndefined<CustomersAttributesDataSourceConfigurationInput>,
-}
-/// Input for creating a new cycle.
+/// Legacy input for cycleCreate, which is no longer supported.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CycleCreateInput {
@@ -1789,50 +1503,50 @@ pub struct CycleCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
 }
-/// Cycle filtering options.
+/// Conditions used to select cycles. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CycleFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle number.
+    /// Conditions on the positive cycle number within a team. Combine with team when you need a specific cycle, since different teams can have the same number.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub number: MaybeUndefined<NumberComparator>,
     /// Comparator for the cycle name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the cycle start date.
+    /// Conditions on the cycle’s scheduled start time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle ends at date.
+    /// Conditions on the cycle’s end time, which can change when a cycle is completed early.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle completed at date.
+    /// Conditions on the time the cycle was closed. This is distinct from its scheduled end time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the filtering active cycle.
+    /// Whether the current time falls within the cycle’s start and end times. Use team to restrict the result to one team’s schedule.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_active: MaybeUndefined<BooleanComparator>,
-    /// Comparator for filtering for whether the cycle is currently in cooldown.
+    /// Whether the cycle has completed and its next numbered cycle has not started yet. This identifies the completed cycle during the team’s gap between cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_in_cooldown: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering next cycle.
+    /// Whether this is the team’s next upcoming, uncompleted and unarchived cycle. Combine with team to select one team’s next cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_next: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering previous cycle.
+    /// Whether this is the team’s most recently completed, unarchived cycle. A past end time alone does not make a cycle the previous one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_previous: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering future cycles.
+    /// Whether the cycle’s start time is in the future. This can match several upcoming cycles; use isNext for only the next one per team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_future: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering past cycles.
+    /// Whether the cycle’s end time has passed. This is independent of whether its completion step has run.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_past: MaybeUndefined<BooleanComparator>,
     /// Filters that the cycles team must satisfy.
@@ -1844,40 +1558,40 @@ pub struct CycleFilter {
     /// Comparator for the inherited cycle ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherited_from_id: MaybeUndefined<IDComparator>,
-    /// Compound filters, all of which need to be matched by the cycle.
+    /// Conditions that the cycle must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<CycleFilter>>,
-    /// Compound filters, one of which need to be matched by the cycle.
+    /// Alternative conditions; the cycle must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<CycleFilter>>,
 }
-/// Comparator for period when issue was added to a cycle.
+/// Conditions on when an issue joined its cycle relative to the cycle’s schedule. This uses the recorded cycle assignment time, not the issue’s creation time.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CyclePeriodComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<CyclePeriod>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<CyclePeriod>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<CyclePeriod>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<CyclePeriod>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
-/// Input for shifting all cycles from a certain cycle onwards by a certain number of days.
+/// Shift an upcoming cycle and all later cycles in its team by the same number of days.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CycleShiftAllInput {
-    /// The cycle ID at which to start the shift.
+    /// UUID of the first cycle to shift. It must not have started or completed.
     pub id: String,
-    /// The number of days to shift the cycles by.
+    /// Whole days to shift, from -365 to 365. Negative values move cycles earlier; positive values move them later.
     pub days_to_shift: f64,
 }
 /// Issue cycle sorting options.
@@ -1894,52 +1608,52 @@ pub struct CycleSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub current_cycle_first: MaybeUndefined<bool>,
 }
-/// Input for updating an existing cycle.
+/// The changes to a cycle’s name, description, or schedule. Omit fields you want to keep. Scheduling uses the team’s time zone and may shorten adjacent cycles to avoid overlaps; inherited cycles must be changed on their parent team.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CycleUpdateInput {
-    /// The custom name of the cycle.
+    /// The custom cycle name. Pass null to remove it and use the cycle number for display, or omit to keep the current name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the cycle.
+    /// The cycle’s goals or other context. Pass null to clear the description, or omit to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The start time of the cycle.
+    /// The new start time. It cannot be changed for an active or completed cycle or moved before today in the team’s time zone. Moving it into the previous cycle shortens that cycle; the new start must be more than one day after the previous cycle’s start.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The end time of the cycle.
+    /// The new end time. It cannot be changed for a completed cycle or moved before today in the team’s time zone. Extending it into the next cycle moves that cycle’s start, but must leave the next cycle at least one day long.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The completion time of the cycle. If null, the cycle hasn't been completed.
+    /// The recorded completion time. Omit to keep the current value, or pass null to clear the completion marker. Changing this field does not itself move unfinished issues to another cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
 }
-/// Comparator for dates.
+/// Compares timestamps at millisecond precision. Accepts ISO 8601 timestamps or durations relative to when the filter runs; `{ gte: "-P7D" }` includes times from seven days ago onward. Combine `gte` and `lt` for a time window. A YYYY-MM-DD value means midnight UTC, so equality with a date does not match the whole day.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DateComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<serde_json::Value>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<serde_json::Value>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<serde_json::Value>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<serde_json::Value>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<serde_json::Value>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<serde_json::Value>,
 }
@@ -1961,7 +1675,7 @@ pub struct DeleteOrganizationInput {
     /// The deletion code to confirm operation.
     pub deletion_code: String,
 }
-/// One package version to look up registry metadata for.
+/// An exact published package version to look up in a public registry. Provide the registry package name and version, including the scope in an npm name such as @scope/package. Version ranges and tags are not resolved to a version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DependencyPackageInput {
@@ -1972,7 +1686,7 @@ pub struct DependencyPackageInput {
     /// Package version.
     pub version: String,
 }
-/// Input for creating a new document.
+/// The metadata and optional Markdown body for a new document. Choose exactly one container: a project, issue, or release. The document’s UUID identifies its metadata, while a separate DocumentContent record holds its body.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentCreateInput {
@@ -1981,54 +1695,33 @@ pub struct DocumentCreateInput {
     pub id: MaybeUndefined<String>,
     /// The title of the document.
     pub title: String,
-    /// The icon of the document.
+    /// Emoji or decorative icon identifier for the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the icon.
+    /// Icon color as a hexadecimal CSS color, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The document content as markdown.
+    /// The initial body in Markdown. Omit it to create the document without a body; Linear creates a content record when content is added.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
-    /// Related project for the document. Can be a UUID or project identifier (e.g., 'P-LIN-123').
+    /// UUID or identifier of the containing project, such as P-LIN-123. Cannot be combined with another parent resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// `Internal` Related initiative for the document. Can be a UUID or initiative identifier (e.g., 'I-12').
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_id: MaybeUndefined<String>,
-    /// `Internal` Related team for the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// Related issue for the document. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// UUID or identifier of the containing issue, such as ENG-123. Cannot be combined with another parent resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// Related release for the document.
+    /// UUID of the containing release. Cannot be combined with another parent resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_id: MaybeUndefined<String>,
-    /// `Internal` Related cycle for the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub cycle_id: MaybeUndefined<String>,
-    /// `Internal` The resource folder containing the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resource_folder_id: MaybeUndefined<String>,
-    /// `Internal` The parent document of the sub-document. The container of the document must match the container of the parent document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub parent_document_id: MaybeUndefined<String>,
-    /// `Internal` The sort order of the sub-document among its siblings. Defaults to the last position. Requires `parentDocumentId`.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sub_document_sort_order: MaybeUndefined<f64>,
-    /// The ID of the last template applied to the document.
+    /// UUID of the template to record as last applied. Does not apply the template’s content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
-    /// The owner of the document. Set to null to create a document without an owner.
+    /// The UUID of an active, non-app user who can access the document. Defaults to the acting user for human-authored requests and to no owner for app-authored requests. Pass null to create it without an owner; assigning an owner also subscribes them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The order of the item in the resources list.
+    /// The position among the container’s resources, with lower values first. Omit it to place the document last. Positions are shared with external links where the container supports them, and collisions may be adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// `INTERNAL` The identifiers of the users subscribing to this document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub subscriber_ids: MaybeUndefined<Vec<String>>,
 }
 /// Document creation date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -2052,56 +1745,62 @@ pub struct DocumentCreatorSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Document filtering options.
+/// Conditions used to select documents. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the document title.
+    /// Conditions on the document title. This does not search the document’s body.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the document's searchable content.
+    /// Comparator for the document's searchable content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
-    /// Comparator for the document slug ID.
+    /// Conditions on the document’s short URL identifier. This differs from its UUID and title.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// Filters that the document's creator must satisfy.
+    /// Conditions on the user who created the document, independent of its current owner.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<UserFilter>>,
-    /// Filters that the document's owner must satisfy.
+    /// Conditions on the document’s owner. Use null: true for documents without an owner; ownership is separate from the creator and most recent editor.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the document's project must satisfy.
+    /// Conditions on the project that contains the document. This selects documents directly associated with a project, not documents attached to that project’s issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<ProjectFilter>>,
-    /// Filters that the document's issue must satisfy.
+    /// Conditions on the issue that contains the document. This selects attached documents, not the issue’s own description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<IssueFilter>>,
-    /// Filters that the document's initiative must satisfy.
+    /// Conditions on the initiative that contains the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative: MaybeUndefined<Box<InitiativeFilter>>,
-    /// Filters that the document's team must satisfy.
+    /// Conditions on the team directly associated with the document. Use null: true when no team is set on the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the document's cycle must satisfy.
+    /// Conditions on the cycle that contains the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle: MaybeUndefined<Box<CycleFilter>>,
-    /// Filters that the document's release must satisfy.
+    /// Conditions on the release that contains the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release: MaybeUndefined<Box<ReleaseFilter>>,
-    /// Compound filters, all of which need to be matched by the document.
+    /// Filters that the document's parent document must satisfy. Use `null: true` for documents that are not sub-documents.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub parent_document: MaybeUndefined<Box<NullableDocumentFilter>>,
+    /// Filters that the user owning the personal space of a personal document must satisfy. Use `null: false` for personal documents.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub personal_user: MaybeUndefined<Box<NullableUserFilter>>,
+    /// Conditions that the document must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<DocumentFilter>>,
-    /// Compound filters, one of which need to be matched by the document.
+    /// Alternative conditions; the document must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<DocumentFilter>>,
 }
@@ -2147,70 +1846,46 @@ pub struct DocumentTitleSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for updating an existing document.
+/// The metadata or Markdown content to change on a document. Omitted fields keep their values. Supplying a destination project, issue, or release moves the document out of its current container and can change who can access it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentUpdateInput {
     /// The title of the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The icon of the document.
+    /// Emoji or decorative icon identifier. Null clears the icon.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the icon.
+    /// Icon color as a hexadecimal CSS color. Null clears the color.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The document content as markdown.
+    /// The replacement body in Markdown. A nonempty value replaces the whole body; omitting it, passing null, or passing an empty string leaves the current body unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
-    /// Related project for the document. Can be a UUID or project identifier (e.g., 'P-LIN-123').
+    /// UUID or identifier of the destination project, such as P-LIN-123. Moves the document out of its previous container. Omitted or null values do not move it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// `Internal` Related initiative for the document. Can be a UUID or initiative identifier (e.g., 'I-12').
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_id: MaybeUndefined<String>,
-    /// `Internal` Related team for the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// Related issue for the document. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// UUID or identifier of the destination issue, such as ENG-123. Moves the document out of its previous container. Omitted or null values do not move it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// Related release for the document.
+    /// UUID of the destination release. Moves the document out of its previous container. Omitted or null values do not move it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_id: MaybeUndefined<String>,
-    /// `Internal` Related cycle for the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub cycle_id: MaybeUndefined<String>,
-    /// `Internal` The resource folder containing the document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resource_folder_id: MaybeUndefined<String>,
-    /// `Internal` The parent document of the sub-document. The document and its sub-documents move to the container of the parent document. Set to null to make the document a top-level document in its container.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub parent_document_id: MaybeUndefined<String>,
-    /// `Internal` The sort order of the sub-document among its siblings.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sub_document_sort_order: MaybeUndefined<f64>,
-    /// The ID of the last template applied to the document.
+    /// UUID of the template to record as last applied. Does not apply the template’s content. Pass null to clear the recorded template, or omit to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
-    /// The owner of the document. Set to null to clear.
+    /// The UUID of an active, non-app user who can access the document. Assigning an owner also subscribes them. Pass null to clear ownership where the document’s access settings allow it; personal documents keep their owner.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The time at which the document was hidden. Set to null to unhide.
+    /// The time to record for hiding the document from its default resource view. Pass null to show it again, or omit the field to keep its current visibility. This does not trash the document.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub hidden_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The order of the item in the resources list.
+    /// Position among resources in the containing resource’s list. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// Whether the document has been trashed. Set to true to trash, or null to restore from trash.
+    /// The trash marker for an already archived document. Set true to mark it as trashed, or null to remove that marker while keeping it archived. Use documentDelete to trash an active document and documentUnarchive to restore it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub trashed: MaybeUndefined<bool>,
-    /// `INTERNAL` The identifiers of the users subscribing to this document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub subscriber_ids: MaybeUndefined<Vec<String>>,
-    /// `Internal` Moves the document and its sub-documents into this user's personal space. Must be the acting user.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub personal_user_id: MaybeUndefined<String>,
 }
 /// Document update date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -2234,120 +1909,121 @@ pub struct DueDateSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for creating a new email intake address.
+/// Configuration for a team, template, or Asks intake address. Supply exactly one destination: teamId or templateId. Without type, Linear selects team or template from that destination. Choose asks explicitly to configure request replies and automatic messages; replies are disabled by default. asksWeb addresses are managed by the Asks web feature and cannot be created here.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailIntakeAddressCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The type of the email address. If not provided, the backend will default to team or template.
+    /// Address type: team, template, or asks. Defaults to team or template based on the destination. asksWeb cannot be created here.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<EmailIntakeAddressType>,
-    /// The email address used to forward emails to the intake address.
+    /// The customer-facing forwarding address for Asks. Must be unique among active addresses in the workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub forwarding_email_address: MaybeUndefined<String>,
-    /// The name to be used for outgoing emails.
+    /// The sender name for outgoing Asks emails.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sender_name: MaybeUndefined<String>,
-    /// The identifier or key of the team this email address will intake issues for.
+    /// The UUID of the destination team. Use exactly one of teamId and templateId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The identifier of the template this email address will intake issues for.
+    /// The UUID of the destination issue template. Use exactly one of templateId and teamId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub template_id: MaybeUndefined<String>,
-    /// Whether email replies are enabled.
+    /// Whether replies to Asks requests can be sent by email. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub replies_enabled: MaybeUndefined<bool>,
-    /// Whether the commenter's name is included in the email replies.
+    /// Whether the commenter's name is included in email replies. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub use_user_names_in_replies: MaybeUndefined<bool>,
-    /// Whether the issue created auto-reply is enabled.
+    /// Whether to email an acknowledgment when a request creates an issue. Defaults to true for new Asks addresses.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_created_auto_reply_enabled: MaybeUndefined<bool>,
-    /// The auto-reply message for issue created.
+    /// Custom acknowledgment message for new requests. Omit to use the default message on create; pass null to restore it on update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_created_auto_reply: MaybeUndefined<String>,
-    /// Whether the issue completed auto-reply is enabled.
+    /// Whether to email the requester when their issue is completed. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_completed_auto_reply_enabled: MaybeUndefined<bool>,
-    /// The auto-reply message for issue completed.
+    /// Custom message sent when the issue is completed. Omit to use the default message.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_completed_auto_reply: MaybeUndefined<String>,
-    /// Whether the issue canceled auto-reply is enabled.
+    /// Whether to email the requester when their issue is canceled. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_canceled_auto_reply_enabled: MaybeUndefined<bool>,
-    /// The auto-reply message for issue canceled.
+    /// Custom message sent when the issue is canceled. Omit to use the default message.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_canceled_auto_reply: MaybeUndefined<String>,
-    /// Whether customer requests are enabled.
+    /// Whether incoming issues become customer requests linked to the sender as a contact. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_requests_enabled: MaybeUndefined<bool>,
-    /// Whether to reopen completed or canceled issues when a substantive email reply is received.
+    /// Whether to reopen completed or canceled issues when a substantive email reply is received. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reopen_on_reply: MaybeUndefined<bool>,
 }
-/// Input for updating an existing email intake address.
+/// Changes to an existing email intake address. Omitted fields keep their current values. Team and template addresses keep their original destination; only Asks addresses can switch teams or templates. When switching an Asks destination, clear the old destination with null and provide the new one so exactly one remains. Sender and forwarding settings require integration management permission.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailIntakeAddressUpdateInput {
-    /// Whether the email address is currently enabled. If set to false, the email address will be disabled and no longer accept incoming emails.
+    /// Whether a team or template intake address accepts incoming email. This setting cannot be updated for Asks addresses.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub enabled: MaybeUndefined<bool>,
-    /// The email address used to forward emails to the intake address.
+    /// The customer-facing forwarding address for Asks. Must be unique among active addresses in the workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub forwarding_email_address: MaybeUndefined<String>,
-    /// The name to be used for outgoing emails.
+    /// The sender name for outgoing Asks emails.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sender_name: MaybeUndefined<String>,
-    /// The identifier or key of the team this email address will intake issues for.
+    /// The UUID of the destination team. Use exactly one of teamId and templateId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The identifier of the template this email address will intake issues for.
+    /// The UUID of the destination issue template. Use exactly one of templateId and teamId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub template_id: MaybeUndefined<String>,
-    /// Whether email replies are enabled.
+    /// Whether replies to Asks requests can be sent by email.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub replies_enabled: MaybeUndefined<bool>,
     /// Whether the commenter's name is included in the email replies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub use_user_names_in_replies: MaybeUndefined<bool>,
-    /// Whether the issue created auto-reply is enabled.
+    /// Whether to email an acknowledgment when a request creates an issue. Defaults to true for new Asks addresses.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_created_auto_reply_enabled: MaybeUndefined<bool>,
-    /// The auto-reply message for issue created.
+    /// Custom acknowledgment message for new requests. Omit to use the default message on create; pass null to restore it on update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_created_auto_reply: MaybeUndefined<String>,
-    /// Whether the issue completed auto-reply is enabled.
+    /// Whether to email the requester when their issue is completed. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_completed_auto_reply_enabled: MaybeUndefined<bool>,
-    /// Custom auto-reply message for issue completed.
+    /// Custom message sent when the issue is completed. Pass null to restore the default message.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_completed_auto_reply: MaybeUndefined<String>,
-    /// Whether the issue canceled auto-reply is enabled.
+    /// Whether to email the requester when their issue is canceled. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_canceled_auto_reply_enabled: MaybeUndefined<bool>,
-    /// Custom auto-reply message for issue canceled.
+    /// Custom message sent when the issue is canceled. Pass null to restore the default message.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_canceled_auto_reply: MaybeUndefined<String>,
-    /// Whether customer requests are enabled.
+    /// Whether incoming issues become customer requests linked to the sender as a contact. Defaults to false on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_requests_enabled: MaybeUndefined<bool>,
     /// Whether to reopen completed or canceled issues when a substantive email reply is received.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reopen_on_reply: MaybeUndefined<bool>,
 }
-/// Input for unsubscribing a user from a specific email notification type.
+/// An email category and the user ID and unsubscribe token from a Linear email. The token must match that user ID. This changes email preferences for the selected category; it does not remove workspace membership or change other notification channels.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailUnsubscribeInput {
-    /// Email type to unsubscribe from.
+    /// Email category: invite-accepted, privacy-legal-updates, changelog, marketing, product-updates, or unread-notification-reminder.
     pub r#type: String,
-    /// The user's email validation token.
+    /// Unsubscribe token from a Linear email, paired with userId.
     pub token: String,
     /// The identifier of the user.
     pub user_id: String,
 }
+/// Starts email sign-in for an account. Generate a clientAuthCode UUID and keep it in the client until sign-in finishes; you must send the same value when redeeming the emailed token. The response does not contain the token.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailUserAccountAuthChallengeInput {
@@ -2356,32 +2032,35 @@ pub struct EmailUserAccountAuthChallengeInput {
     /// Whether the login was requested from the desktop app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_desktop: MaybeUndefined<bool>,
-    /// Auth code for the client initiating the sequence.
+    /// Client-generated UUID that binds the login to this browser. Required by the resolver; send the same value when redeeming the email token.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub client_auth_code: MaybeUndefined<String>,
+    /// Currently unused by this sign-in operation.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub signup_code: MaybeUndefined<String>,
     /// The workspace invite link to associate with this authentication.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub invite_link: MaybeUndefined<String>,
-    /// Whether to only return the login code. This is used by mobile apps to skip showing the login link.
+    /// Whether the login email should contain only a verification code and omit the sign-in link. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub login_code_only: MaybeUndefined<bool>,
-    /// Response from the login challenge.
+    /// Token returned by the login challenge. Required when challenge verification is enabled.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub challenge_response: MaybeUndefined<String>,
     /// PostHog session ID for attribution tracking.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub session_id: MaybeUndefined<String>,
 }
-/// Input for creating a new custom emoji.
+/// The name and uploaded image for a custom workspace emoji. Upload the image to Linear first, then supply the resulting asset URL.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmojiCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The name of the custom emoji.
+    /// A unique name within the workspace, using lowercase letters, digits, hyphens, and underscores. Use the name without surrounding colons; it must contain 1–256 characters.
     pub name: String,
-    /// The URL for the emoji.
+    /// The image URL returned by a Linear file upload. It must point to Linear’s upload storage; arbitrary external image URLs are not accepted.
     pub url: String,
 }
 /// Emoji creation date sorting options.
@@ -2395,26 +2074,26 @@ pub struct EmojiCreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Custom emoji filtering options.
+/// Conditions used to select custom emoji. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmojiFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the emoji name.
+    /// Conditions on a custom emoji’s name, without surrounding colons. Standard Unicode emoji are not stored as Emoji records.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the emoji.
+    /// Conditions that the custom emoji must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<EmojiFilter>>,
-    /// Compound filters, one of which needs to be matched by the emoji.
+    /// Alternative conditions; the custom emoji must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<EmojiFilter>>,
 }
@@ -2426,7 +2105,7 @@ pub struct EmojiSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<EmojiCreatedAtSort>,
 }
-/// Input for creating a new external link on an entity. A URL, label, and exactly one parent entity (initiative, project, team, release, or cycle) are required.
+/// A resource link to add to an initiative, project, or release. Provide url, label, and exactly one parent field. Initiative and project references accept UUIDs or their identifiers; releaseId accepts a UUID. Omit sortOrder to place the link after the parent’s existing resources.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityExternalLinkCreateInput {
@@ -2443,23 +2122,14 @@ pub struct EntityExternalLinkCreateInput {
     /// The project associated with the link. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// `Internal` The team associated with the link.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// The release associated with the link.
+    /// UUID of the parent release. Requires access to release management.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_id: MaybeUndefined<String>,
-    /// `Internal` The cycle associated with the link.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub cycle_id: MaybeUndefined<String>,
-    /// `Internal` The resource folder containing the link.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resource_folder_id: MaybeUndefined<String>,
-    /// The order of the item in the entities resources list.
+    /// Position among the parent's links and documents. Lower values appear first; omitted on create, the link is placed last.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Input for updating an existing external link. All fields are optional; only provided fields will be updated.
+/// Changes to an existing resource link’s destination, display label, or position. Omitted fields remain unchanged. This input cannot move a link to another parent; create a new link under that parent and remove the old one if needed.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityExternalLinkUpdateInput {
@@ -2469,65 +2139,62 @@ pub struct EntityExternalLinkUpdateInput {
     /// The label for the link.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label: MaybeUndefined<String>,
-    /// The order of the item in the entities resources list.
+    /// Position among the parent's links and documents. Lower values appear first; omitted on create, the link is placed last.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// `Internal` The resource folder containing the link.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub resource_folder_id: MaybeUndefined<String>,
 }
-/// Comparator for project and initiative identifiers. Accepts UUIDs and human-readable identifiers (e.g. "PROJ-123").
+/// Compares project or initiative IDs. Accepts UUIDs, generated identifiers, and custom identifiers in the current workspace. Unresolved identifiers match nothing in `eq` or `in` and are ignored in `neq` or `nin`. All supplied conditions must match.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityIdentifierIDComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
 }
-/// Comparator for estimates.
+/// Compares numeric issue estimates, using the values from each issue's team estimate scale. Use `{ null: true }` to find issues without an estimate. Without `and` or `or`, all supplied comparisons must match. When supplied, `and` or `or` replaces the direct comparisons; `and` takes precedence if both are present.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EstimateComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<f64>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<f64>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<f64>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<f64>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<f64>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<f64>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<f64>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<f64>,
-    /// Compound filters, all of which need to be matched by the estimate.
+    /// Requires at least one listed estimate filter to match. For example, combine `{ null: true }` and `{ gte: 5 }` to find unestimated issues or estimates of at least 5. Replaces direct comparisons and is ignored when `and` is supplied. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableNumberComparator>>,
-    /// Compound filters, one of which need to be matched by the estimate.
+    /// Requires every listed estimate filter to match. Replaces direct comparisons and `or`; put the comparisons you need inside this list. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableNumberComparator>>,
 }
@@ -2546,16 +2213,16 @@ pub struct EstimateSort {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EventTrackingInput {
-    /// The event name to track.
+    /// Event name: $pageview or $pageleave. Other names return success=false.
     pub event: String,
-    /// Optional properties for the event.
+    /// JSON properties to attach to the event. A nonempty sessionId supplied alongside properties overrides any $session_id in this object.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub properties: MaybeUndefined<serde_json::Value>,
     /// Client session ID for PostHog session correlation.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub session_id: MaybeUndefined<String>,
 }
-/// Input for creating a favorite. Exactly one target entity must be specified (e.g., issueId, projectId, customViewId, folderName, etc.).
+/// A bookmark or folder to add to your sidebar. Supply exactly one target entity, folderName, or liveFolderPreset. parentId can place a bookmark in your own custom folder; folders cannot be nested.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FavoriteCreateInput {
@@ -2568,7 +2235,7 @@ pub struct FavoriteCreateInput {
     /// The predefined live folder to create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub live_folder_preset: MaybeUndefined<String>,
-    /// The parent folder of the favorite.
+    /// UUID of the destination favorite folder. Omit for the top level; folders cannot have a parent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
     /// The identifier of the issue to favorite. Can be a UUID or issue identifier (e.g., 'LIN-123').
@@ -2598,9 +2265,6 @@ pub struct FavoriteCreateInput {
     /// The identifier of the document to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document_id: MaybeUndefined<String>,
-    /// `INTERNAL` The identifier of the initiative to favorite.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_id: MaybeUndefined<String>,
     /// The tab of the initiative to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_tab: MaybeUndefined<InitiativeTab>,
@@ -2610,13 +2274,10 @@ pub struct FavoriteCreateInput {
     /// The identifier of the project label to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_label_id: MaybeUndefined<String>,
-    /// `INTERNAL` The identifier of the initiative label to favorite.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_label_id: MaybeUndefined<String>,
     /// The identifier of the user to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user_id: MaybeUndefined<String>,
-    /// The position of the item in the favorites list.
+    /// Position in the favorites list, in ascending order. Omit or pass 0 to append; collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
     /// The identifier of the customer to favorite.
@@ -2628,9 +2289,6 @@ pub struct FavoriteCreateInput {
     /// The identifier of the pull request to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub pull_request_id: MaybeUndefined<String>,
-    /// `INTERNAL` The identifier of the Agent conversation to favorite.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ai_conversation_id: MaybeUndefined<String>,
     /// The identifier of the release to favorite.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_id: MaybeUndefined<String>,
@@ -2650,17 +2308,17 @@ pub struct FavoriteCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub workflow_definition_id: MaybeUndefined<String>,
 }
-/// Input for updating a favorite's position, parent folder, or folder name.
+/// Changes to a favorite you own. Omitted fields stay unchanged. Use parentId to move a bookmark into a custom folder or back to the top level; folders cannot be nested.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FavoriteUpdateInput {
-    /// The position of the item in the favorites list.
+    /// Position in the favorites list, in ascending order. Pass 0 to append; collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// The identifier (in UUID v4 format) of the folder to move the favorite under.
+    /// The destination folder UUID. Null moves the favorite to the sidebar’s top level.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// The name of the favorite folder.
+    /// New folder name. Only applies to custom folders; predefined live folders cannot be renamed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub folder_name: MaybeUndefined<String>,
 }
@@ -2668,13 +2326,13 @@ pub struct FavoriteUpdateInput {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedItemFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the feed item author must satisfy.
@@ -2702,38 +2360,7 @@ pub struct FeedItemFilter {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<FeedItemFilter>>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FrontSettingsInput {
-    /// Whether an internal message should be added when a Linear issue changes status (for status types except completed or canceled).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_status_change: MaybeUndefined<bool>,
-    /// Whether an internal message should be added when someone comments on an issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_comment: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_cancellation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when a comment is posted on its linked Linear issue
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_comment: MaybeUndefined<bool>,
-    /// `ALPHA` Whether customer and customer requests should not be automatically created when conversations are linked to a Linear issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub disable_customer_requests_auto_creation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_cancellation: MaybeUndefined<bool>,
-    /// Whether Linear Agent should be enabled for this integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_ai_intake: MaybeUndefined<bool>,
-}
-/// Input for creating a new Git automation rule.
+/// The team, Git event, and issue status for a new automation rule. Set targetBranchId to restrict the rule to a branch pattern. A branch-specific rule can use a null stateId to suppress the default automation; a default rule requires a status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitAutomationStateCreateInput {
@@ -2742,30 +2369,36 @@ pub struct GitAutomationStateCreateInput {
     pub id: MaybeUndefined<String>,
     /// The team associated with the automation state.
     pub team_id: String,
-    /// The associated workflow state. If null, will override default behaviour and take no action.
+    /// The UUID of the issue status to apply. Null is allowed only when targetBranchId selects a branch-specific rule, and means no action for that branch and event. Default rules must specify a status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state_id: MaybeUndefined<String>,
-    /// The associated target branch. If null, all branches are targeted.
+    /// `DEPRECATED` Ignored. Use targetBranchId to select a branch pattern.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub branch_pattern: MaybeUndefined<String>,
+    /// The UUID of a target branch pattern. Omit or use null to create the team’s default rule for this event. A matching branch-specific rule overrides the default.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_branch_id: MaybeUndefined<String>,
     /// The event that triggers the automation.
     pub event: GitAutomationStates,
 }
-/// Input for updating an existing Git automation rule.
+/// Changes to an existing Git automation rule. Omitted fields remain unchanged. A null targetBranchId makes the rule a default, which requires a non-null stateId.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitAutomationStateUpdateInput {
-    /// The associated workflow state.
+    /// The UUID of the issue status to apply. For a branch-specific rule, null disables the action and overrides the team’s default. A default rule cannot have a null status; omit to keep the current status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state_id: MaybeUndefined<String>,
-    /// The associated target branch. If null, all branches are targeted.
+    /// `DEPRECATED` Ignored. Use targetBranchId to select a branch pattern.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub branch_pattern: MaybeUndefined<String>,
+    /// The UUID of a target branch pattern. Null makes this the team’s default rule for the event; matching branch-specific rules override it. Omit to keep the current target.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_branch_id: MaybeUndefined<String>,
     /// The event that triggers the automation.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub event: MaybeUndefined<GitAutomationStates>,
 }
-/// Input for creating a new Git target branch definition.
+/// A target-branch pattern that groups a team’s Git automation rules. By default the pattern is an exact branch name; set isRegex to true for an RE2 regular expression.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitAutomationTargetBranchCreateInput {
@@ -2774,259 +2407,79 @@ pub struct GitAutomationTargetBranchCreateInput {
     pub id: MaybeUndefined<String>,
     /// The team associated with the Git target branch automation.
     pub team_id: String,
-    /// The target branch pattern.
+    /// An exact target-branch name, or an RE2 regular expression when isRegex is true. Regular expressions do not need to match the whole name.
     pub branch_pattern: String,
     /// Whether the branch pattern is a regular expression.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_regex: MaybeUndefined<bool>,
 }
-/// Input for updating an existing Git target branch definition.
+/// Changes to a target-branch pattern. Omitted fields keep their values. Changing the pattern or matching mode changes which pull requests use all automation rules linked to this definition.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitAutomationTargetBranchUpdateInput {
-    /// The target branch pattern.
+    /// An exact target-branch name, or an RE2 regular expression when isRegex is true. Regular expressions do not need to match the whole name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub branch_pattern: MaybeUndefined<String>,
     /// Whether the branch pattern is a regular expression.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_regex: MaybeUndefined<bool>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubImportSettingsInput {
-    /// The GitHub organization's name.
-    pub org_login: String,
-    /// The avatar URL for the GitHub organization.
-    pub org_avatar_url: String,
-    /// The names of the repositories connected for the GitHub integration.
-    pub repositories: Vec<GitHubRepoInput>,
-    /// A map storing all available issue labels per repository
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub labels: MaybeUndefined<serde_json::Value>,
-    /// The type of Github org
-    pub org_type: GithubOrgType,
-    /// The date the repository list was last loaded from GitHub. Unset while the first load is still in progress.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub repositories_synced_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The number of repositories the installation can access, as reported by GitHub. Known before the repository list itself has loaded.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub repository_count: MaybeUndefined<f64>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubPersonalSettingsInput {
-    /// The GitHub user's name.
-    pub login: String,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubRepoInput {
-    /// The GitHub repo id.
-    pub id: f64,
-    /// The full name of the repository.
-    pub full_name: String,
-    /// Whether the repository is archived.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub archived: MaybeUndefined<bool>,
-    /// The external identifier (GitHub node ID) for the repository.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub external_id: MaybeUndefined<String>,
-    /// The repository's GitHub description, if any.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubRepoMappingInput {
-    /// The unique identifier for this mapping.
-    pub id: String,
-    /// The Linear team id to map to the GitHub repository.
-    pub linear_team_id: String,
-    /// The GitHub repo id.
-    pub git_hub_repo_id: f64,
-    /// Label names used as a creation filter. When set, only issues matching one of these labels will create a synced issue for this mapping.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub git_hub_labels: MaybeUndefined<Vec<String>>,
-    /// Whether Linear-created issues matching this mapping will create GitHub issues.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub bidirectional: MaybeUndefined<bool>,
-    /// Whether this mapping is the default destination for Linear-created issues that do not match a label-filtered mapping.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub default: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitHubSettingsInput {
-    /// The avatar URL for the GitHub organization.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub org_avatar_url: MaybeUndefined<String>,
-    /// The GitHub organization's name.
-    pub org_login: String,
-    /// The stable external identifier (GitHub node ID) for the organization.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub external_org_id: MaybeUndefined<String>,
-    /// The names of the repositories connected for the GitHub integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub repositories: MaybeUndefined<Vec<GitHubRepoInput>>,
-    /// Mapping of team to repository for syncing.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub repositories_mapping: MaybeUndefined<Vec<GitHubRepoMappingInput>>,
-    /// The type of Github org
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub org_type: MaybeUndefined<GithubOrgType>,
-    /// Whether the integration has code access
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub code_access: MaybeUndefined<bool>,
-    /// The enterprise URL if this is a GitHub Enterprise Cloud integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enterprise_url: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitLabSettingsInput {
-    /// Verified scopes of the GitLab access token.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub scopes: MaybeUndefined<Vec<String>>,
-    /// Whether the token supports self-rotation.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub can_self_rotate: MaybeUndefined<bool>,
-    /// Whether Linear automatically rotates the token.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub rotation_enabled: MaybeUndefined<bool>,
-    /// The ISO timestamp of the next automatic token rotation.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub next_rotation_at: MaybeUndefined<String>,
-    /// The ISO timestamp of the last successful token rotation.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub last_rotated_at: MaybeUndefined<String>,
-    /// The reason token rotation needs attention.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub rotation_failure_reason: MaybeUndefined<String>,
-    /// The self-hosted URL of the GitLab instance.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub url: MaybeUndefined<String>,
-    /// Whether the token is limited to a read-only scope.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub readonly: MaybeUndefined<bool>,
-    /// The ISO timestamp the GitLab access token expires.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub expires_at: MaybeUndefined<String>,
-    /// Path or numeric ID of a project to use for the setup health check. Set this when the GitLab tenant blocks non-project API endpoints; the setup check then validates against this single project instead of the personal access token endpoint.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub validation_project_path: MaybeUndefined<String>,
-    /// When true, MR webhook PR sync uses the project-scoped REST aggregator instead of GraphQL. Set automatically for teleport-routed installations whose proxies require all upstream paths to live under `/api/v4/projects/...`.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub use_rest_pr_sync: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GongRecordingImportConfigInput {
-    /// The team ID to create issues in for imported recordings. Set to null to disable import.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GongSettingsInput {
-    /// Configuration for recording import.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub import_config: MaybeUndefined<GongRecordingImportConfigInput>,
-    /// Whether to tag matching internal Gong call participants as user mentions in created issues.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub tag_participants_in_issues: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GoogleSheetsExportSettings {
-    /// Whether the export is enabled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enabled: MaybeUndefined<bool>,
-    /// The ID of the exported Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub spreadsheet_id: MaybeUndefined<String>,
-    /// The URL of the exported Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub spreadsheet_url: MaybeUndefined<String>,
-    /// The ID of the target sheet (tab) within the Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sheet_id: MaybeUndefined<f64>,
-    /// The date of the most recent export.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub updated_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GoogleSheetsSettingsInput {
-    /// `Deprecated` The ID of the exported Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub spreadsheet_id: MaybeUndefined<String>,
-    /// `Deprecated` The URL of the exported Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub spreadsheet_url: MaybeUndefined<String>,
-    /// `Deprecated` The ID of the target sheet (tab) within the Google Sheet.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sheet_id: MaybeUndefined<f64>,
-    /// `Deprecated` The date of the most recent export.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub updated_issues_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The export settings for issues.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub issue: MaybeUndefined<GoogleSheetsExportSettings>,
-    /// The export settings for projects.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project: MaybeUndefined<GoogleSheetsExportSettings>,
-    /// The export settings for initiatives.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative: MaybeUndefined<GoogleSheetsExportSettings>,
-}
+/// Input for exchanging a Google OAuth authorization code for a Linear session.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoogleUserAccountAuthInput {
     /// Code returned from Google's OAuth flow.
     pub code: String,
-    /// The URI to redirect the user to.
+    /// Redirect URI used in the Google OAuth authorization request.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub redirect_uri: MaybeUndefined<String>,
-    /// The timezone of the user's browser.
+    /// Browser timezone. Required by the input type but currently unused by this operation.
     pub timezone: String,
+    /// Currently unused. Supplying team IDs does not join those teams during this sign-in operation.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub team_ids_to_join: MaybeUndefined<Vec<String>>,
+    /// Currently unused by this sign-in operation.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub signup_code: MaybeUndefined<String>,
     /// An optional invite link for a workspace used to populate available workspaces.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub invite_link: MaybeUndefined<String>,
-    /// An optional parameter to disable new user signup and force login. Default: false.
+    /// Whether to reject sign-in when it would create a new account. Defaults to false, which allows account creation through this Google sign-in flow.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub disallow_signup: MaybeUndefined<bool>,
     /// PostHog session ID for attribution tracking.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub session_id: MaybeUndefined<String>,
 }
-/// Comparator for identifiers.
+/// Compares resource UUIDs by equality or list membership. All supplied conditions must match. Use `in` to fetch a known set of resources; an empty `in` list matches nothing. Human-readable identifiers are accepted only by the entity-specific ID comparators.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IDComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
 }
-/// State changes to apply to an inbox notification stack.
+/// Changes to a group of related inbox notifications. Supply read or snoozedUntilAt; omitted fields remain unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxNotificationUpdateInput {
-    /// Whether to mark the notification stack as read.
+    /// True marks the group read; false marks it unread. Null or omission leaves the read state unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub read: MaybeUndefined<bool>,
     /// The time until which to snooze the notification stack. Null unsnoozes it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
 }
+/// Maps existing team states and labels when changing which resources the team inherits.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InheritanceEntityMapping {
@@ -3038,21 +2491,18 @@ pub struct InheritanceEntityMapping {
     /// Mapping of the ProjectLabel ID to the new ProjectLabel name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_labels: MaybeUndefined<serde_json::Value>,
-    /// `Internal` Mapping of the ProjectStatus ID to the workspace or parent team ProjectStatus ID its projects move to.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project_statuses: MaybeUndefined<serde_json::Value>,
 }
-/// Initiative collection filtering options.
+/// Filters a related collection of initiatives. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeCollectionFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the initiative name.
@@ -3061,9 +2511,12 @@ pub struct InitiativeCollectionFilter {
     /// Comparator for the initiative slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the initiative's custom identifier.
+    /// Comparator for the initiative's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
+    /// Comparator for the initiative's name and summary.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Filters that the initiative creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
@@ -3073,10 +2526,10 @@ pub struct InitiativeCollectionFilter {
     /// Comparator for the initiative priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Filters that the initiative teams must satisfy.
+    /// Conditions on teams contributing through projects or lead-team associations. When team initiatives are available, this also accounts for sub-initiative projects and lead teams in the initiative hierarchy. Use leadTeam to filter only the initiative’s own lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub teams: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// Filters that the initiative lead team must satisfy.
+    /// Conditions on the initiative’s own lead team. Use { null: true } to find workspace-level initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_team: MaybeUndefined<Box<NullableTeamFilter>>,
     /// Filters that the initiative owner must satisfy.
@@ -3091,34 +2544,34 @@ pub struct InitiativeCollectionFilter {
     /// Comparator for the initiative completed at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// `Internal` Comparator for the initiative canceled at date.
+    /// Comparator for the initiative canceled at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
     /// Comparator for the initiative health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The initiative’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative activity type.
+    /// Not supported. Initiative activity is not stored on the server, so filters that set this field are rejected.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity_type: MaybeUndefined<StringComparator>,
-    /// Filters that the initiative must be an ancestor of.
+    /// Conditions on this initiative’s parent initiatives and their ancestors. For example, some: { id: { eq: ID } } finds descendants of the specified initiative.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<InitiativeCollectionFilter>>,
     /// Filters that the initiative labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<InitiativeLabelCollectionFilter>>,
-    /// Filters that the initiative projects must satisfy.
+    /// Conditions on distinct accessible projects linked to this initiative or its sub-initiatives. A project linked through several sub-initiatives is counted once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub projects: MaybeUndefined<Box<ProjectCollectionFilter>>,
-    /// Filters that the initiative updates must satisfy.
+    /// Conditions on updates published directly to this initiative. Updates on sub-initiatives are not included in this collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_updates: MaybeUndefined<InitiativeUpdatesCollectionFilter>,
-    /// Compound filters, all of which need to be matched by the initiative.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the initiative.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeCollectionFilter>>,
     /// Filters that needs to be matched by some initiatives.
@@ -3127,11 +2580,11 @@ pub struct InitiativeCollectionFilter {
     /// Filters that needs to be matched by all initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<InitiativeFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// The properties of the initiative to create.
+/// The details for a new initiative. Provide a name and optionally an owner, lead team, overview, and target date. Projects are linked separately with initiativeToProjectCreate.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeCreateInput {
@@ -3140,13 +2593,13 @@ pub struct InitiativeCreateInput {
     pub id: MaybeUndefined<String>,
     /// The name of the initiative.
     pub name: String,
-    /// The description of the initiative.
+    /// A short plain-text summary. Use content for the full Markdown overview.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The owner of the initiative.
+    /// The UUID of a workspace member who will own the initiative. Guests cannot be owners. If the lead team is private or restricted, the owner must be able to access that team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The team that leads the initiative.
+    /// The UUID of the team that leads the initiative and determines its visibility. Omit or use null for a workspace initiative. Any assigned owner must be able to access a private or restricted lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_team_id: MaybeUndefined<String>,
     /// The sort order of the initiative within the workspace.
@@ -3161,22 +2614,22 @@ pub struct InitiativeCreateInput {
     /// The initiative's icon.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The initiative's status.
+    /// The initiative’s lifecycle status. Defaults to Active when omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status: MaybeUndefined<InitiativeStatus>,
-    /// The estimated completion date of the initiative.
+    /// Planned completion date in YYYY-MM-DD format. Use targetDateResolution for a month, quarter, half-year, or year.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The resolution of the initiative's estimated completion date.
+    /// The precision of targetDate: month, quarter, halfYear, or year. Omit for an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date_resolution: MaybeUndefined<DateResolutionType>,
-    /// The initiative's content in markdown format.
+    /// The full initiative overview in Markdown, separate from the short description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
     /// The priority of the initiative. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The identifiers of the initiative labels associated with this initiative.
+    /// UUIDs of initiative labels to apply. Label groups themselves cannot be applied.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
 }
@@ -3191,17 +2644,17 @@ pub struct InitiativeCreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Initiative filtering options.
+/// Filters initiatives by status, health, dates, ownership, labels, hierarchy, or related projects. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the initiative name.
@@ -3210,9 +2663,12 @@ pub struct InitiativeFilter {
     /// Comparator for the initiative slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the initiative's custom identifier.
+    /// Comparator for the initiative's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
+    /// Comparator for the initiative's name and summary.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Filters that the initiative creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
@@ -3222,10 +2678,10 @@ pub struct InitiativeFilter {
     /// Comparator for the initiative priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Filters that the initiative teams must satisfy.
+    /// Conditions on teams contributing through projects or lead-team associations. When team initiatives are available, this also accounts for sub-initiative projects and lead teams in the initiative hierarchy. Use leadTeam to filter only the initiative’s own lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub teams: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// Filters that the initiative lead team must satisfy.
+    /// Conditions on the initiative’s own lead team. Use { null: true } to find workspace-level initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_team: MaybeUndefined<Box<NullableTeamFilter>>,
     /// Filters that the initiative owner must satisfy.
@@ -3240,34 +2696,34 @@ pub struct InitiativeFilter {
     /// Comparator for the initiative completed at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// `Internal` Comparator for the initiative canceled at date.
+    /// Comparator for the initiative canceled at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
     /// Comparator for the initiative health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The initiative’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative activity type.
+    /// Not supported. Initiative activity is not stored on the server, so filters that set this field are rejected.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity_type: MaybeUndefined<StringComparator>,
-    /// Filters that the initiative must be an ancestor of.
+    /// Conditions on this initiative’s parent initiatives and their ancestors. For example, some: { id: { eq: ID } } finds descendants of the specified initiative.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<InitiativeCollectionFilter>>,
     /// Filters that the initiative labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<InitiativeLabelCollectionFilter>>,
-    /// Filters that the initiative projects must satisfy.
+    /// Conditions on distinct accessible projects linked to this initiative or its sub-initiatives. A project linked through several sub-initiatives is counted once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub projects: MaybeUndefined<Box<ProjectCollectionFilter>>,
-    /// Filters that the initiative updates must satisfy.
+    /// Conditions on updates published directly to this initiative. Updates on sub-initiatives are not included in this collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_updates: MaybeUndefined<InitiativeUpdatesCollectionFilter>,
-    /// Compound filters, all of which need to be matched by the initiative.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeFilter>>,
-    /// Compound filters, one of which need to be matched by the initiative.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeFilter>>,
 }
@@ -3293,17 +2749,17 @@ pub struct InitiativeHealthUpdatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Initiative label filtering options.
+/// Filters a related collection of initiative labels. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeLabelCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the name.
@@ -3315,16 +2771,16 @@ pub struct InitiativeLabelCollectionFilter {
     /// Filters that the initiative labels creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the initiative label's parent label must satisfy.
+    /// Conditions on the label group containing this label. This filters group properties, such as its name, rather than the child label itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<InitiativeLabelFilter>>,
-    /// Filter based on the existence of the relation.
+    /// True matches an unset label list, which is different from an empty list. Use length: { eq: 0 } to find initiatives without labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeLabelCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeLabelCollectionFilter>>,
     /// Filters that needs to be matched by some initiative labels.
@@ -3333,7 +2789,7 @@ pub struct InitiativeLabelCollectionFilter {
     /// Filters that needs to be matched by all initiative labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<InitiativeLabelFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
@@ -3344,38 +2800,38 @@ pub struct InitiativeLabelCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji are not allowed.
     pub name: String,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Defaults to the parent group's color, or #4EA7FC without a parent. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Groups cannot be nested inside other groups.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Create a group to hold child labels. Groups cannot be applied directly. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to create a retired label; omit or pass null for an active label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The selection mode of the label group. Only singleSelect is currently supported. Null uses single-select behavior.
+    /// How children of a label group can be applied to an initiative. singleSelect allows one child; multiSelect allows several. Omission or null uses single-select behavior. This setting applies to groups.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_type: MaybeUndefined<LabelGroupType>,
 }
-/// Initiative label filtering options.
+/// Filters initiative labels by name, creator, or parent label group. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeLabelFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the name.
@@ -3387,13 +2843,13 @@ pub struct InitiativeLabelFilter {
     /// Filters that the initiative labels creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the initiative label's parent label must satisfy.
+    /// Conditions on the label group containing this label. This filters group properties, such as its name, rather than the child label itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<InitiativeLabelFilter>>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeLabelFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeLabelFilter>>,
 }
@@ -3401,25 +2857,25 @@ pub struct InitiativeLabelFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeLabelUpdateInput {
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji and null are not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters. Null clears the description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Null removes the label from its group. Groups cannot be nested.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Changing a group's color also updates children that shared its previous color. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Whether the label is a group of child labels. Changing this requires an unused label with no parent or children. Groups cannot be applied directly.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to null to restore the label. Changing a group's retirement state also changes its children; a child cannot be restored while its group is retired.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The selection mode of the label group. Omit to keep the current value. Only singleSelect is currently supported. Null uses single-select behavior.
+    /// How children of this label group can be applied to an initiative: singleSelect allows one child and multiSelect allows several. Omit to keep the current setting; null uses single-select behavior.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_type: MaybeUndefined<LabelGroupType>,
 }
@@ -3470,7 +2926,7 @@ pub struct InitiativePrioritySort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub no_priority_first: MaybeUndefined<bool>,
 }
-/// Input for creating a parent-child relationship between two initiatives. The initiativeId is the parent and the relatedInitiativeId is the child.
+/// The parent and child initiatives for a new hierarchy link. Both must be accessible and unarchived, and the workspace must support sub-initiatives. The link cannot create a cycle or exceed the hierarchy’s nesting limit.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeRelationCreateInput {
@@ -3485,7 +2941,7 @@ pub struct InitiativeRelationCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// The properties of the initiative relation to update.
+/// Changes to the ordering of an existing parent-child link. Omit sortOrder to leave it unchanged. The parent and child cannot be changed through this input; create a new relation to move an initiative.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeRelationUpdateInput {
@@ -3536,7 +2992,7 @@ pub struct InitiativeTargetDateSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// The properties of the initiativeToProject to create.
+/// The project and initiative to link, with an optional position for the project. Both must be active and editable. The project must not already belong to that initiative or to one of its ancestors or descendants.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeToProjectCreateInput {
@@ -3547,51 +3003,48 @@ pub struct InitiativeToProjectCreateInput {
     pub project_id: String,
     /// The identifier of the initiative.
     pub initiative_id: String,
-    /// The sort order for the project within the initiative.
+    /// Manual position within the initiative. Lower values appear first; omit or use 0 to append.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// The properties of the initiative-to-project association to update.
+/// Changes to a project’s ordering within an initiative. This input does not move the project to another initiative; create or delete associations for that.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeToProjectUpdateInput {
-    /// The sort order for the project within the initiative.
+    /// Manual position within the initiative. Lower values appear first; 0 appends the project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Input for creating a new initiative update.
+/// The initiative, Markdown message, and optional health for a new status report. The current user becomes the author and the initiative’s projects are captured automatically. Provide body when using the public API.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdateCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The content of the update in markdown format.
+    /// Update body in Markdown. Required when creating an update through the public API.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The content of the update as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
-    /// The health of the initiative at the time of the update.
+    /// Initiative health reported by this update. Defaults to onTrack.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<InitiativeUpdateHealthType>,
-    /// The initiative to associate the update with.
+    /// UUID of the initiative to post the update to.
     pub initiative_id: String,
     /// Whether the diff between the current update and the previous one should be hidden.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_diff_hidden: MaybeUndefined<bool>,
 }
-/// Options for filtering initiative updates.
+/// Filters initiative updates by author, initiative, or reactions. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the initiative update creator must satisfy.
@@ -3603,27 +3056,27 @@ pub struct InitiativeUpdateFilter {
     /// Filters that the initiative updates reactions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Compound filters, all of which need to be matched by the InitiativeUpdate.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeUpdateFilter>>,
-    /// Compound filters, one of which need to be matched by the InitiativeUpdate.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeUpdateFilter>>,
 }
-/// The properties of the initiative to update.
+/// Initiative fields to change. Omitted fields remain unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdateInput {
     /// The name of the initiative.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the initiative.
+    /// The short plain-text summary. Use content for the full Markdown overview.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The owner of the initiative.
+    /// The UUID of the new initiative owner. The user must be a workspace member, not a guest, and must be able to access a private or restricted lead team. Use null to remove the owner, or omit to keep the current owner.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner_id: MaybeUndefined<String>,
-    /// The team that leads the initiative. Set to null to clear.
+    /// The UUID of the new lead team, which also determines the initiative’s visibility. The owner must be able to access a private or restricted team. Use null to make this a workspace initiative, or omit to keep its current lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_team_id: MaybeUndefined<String>,
     /// The sort order of the initiative within the workspace.
@@ -3638,28 +3091,28 @@ pub struct InitiativeUpdateInput {
     /// The initiative's icon.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The estimated completion date of the initiative. Set to null to clear.
+    /// Planned completion date in YYYY-MM-DD format. Pass null to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
     /// The initiative's status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status: MaybeUndefined<InitiativeStatus>,
-    /// The resolution of the initiative's estimated completion date.
+    /// The precision of targetDate: month, quarter, halfYear, or year. Null uses an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date_resolution: MaybeUndefined<DateResolutionType>,
-    /// Whether the initiative has been trashed. Set to true to trash, or null to restore.
+    /// The stored trash flag. This field does not archive or restore the initiative. Use initiativeDelete to move it to the trash and initiativeUnarchive to restore it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub trashed: MaybeUndefined<bool>,
-    /// The initiative's content in markdown format.
+    /// Replacement initiative overview in Markdown. Empty strings, null, and omission leave the existing content unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
-    /// The n-weekly frequency at which to prompt for initiative updates. When not set, reminders are inherited from workspace settings.
+    /// The interval between update reminders in weeks. Null inherits the workspace setting; omit to leave unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub update_reminder_frequency_in_weeks: MaybeUndefined<f64>,
-    /// The frequency at which to prompt for initiative updates. When not set, reminders are inherited from workspace settings.
+    /// The interval between update reminders, in the unit given by frequencyResolution. Null inherits the workspace setting; omit to leave unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub update_reminder_frequency: MaybeUndefined<f64>,
-    /// The resolution type for the update reminder frequency (e.g., weekly, biweekly).
+    /// The unit of updateReminderFrequency: daily or weekly.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub frequency_resolution: MaybeUndefined<FrequencyResolutionType>,
     /// The day of the week on which to prompt for initiative updates.
@@ -3671,26 +3124,23 @@ pub struct InitiativeUpdateInput {
     /// The priority of the initiative. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The identifiers of the initiative labels associated with this initiative.
+    /// The replacement list of initiative label UUIDs. Use [] to remove all labels, or omit to leave them unchanged. Use initiativeAddLabel or initiativeRemoveLabel when changing one label at a time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
-    /// `Internal` Sets or clears the custom identifier override for the initiative. Pass null to revert to the workspace default.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub custom_identifier: MaybeUndefined<String>,
 }
-/// Input for updating an existing initiative update.
+/// Changes to an initiative update. Omitted fields remain unchanged. Only the author or a user with workspace entity management permission can edit it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdateUpdateInput {
-    /// The content of the update in markdown format.
+    /// Replacement update body in Markdown. Pass an empty string to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// The content of the update as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
     /// The health of the initiative at the time of the update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<InitiativeUpdateHealthType>,
+    /// Whether the diff between the current update and the previous one should be hidden.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub is_diff_hidden: MaybeUndefined<bool>,
 }
 /// Initiative update date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -3703,23 +3153,23 @@ pub struct InitiativeUpdatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Collection filtering options for filtering initiatives by initiative updates.
+/// Filters a related collection of initiative updates. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdatesCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Compound filters, all of which need to be matched by the initiative update.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeUpdatesCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the update.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeUpdatesCollectionFilter>>,
     /// Filters that needs to be matched by some initiative updates.
@@ -3728,108 +3178,41 @@ pub struct InitiativeUpdatesCollectionFilter {
     /// Filters that needs to be matched by all initiative updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<InitiativeUpdatesFilter>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Options for filtering initiatives by initiative updates.
+/// Filters initiative updates by ID or creation and update timestamps. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitiativeUpdatesFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Compound filters, all of which need to be matched by the initiative updates.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<InitiativeUpdatesFilter>>,
-    /// Compound filters, one of which need to be matched by the initiative updates.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<InitiativeUpdatesFilter>>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IntegrationCustomerDataAttributesRefreshInput {
-    /// The integration service to refresh customer data attributes from.
-    pub service: String,
 }
 /// Input for requesting a currently unavailable integration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationRequestInput {
-    /// Email associated with the request.
+    /// Optional email address. Currently unused.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub email: MaybeUndefined<String>,
     /// Name of the requested integration.
     pub name: String,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IntegrationSettingsInput {
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack: MaybeUndefined<SlackSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_asks: MaybeUndefined<SlackAsksSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_post: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_project_post: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_initiative_post: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_custom_view_notifications: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_org_project_updates_post: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_org_initiative_updates_post: MaybeUndefined<SlackPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub google_sheets: MaybeUndefined<GoogleSheetsSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub git_hub: MaybeUndefined<GitHubSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub git_hub_import: MaybeUndefined<GitHubImportSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub git_hub_personal: MaybeUndefined<GitHubPersonalSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub git_lab: MaybeUndefined<GitLabSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sentry: MaybeUndefined<SentrySettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub zendesk: MaybeUndefined<ZendeskSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub intercom: MaybeUndefined<IntercomSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub front: MaybeUndefined<FrontSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub gong: MaybeUndefined<GongSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub microsoft_teams: MaybeUndefined<MicrosoftTeamsSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub microsoft_teams_project_post: MaybeUndefined<MicrosoftTeamsPostSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub jira: MaybeUndefined<JiraSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub notion: MaybeUndefined<NotionSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub opsgenie: MaybeUndefined<OpsgenieInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub pager_duty: MaybeUndefined<PagerDutyInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub launch_darkly: MaybeUndefined<LaunchDarklySettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub jira_personal: MaybeUndefined<JiraPersonalSettingsInput>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub salesforce: MaybeUndefined<SalesforceSettingsInput>,
-    /// Settings shared by personal and shared MCP server connections.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub mcp_server: MaybeUndefined<McpServerIntegrationSettingsInput>,
-}
-/// Input for creating a new integration template.
+/// Links an existing issue template to an integration. Slack Asks requires foreignEntityId to identify a configured intake destination and only accepts team templates. Intercom, Slack, Zendesk, and Salesforce also accept workspace templates, with up to ten linked templates per integration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationTemplateCreateInput {
@@ -3840,23 +3223,11 @@ pub struct IntegrationTemplateCreateInput {
     pub integration_id: String,
     /// The identifier of the template.
     pub template_id: String,
-    /// The foreign identifier in the other service.
+    /// External resource ID, from 1 to 255 characters. Slack Asks requires a channel already connected to the integration.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub foreign_entity_id: MaybeUndefined<String>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IntegrationUpdateInput {
-    /// The settings to update.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub settings: MaybeUndefined<IntegrationSettingsInput>,
-    /// The ID of the workflow definition that this integration should be assigned to.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub workflow_definition_id: MaybeUndefined<String>,
-    /// The ID of the workflow definition draft that this integration should be assigned to.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub workflow_definition_draft_id: MaybeUndefined<String>,
-}
+/// Creates notification preferences for exactly one destination: teamId, projectId, initiativeId, or customViewId. Supply booleans for the events you want to enable; null is not accepted. contextViewType can further scope team settings. These preferences need a connected integration to deliver messages and do not create a Slack or Microsoft Teams connection.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationsSettingsCreateInput {
@@ -3884,10 +3255,10 @@ pub struct IntegrationsSettingsCreateInput {
     /// Whether to send a Microsoft Teams message when a project update is created.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub microsoft_teams_project_update_created: MaybeUndefined<bool>,
-    /// Whether to send a Slack message when a project update is created to team channels.
+    /// Whether to send new project updates to the linked team Slack channels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_project_update_created_to_team: MaybeUndefined<bool>,
-    /// Whether to send a Slack message when a project update is created to workspace channel.
+    /// Whether to send new project updates to the linked workspace Slack channel.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_project_update_created_to_workspace: MaybeUndefined<bool>,
     /// Whether to send a Slack message when an initiative update is created.
@@ -3902,7 +3273,7 @@ pub struct IntegrationsSettingsCreateInput {
     /// Whether to send a Slack message when an SLA is at high risk.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_issue_sla_high_risk: MaybeUndefined<bool>,
-    /// Whether to receive notification when an SLA has breached on Slack.
+    /// Whether to send a Slack message when an SLA is breached.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_issue_sla_breached: MaybeUndefined<bool>,
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
@@ -3920,10 +3291,11 @@ pub struct IntegrationsSettingsCreateInput {
     /// The identifier of the custom view to create settings for.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_view_id: MaybeUndefined<String>,
-    /// The type of view to which the integration settings context is associated with.
+    /// The team view these settings apply to. Requires teamId; omit for general team settings.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub context_view_type: MaybeUndefined<ContextViewType>,
 }
+/// Changes selected notification preferences on an existing settings record. Send true to enable an event or false to disable it; omitted fields keep their current values and null is not accepted. The destination cannot be changed through this input.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationsSettingsUpdateInput {
@@ -3951,10 +3323,10 @@ pub struct IntegrationsSettingsUpdateInput {
     /// Whether to send a Microsoft Teams message when a project update is created.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub microsoft_teams_project_update_created: MaybeUndefined<bool>,
-    /// Whether to send a Slack message when a project update is created to team channels.
+    /// Whether to send new project updates to the linked team Slack channels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_project_update_created_to_team: MaybeUndefined<bool>,
-    /// Whether to send a Slack message when a project update is created to workspace channel.
+    /// Whether to send new project updates to the linked workspace Slack channel.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_project_update_created_to_workspace: MaybeUndefined<bool>,
     /// Whether to send a Slack message when an initiative update is created.
@@ -3969,10 +3341,11 @@ pub struct IntegrationsSettingsUpdateInput {
     /// Whether to send a Slack message when an SLA is at high risk.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_issue_sla_high_risk: MaybeUndefined<bool>,
-    /// Whether to receive notification when an SLA has breached on Slack.
+    /// Whether to send a Slack message when an SLA is breached.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_issue_sla_breached: MaybeUndefined<bool>,
 }
+/// Settings for notifications and issue intake through Intercom. Omitted fields stay unchanged on update.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntercomSettingsInput {
@@ -4006,88 +3379,82 @@ pub struct IntercomSettingsInput {
     /// Whether Linear Agent should process supported attachments from Intercom conversations during AI intake. When false, attachments are omitted from the prompt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub enable_ai_intake_attachment_processing: MaybeUndefined<bool>,
-    /// `INTERNAL` Whether new Intercom conversations should automatically create Linear issues with Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_automatic_conversation_intake: MaybeUndefined<bool>,
-    /// `INTERNAL` An optional destination team ID for issues created by automatic Intercom conversation intake.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automatic_conversation_intake_team_id: MaybeUndefined<String>,
 }
-/// Input for creating multiple issues at once in a batch operation. Up to 50 issues can be created in a single batch.
+/// The issues to create together in one request, from one to 50 issues. If one creation fails, the entire batch is rolled back. To create a parent and its sub-issues together, give the parent an id and place it before inputs that reference that id.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueBatchCreateInput {
-    /// The issues to create.
+    /// The issues to create, in creation order. Put parents before their sub-issues so each parent exists when its children are created.
     pub issues: Vec<IssueCreateInput>,
 }
-/// Issue filtering options.
+/// Conditions on a collection of issues. Use some to require a matching item, every to check the whole collection, or length to check its size. Direct issue fields act as some only when no and, or, some, every, or length clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueCollectionFilter {
-    /// Comparator for the identifier.
+    /// Matches the issue UUID or human-readable identifier, such as ENG-123. Use number with a team filter when matching only the numeric portion.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IssueIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the issues number.
+    /// Matches the issue number within its team. Numbers are not unique across teams, so combine this with team when looking for a specific issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub number: MaybeUndefined<NumberComparator>,
-    /// Comparator for the issues title.
+    /// Conditions on the issue title. This does not search descriptions or comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// Comparator for the issues description.
+    /// Conditions on the issue’s stored description text. Use null to find issues without a stored description, or text comparisons to match its contents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<NullableStringComparator>,
-    /// Comparator for the issues priority. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
+    /// Conditions on the numeric priority: 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low. Lower nonzero values mean higher priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Comparator for the issues estimate.
+    /// Conditions on the stored numeric estimate in the team’s scale. Use null to find unestimated issues; zero is a separate, explicit estimate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub estimate: MaybeUndefined<EstimateComparator>,
-    /// Comparator for the issues started at date.
+    /// Conditions on when work started. Use null: true for issues with no recorded start time; moving back to triage, backlog, or an unstarted status clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub started_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues triaged at date.
+    /// Conditions on when the issue last left triage. The value is unset before triage is completed and after re-entering triage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triaged_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues completed at date.
+    /// Conditions on the recorded completion time. Use null: false to require a completion time, or a date range to find issues completed during that period.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues canceled at date.
+    /// Conditions on when the issue entered a canceled or duplicate status. The value is cleared when the issue leaves those status types.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issue's SLA breach date.
+    /// Conditions on the SLA deadline. A deadline before now does not by itself mean the SLA was missed; use slaStatus to distinguish unfinished breaches from completed outcomes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_breaches_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues archived at date.
+    /// Conditions on when the issue was archived. Also set includeArchived on the query; a filter alone does not include records excluded by the query’s archive setting.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto closed at date.
+    /// Conditions on when the issue was automatically closed after inactivity. The value is cleared when its status changes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_closed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto archived at date.
+    /// Conditions on when the issue was automatically archived. Include archived issues in the query to find them; restoring an issue clears this value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues added to cycle at date.
+    /// Conditions on when the issue joined its current cycle. Changing cycles resets this time; removing the cycle clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the period when issue was added to a cycle.
+    /// Conditions on when the issue joined its cycle. before includes the cycle’s first 24 hours; during covers the remaining time before closure, and after covers times at or after closure.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_period: MaybeUndefined<CyclePeriodComparator>,
-    /// Comparator for the issues due date.
+    /// Conditions on the due date, without a time of day. Use null: true for issues without a due date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<NullableTimelessDateComparator>,
-    /// `Internal` Comparator for the issue's accumulatedStateUpdatedAt date.
+    /// Comparator for the issue's accumulatedStateUpdatedAt date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accumulated_state_updated_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues snoozed until date.
+    /// Conditions on when the issue’s triage snooze ends. Use null: true for issues without a recorded snooze time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<NullableDateComparator>,
-    /// Filters that the issues assignee must satisfy.
+    /// Conditions on the assigned user. For example, null: true finds unassigned issues, while id: { eq: "user-uuid" } selects one assignee.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee: MaybeUndefined<Box<NullableUserFilter>>,
     /// Filters that the issue's delegated agent must satisfy.
@@ -4105,13 +3472,13 @@ pub struct IssueCollectionFilter {
     /// Filters that the issues creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the issue parent must satisfy.
+    /// Conditions on the immediate parent issue. Use null: true to find top-level issues, or an ID condition to find direct sub-issues of one parent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableIssueFilter>>,
     /// Filters that the issues snoozer must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_by: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that issue labels must satisfy.
+    /// Conditions on assigned labels. Use some for at least one matching label, every to constrain all labels, or length: { eq: 0 } for unlabeled issues. Separate some conditions in and can require different labels on the same issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<IssueLabelCollectionFilter>>,
     /// Filters that issue subscribers must satisfy.
@@ -4129,301 +3496,289 @@ pub struct IssueCollectionFilter {
     /// Filters that the issues project milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone: MaybeUndefined<Box<NullableProjectMilestoneFilter>>,
-    /// Filters that the issues comments must satisfy.
+    /// Conditions on comments linked directly to the issue, including replies. Inline comments on the issue description are linked through documentContent and are not included by this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comments: MaybeUndefined<Box<CommentCollectionFilter>>,
     /// Filters that the issue's activities must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity: MaybeUndefined<Box<ActivityCollectionFilter>>,
-    /// `Internal` Filters that the issue's suggestions must satisfy.
+    /// Filters that the issue's suggestions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub suggestions: MaybeUndefined<Box<IssueSuggestionCollectionFilter>>,
-    /// Filters that the issues cycle must satisfy.
+    /// Conditions on the assigned cycle. Use null: true for issues without a cycle or whose team has cycles disabled. Use null: false to require an assigned cycle on a team with cycles enabled. Other cycle comparisons do not require cycles to be enabled.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle: MaybeUndefined<Box<NullableCycleFilter>>,
-    /// Filters that the issues project must satisfy.
+    /// Conditions on the assigned project. Use null: true for issues without a project; otherwise the project must match the supplied conditions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filters that the issues state must satisfy.
+    /// Conditions on the issue’s current status. Filter by type, such as started or completed, to match the same workflow category across teams with different status names and IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state: MaybeUndefined<Box<WorkflowStateFilter>>,
-    /// Filters that the child issues must satisfy.
+    /// Conditions on direct sub-issues. Use some for a matching child, every for all children, or length to count them. This does not search all descendants recursively.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub children: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Filters that the issues attachments must satisfy.
+    /// Conditions on the issue’s external links. For example, some with a URL or sourceType condition finds issues with at least one matching attachment.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub attachments: MaybeUndefined<Box<AttachmentCollectionFilter>>,
-    /// `Internal` Comparator for the issues content.
+    /// Comparator for the issues content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
-    /// Comparator for filtering issues with relations.
+    /// Whether the issue has a related link in either direction. Blocking links also count as related when either issue is closed; open blocking relationships are covered by hasBlockingRelations and hasBlockedByRelations.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_related_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are duplicates.
+    /// Whether other issues have been marked as duplicates of this issue. This checks incoming duplicate links, not whether this issue is itself a duplicate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_duplicate_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocked.
+    /// Whether another issue blocks this issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocked_by_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocking.
+    /// Whether this issue blocks another issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocking_relations: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested related issues.
+    /// Comparator for filtering issues which have suggested related issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_related_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested similar issues.
+    /// Comparator for filtering issues which have suggested similar issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_similar_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested assignees.
+    /// Comparator for filtering issues which have suggested assignees.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_assignees: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested projects.
+    /// Comparator for filtering issues which have suggested projects.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_projects: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested labels.
+    /// Comparator for filtering issues which have suggested labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_labels: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested teams.
+    /// Comparator for filtering issues which have suggested teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_teams: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_active_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_dismissed_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_errored_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have agent-session-linked pull requests that were merged.
+    /// Comparator for filtering issues which have agent-session-linked pull requests that were merged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_merged_agent_pull_requests: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the issues sla status.
+    /// Conditions on the current SLA risk or outcome. Use null: true for issues without an SLA status, including canceled issues and issues without an SLA.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_status: MaybeUndefined<SlaStatusComparator>,
-    /// Filters that the issues reactions must satisfy.
+    /// Conditions on emoji reactions added directly to the issue. Reactions on its comments are filtered through comments.reactions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the issue's customer needs must satisfy.
+    /// Conditions on customer requests linked to the issue. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Filters that the issue's releases must satisfy.
+    /// Conditions on releases linked to the issue. An issue can belong to several releases; use some to require a matching release or length to count them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub releases: MaybeUndefined<Box<ReleaseCollectionFilter>>,
-    /// Count of customers
+    /// Conditions on the number of distinct customers with active requests linked to the issue. Requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// Conditions on the number of distinct customers with active, important requests linked to the issue. Important requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerImportantCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// `Internal` Lead time (created -> completed) comparator.
+    /// Compares the elapsed time from creation to completion. The duration is null for issues without a completion time. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Cycle time (started -> completed) comparator.
+    /// Compares the elapsed time from work starting to completion. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Age (created -> now) comparator, defined if the issue is still open.
+    /// Compares the elapsed time from creation to the start of the query's database transaction. The duration is null for completed or canceled issues. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub age_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Triage time (entered triaged -> triaged) comparator.
+    /// Compares the elapsed time from entering triage to leaving triage. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triage_time: MaybeUndefined<NullableDurationComparator>,
-    /// Compound filters, all of which need to be matched by the issue.
+    /// Collection conditions that must all match. Different some branches can be satisfied by different issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<IssueCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the issue.
+    /// Alternative collection conditions; at least one must match. Other collection clauses at this level still apply. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<IssueCollectionFilter>>,
-    /// Filters that needs to be matched by some issues.
+    /// Requires at least one related issue to match these conditions. An empty collection does not match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<Box<IssueFilter>>,
-    /// Filters that needs to be matched by all issues.
+    /// Requires at least one related issue and requires every related issue to match these conditions. Use length: { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<IssueFilter>>,
-    /// Comparator for the collection length.
+    /// Conditions on the total number of related issues, independent of some or every. Use eq: 0 to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new issue. At minimum, a team must be specified. A title is required unless a template is provided. All other fields are optional and will use defaults from the team or template if not specified.
+/// The details for a new issue. Choose a team and provide a title, or use templateId to take the title and other defaults from a template. A template can also create sub-issues; supplied field values override its defaults, while supplied labels are combined with the template’s labels.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The title of the issue.
+    /// The title shown in issue lists and at the top of the issue. Required unless templateId is provided; when supplied with a template, it replaces the template’s title.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The issue description in markdown format.
+    /// The issue’s description in Markdown. Use it for the context, requirements, and links that do not belong in the title. When creating from a template, a supplied description replaces the template’s description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// `Internal` The issue description as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description_data: MaybeUndefined<serde_json::Value>,
-    /// The identifier of the user to assign the issue to.
+    /// The UUID of the user responsible for the issue. Omit it to use the template’s assignee, if any, or pass null to leave that default unset. Team triage rules can still assign an unassigned issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee_id: MaybeUndefined<String>,
-    /// The identifier of the agent user to delegate the issue to.
+    /// The UUID of an agent user to delegate work to. Delegation can start an agent session on the issue and requires permission to invoke that agent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub delegate_id: MaybeUndefined<String>,
-    /// The identifier of the parent issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// The UUID or identifier of an existing parent issue, such as ENG-123. Setting this makes the new issue a sub-issue; the parent can belong to another team if you can access it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
     /// The priority of the issue. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The estimated complexity of the issue.
+    /// The numeric estimate, from 0 to 64. Linear maps it to the nearest value in the team’s configured scale; use numeric values even for T-shirt sizes. Zero is accepted only when the team allows it. Omit to use the template’s estimate, if any, or pass null for no estimate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub estimate: MaybeUndefined<i64>,
-    /// The identifiers of the users subscribing to this ticket.
+    /// The UUIDs of users to subscribe to issue updates. Linear may also subscribe people involved in the issue, such as its assignee and users mentioned in the description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subscriber_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the issue labels associated with this ticket.
+    /// The UUIDs of labels to apply. Labels must be available to the issue’s team, and a single-select group can contribute at most one label. When using a template, these labels are combined with its labels, with your choice taking precedence within a single-select group.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
-    /// The identifier of the team associated with the issue.
+    /// UUID of the team that will own the issue.
     pub team_id: String,
-    /// The cycle associated with the issue.
+    /// The UUID of a cycle in the issue’s team. When a cycle is supplied without a status, the issue starts in the team’s default unstarted status. Team cycle settings can also assign a cycle automatically when you leave this unset.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_id: MaybeUndefined<String>,
-    /// The project associated with the issue. Can be a UUID or project identifier (e.g., 'P-LIN-123').
+    /// UUID or identifier of the project, such as P-LIN-123. The project must include the issue’s team. If omitted for a sub-issue, the parent’s project is used when it includes that team; null leaves the issue without a project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// The project milestone associated with the issue.
+    /// The UUID of a milestone in the project supplied in projectId. A milestone cannot be assigned without its project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone_id: MaybeUndefined<String>,
-    /// The ID of the last template applied to the issue.
+    /// UUID of the template to record as last applied. Use templateId to apply its values.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
-    /// The team state of the issue.
+    /// UUID of a status in the issue’s team. Defaults to the team’s initial status, or an unstarted status when cycleId is set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state_id: MaybeUndefined<String>,
-    /// The comment the issue is referencing.
+    /// The UUID of a comment whose issue should be linked to the new issue. If the comment belongs to an issue, Linear creates a related-issue relation between that issue and the new one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reference_comment_id: MaybeUndefined<String>,
-    /// The comment the issue is created from.
+    /// The UUID of the comment from which this issue was created. Records the source comment on the issue; use referenceCommentId to also link to the comment’s issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub source_comment_id: MaybeUndefined<String>,
-    /// `Internal` The pull request comment the issue is created from.
+    /// The position of the issue in its column on the board view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub source_pull_request_comment_id: MaybeUndefined<String>,
-    /// The position of the issue related to other issues.
+    pub board_order: MaybeUndefined<f64>,
+    /// Position in manually sorted lists. Lower values appear first. Set preserveSortOrderOnCreate to keep this position.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// The position of the issue related to other issues, when ordered by priority.
+    /// Position among issues with the same priority. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority_sort_order: MaybeUndefined<f64>,
-    /// The position of the issue in parent's sub-issue list.
+    /// The position among the parent’s direct sub-issues, with lower values first. Requires parentId. If omitted, the new sub-issue is placed last; conflicting positions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sub_issue_sort_order: MaybeUndefined<f64>,
-    /// The date at which the issue is due.
+    /// Due date in YYYY-MM-DD format, without a time or time zone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<chrono::NaiveDate>,
-    /// Create issue as a user with the provided name. This option is only available to OAuth applications creating issues in `actor=app` mode.
+    /// Display name credited with creating the issue. Available only to OAuth applications using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub create_as_user: MaybeUndefined<String>,
-    /// Provide an external user avatar URL. Can only be used in conjunction with the `createAsUser` options. This option is only available to OAuth applications creating comments in `actor=app` mode.
+    /// Avatar URL for createAsUser. Requires createAsUser and an OAuth application using actor=app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_icon_url: MaybeUndefined<String>,
-    /// Whether the passed sort order should be preserved.
+    /// Keep the supplied sortOrder instead of placing the issue first in its status. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub preserve_sort_order_on_create: MaybeUndefined<bool>,
-    /// The time at which the issue was created (e.g. if importing from another system). Must be a time in the past. If none is provided, the backend will generate the time as now.
+    /// Creation time for imported issues. Must be in the past. Defaults to the current time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` The time at which an issue will be considered in breach of SLA.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sla_breaches_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` The time at which the issue's SLA was started.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sla_started_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The identifier of a template the issue should be created from. If other values are provided in the input, they will override template values.
+    /// The UUID of an issue template to use. Linear applies its defaults and creates any sub-issues it defines, returning the root issue. Supplied values override the template’s defaults; labelIds are combined with its labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub template_id: MaybeUndefined<String>,
-    /// The time at which the issue was completed (e.g. if importing from another system). Must be a time in the past and after createdAt. Cannot be provided with an incompatible workflow state.
+    /// Completion time for an imported issue. Requires createdAt and a completed status; must be in the past and not before createdAt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
     /// The SLA day count type for the issue. Whether SLA should be business days only or calendar days (default).
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_type: MaybeUndefined<SLADayCountType>,
-    /// Whether to use the default template for the team. When set to true, the default template of this team based on user's membership will be applied.
+    /// Whether to apply the team’s default template. Linear selects the member or non-member default based on your team membership; if no matching default is set, creation proceeds without a template. Cannot be combined with templateId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub use_default_template: MaybeUndefined<bool>,
-    /// The identifiers of the releases to associate with this issue.
+    /// The UUIDs of releases to associate with the new issue. Requires release management to be available in the workspace; the releases must exist and be accessible to you.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_ids: MaybeUndefined<Vec<String>>,
-    /// `Internal` Whether this issue should inherit shared access from its parent issue. Set to false to opt out of automatic shared access inheritance when creating a sub-issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherits_shared_access: MaybeUndefined<bool>,
 }
-/// Issue filtering options.
+/// Conditions used to select issues. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueFilter {
-    /// Comparator for the identifier.
+    /// Matches the issue UUID or human-readable identifier, such as ENG-123. Use number with a team filter when matching only the numeric portion.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IssueIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the issues number.
+    /// Matches the issue number within its team. Numbers are not unique across teams, so combine this with team when looking for a specific issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub number: MaybeUndefined<NumberComparator>,
-    /// Comparator for the issues title.
+    /// Conditions on the issue title. This does not search descriptions or comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// Comparator for the issues description.
+    /// Conditions on the issue’s stored description text. Use null to find issues without a stored description, or text comparisons to match its contents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<NullableStringComparator>,
-    /// Comparator for the issues priority. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
+    /// Conditions on the numeric priority: 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low. Lower nonzero values mean higher priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Comparator for the issues estimate.
+    /// Conditions on the stored numeric estimate in the team’s scale. Use null to find unestimated issues; zero is a separate, explicit estimate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub estimate: MaybeUndefined<EstimateComparator>,
-    /// Comparator for the issues started at date.
+    /// Conditions on when work started. Use null: true for issues with no recorded start time; moving back to triage, backlog, or an unstarted status clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub started_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues triaged at date.
+    /// Conditions on when the issue last left triage. The value is unset before triage is completed and after re-entering triage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triaged_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues completed at date.
+    /// Conditions on the recorded completion time. Use null: false to require a completion time, or a date range to find issues completed during that period.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues canceled at date.
+    /// Conditions on when the issue entered a canceled or duplicate status. The value is cleared when the issue leaves those status types.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issue's SLA breach date.
+    /// Conditions on the SLA deadline. A deadline before now does not by itself mean the SLA was missed; use slaStatus to distinguish unfinished breaches from completed outcomes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_breaches_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues archived at date.
+    /// Conditions on when the issue was archived. Also set includeArchived on the query; a filter alone does not include records excluded by the query’s archive setting.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto closed at date.
+    /// Conditions on when the issue was automatically closed after inactivity. The value is cleared when its status changes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_closed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto archived at date.
+    /// Conditions on when the issue was automatically archived. Include archived issues in the query to find them; restoring an issue clears this value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues added to cycle at date.
+    /// Conditions on when the issue joined its current cycle. Changing cycles resets this time; removing the cycle clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the period when issue was added to a cycle.
+    /// Conditions on when the issue joined its cycle. before includes the cycle’s first 24 hours; during covers the remaining time before closure, and after covers times at or after closure.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_period: MaybeUndefined<CyclePeriodComparator>,
-    /// Comparator for the issues due date.
+    /// Conditions on the due date, without a time of day. Use null: true for issues without a due date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<NullableTimelessDateComparator>,
-    /// `Internal` Comparator for the issue's accumulatedStateUpdatedAt date.
+    /// Comparator for the issue's accumulatedStateUpdatedAt date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accumulated_state_updated_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues snoozed until date.
+    /// Conditions on when the issue’s triage snooze ends. Use null: true for issues without a recorded snooze time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<NullableDateComparator>,
-    /// Filters that the issues assignee must satisfy.
+    /// Conditions on the assigned user. For example, null: true finds unassigned issues, while id: { eq: "user-uuid" } selects one assignee.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee: MaybeUndefined<Box<NullableUserFilter>>,
     /// Filters that the issue's delegated agent must satisfy.
@@ -4441,13 +3796,13 @@ pub struct IssueFilter {
     /// Filters that the issues creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the issue parent must satisfy.
+    /// Conditions on the immediate parent issue. Use null: true to find top-level issues, or an ID condition to find direct sub-issues of one parent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableIssueFilter>>,
     /// Filters that the issues snoozer must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_by: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that issue labels must satisfy.
+    /// Conditions on assigned labels. Use some for at least one matching label, every to constrain all labels, or length: { eq: 0 } for unlabeled issues. Separate some conditions in and can require different labels on the same issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<IssueLabelCollectionFilter>>,
     /// Filters that issue subscribers must satisfy.
@@ -4465,269 +3820,269 @@ pub struct IssueFilter {
     /// Filters that the issues project milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone: MaybeUndefined<Box<NullableProjectMilestoneFilter>>,
-    /// Filters that the issues comments must satisfy.
+    /// Conditions on comments linked directly to the issue, including replies. Inline comments on the issue description are linked through documentContent and are not included by this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comments: MaybeUndefined<Box<CommentCollectionFilter>>,
     /// Filters that the issue's activities must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity: MaybeUndefined<Box<ActivityCollectionFilter>>,
-    /// `Internal` Filters that the issue's suggestions must satisfy.
+    /// Filters that the issue's suggestions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub suggestions: MaybeUndefined<Box<IssueSuggestionCollectionFilter>>,
-    /// Filters that the issues cycle must satisfy.
+    /// Conditions on the assigned cycle. Use null: true for issues without a cycle or whose team has cycles disabled. Use null: false to require an assigned cycle on a team with cycles enabled. Other cycle comparisons do not require cycles to be enabled.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle: MaybeUndefined<Box<NullableCycleFilter>>,
-    /// Filters that the issues project must satisfy.
+    /// Conditions on the assigned project. Use null: true for issues without a project; otherwise the project must match the supplied conditions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filters that the issues state must satisfy.
+    /// Conditions on the issue’s current status. Filter by type, such as started or completed, to match the same workflow category across teams with different status names and IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state: MaybeUndefined<Box<WorkflowStateFilter>>,
-    /// Filters that the child issues must satisfy.
+    /// Conditions on direct sub-issues. Use some for a matching child, every for all children, or length to count them. This does not search all descendants recursively.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub children: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Filters that the issues attachments must satisfy.
+    /// Conditions on the issue’s external links. For example, some with a URL or sourceType condition finds issues with at least one matching attachment.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub attachments: MaybeUndefined<Box<AttachmentCollectionFilter>>,
-    /// `Internal` Comparator for the issues content.
+    /// Comparator for the issues content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
-    /// Comparator for filtering issues with relations.
+    /// Whether the issue has a related link in either direction. Blocking links also count as related when either issue is closed; open blocking relationships are covered by hasBlockingRelations and hasBlockedByRelations.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_related_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are duplicates.
+    /// Whether other issues have been marked as duplicates of this issue. This checks incoming duplicate links, not whether this issue is itself a duplicate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_duplicate_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocked.
+    /// Whether another issue blocks this issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocked_by_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocking.
+    /// Whether this issue blocks another issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocking_relations: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested related issues.
+    /// Comparator for filtering issues which have suggested related issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_related_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested similar issues.
+    /// Comparator for filtering issues which have suggested similar issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_similar_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested assignees.
+    /// Comparator for filtering issues which have suggested assignees.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_assignees: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested projects.
+    /// Comparator for filtering issues which have suggested projects.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_projects: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested labels.
+    /// Comparator for filtering issues which have suggested labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_labels: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested teams.
+    /// Comparator for filtering issues which have suggested teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_teams: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_active_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_dismissed_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_errored_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have agent-session-linked pull requests that were merged.
+    /// Comparator for filtering issues which have agent-session-linked pull requests that were merged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_merged_agent_pull_requests: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the issues sla status.
+    /// Conditions on the current SLA risk or outcome. Use null: true for issues without an SLA status, including canceled issues and issues without an SLA.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_status: MaybeUndefined<SlaStatusComparator>,
-    /// Filters that the issues reactions must satisfy.
+    /// Conditions on emoji reactions added directly to the issue. Reactions on its comments are filtered through comments.reactions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the issue's customer needs must satisfy.
+    /// Conditions on customer requests linked to the issue. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Filters that the issue's releases must satisfy.
+    /// Conditions on releases linked to the issue. An issue can belong to several releases; use some to require a matching release or length to count them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub releases: MaybeUndefined<Box<ReleaseCollectionFilter>>,
-    /// Count of customers
+    /// Conditions on the number of distinct customers with active requests linked to the issue. Requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// Conditions on the number of distinct customers with active, important requests linked to the issue. Important requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerImportantCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// `Internal` Lead time (created -> completed) comparator.
+    /// Compares the elapsed time from creation to completion. The duration is null for issues without a completion time. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Cycle time (started -> completed) comparator.
+    /// Compares the elapsed time from work starting to completion. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Age (created -> now) comparator, defined if the issue is still open.
+    /// Compares the elapsed time from creation to the start of the query's database transaction. The duration is null for completed or canceled issues. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub age_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Triage time (entered triaged -> triaged) comparator.
+    /// Compares the elapsed time from entering triage to leaving triage. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triage_time: MaybeUndefined<NullableDurationComparator>,
-    /// Compound filters, all of which need to be matched by the issue.
+    /// Conditions that the issue must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<IssueFilter>>,
-    /// Compound filters, one of which need to be matched by the issue.
+    /// Alternative conditions; the issue must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<IssueFilter>>,
 }
-/// Comparator for issue identifiers.
+/// Compares issue UUIDs or full identifiers such as `ENG-123` in the current workspace. Use the complete team prefix and number, not the number alone. Unresolved identifiers match nothing in `eq` or `in` and are ignored in `neq` or `nin`. All supplied conditions must match.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueIDComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
 }
-/// Input for updating an import job's mapping configuration, such as user and workflow state mappings between the source service and Linear.
+/// The mapping choices to save on an import without starting processing. For external-service imports, mapping replaces the existing configuration, so include the choices you want to retain.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueImportUpdateInput {
-    /// The mapping configuration for the import.
+    /// Replacement mapping configuration. Include existing mappings that should be kept.
     pub mapping: serde_json::Value,
 }
-/// Issue label filtering options.
+/// Conditions on a collection of labels. Use some to require a matching item, every to check the whole collection, or length to check its size. Direct label fields act as some only when no and, or, some, every, or length clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueLabelCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the name.
+    /// Conditions on the label or label-group name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for whether the label is a group label.
+    /// Whether the label is a group rather than an assignable child or standalone label. Group records organize their child labels and define the selection mode.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<BooleanComparator>,
-    /// Filters that the issue labels creator must satisfy.
+    /// Conditions on the user who created the label. Use null: true for labels without a recorded creator.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the issue labels team must satisfy.
+    /// Conditions on the team that owns the label. Use null: true for workspace labels, or a team ID to find labels scoped to that team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the issue label's parent label must satisfy.
+    /// Conditions on the label group that contains this label. For example, parent: { id: { eq: "group-uuid" } } selects the group’s child labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<IssueLabelFilter>>,
-    /// Filter based on the existence of the relation.
+    /// Tests whether the stored label-ID list is null. An empty list is not null; use length: { eq: 0 } to find issues without labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// Collection conditions that must all match. Different some branches can be satisfied by different labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<IssueLabelCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// Alternative collection conditions; at least one must match. Other collection clauses at this level still apply. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<IssueLabelCollectionFilter>>,
-    /// Filters that needs to be matched by some issue labels.
+    /// Matches at least one assigned label against these conditions. A filter made only of exclusions, such as id.nin, also matches an empty label list. Add length: { gt: 0 } when a label must be present.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<Box<IssueLabelFilter>>,
-    /// Filters that needs to be matched by all issue labels.
+    /// Requires all assigned labels to match these conditions. A filter made only of exclusions, such as id.nin, also matches an empty label list; a positive condition normally requires labels. Use length to make any nonempty requirement explicit.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<IssueLabelFilter>>,
-    /// Comparator for the collection length.
+    /// Conditions on the total number of related labels, independent of some or every. Use eq: 0 to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new label. A name is required. If no team is specified, the label is created as a workspace-level label available to all teams.
+/// The details for a new label or label group. Omit teamId to create a workspace label, or supply a team UUID to limit its scope. Set isGroup for a group and groupType for its selection behavior; regular labels can join a group through parentId.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueLabelCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji are not allowed.
     pub name: String,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Defaults to the parent group's color, or #4EA7FC without a parent. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Groups cannot be nested inside other groups.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Create a group to hold child labels. Groups cannot be applied directly. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to create a retired label; omit or pass null for an active label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
     /// The selection mode of the label group. Defaults to singleSelect for groups and null for regular labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_type: MaybeUndefined<LabelGroupType>,
-    /// The team associated with the label. If not given, the label will be associated with the entire workspace.
+    /// UUID of the team whose issues can use the label. Omit for a workspace label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
 }
-/// Issue label filtering options.
+/// Conditions used to select labels. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueLabelFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the name.
+    /// Conditions on the label or label-group name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for whether the label is a group label.
+    /// Whether the label is a group rather than an assignable child or standalone label. Group records organize their child labels and define the selection mode.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<BooleanComparator>,
-    /// Filters that the issue labels creator must satisfy.
+    /// Conditions on the user who created the label. Use null: true for labels without a recorded creator.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the issue labels team must satisfy.
+    /// Conditions on the team that owns the label. Use null: true for workspace labels, or a team ID to find labels scoped to that team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the issue label's parent label must satisfy.
+    /// Conditions on the label group that contains this label. For example, parent: { id: { eq: "group-uuid" } } selects the group’s child labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<IssueLabelFilter>>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// Conditions that the label must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<IssueLabelFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// Alternative conditions; the label must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<IssueLabelFilter>>,
 }
-/// Input for updating an existing label. All fields are optional; only provided fields will be updated.
+/// The changes to a label or label group. Omitted fields keep their values. Update an inherited label at its source; changing a group’s selection mode affects which combinations of child labels issues can use.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueLabelUpdateInput {
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji and null are not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters. Null clears the description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Null removes the label from its group. Groups cannot be nested.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Changing a group's color also updates children that shared its previous color. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Whether the label is a group of child labels. Changing this requires an unused label with no parent or children. Groups cannot be applied directly.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to null to restore the label. Changing a group's retirement state also changes its children; a child cannot be restored while its group is retired.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
     /// The selection mode of the label group. Omit to keep the current value. Null resets groups to singleSelect. Regular labels always use null.
@@ -4743,25 +4098,25 @@ pub struct IssueReferenceInput {
     /// The commit SHA where this issue reference was found.
     pub commit_sha: String,
 }
-/// Input for creating a new issue relation between two issues. Both the source issue and related issue must be specified along with the relationship type.
+/// The relationship to establish between two distinct issues. Both ends accept issue UUIDs or human-readable identifiers. Creating a relation replaces a conflicting relation between the pair; an identical relation is reused. A duplicate relation also merges the source issue into the target.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueRelationCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The type of relation of the issue to the related issue.
+    /// How issueId relates to relatedIssueId: blocks, duplicate, related, or the deprecated similar.
     pub r#type: IssueRelationType,
-    /// The identifier of the issue that is related to another issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// UUID or identifier of the source issue, such as ENG-123. For duplicate, this is the duplicate issue.
     pub issue_id: String,
-    /// The identifier of the related issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// UUID or identifier of the target issue. Must differ from issueId. For duplicate, this is the original issue.
     pub related_issue_id: String,
 }
-/// Input for updating an existing issue relation. All fields are optional; only provided fields will be updated.
+/// Changes to an existing relation’s type or either end. Omit fields you want to keep. The resulting source and target must be distinct, and changing a duplicate relation can undo or trigger duplicate-merge behavior.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueRelationUpdateInput {
-    /// The type of relation of the issue to the related issue.
+    /// Relation type: blocks, duplicate, related, or the deprecated similar. Omit to keep the current type.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<String>,
     /// The identifier of the issue that is related to another issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
@@ -4805,9 +4160,6 @@ pub struct IssueSortInput {
     /// Sort by issue due date
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<DueDateSort>,
-    /// `Internal` Sort by the accumulated time in the current workflow state
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub accumulated_state_updated_at: MaybeUndefined<TimeInStatusSort>,
     /// Sort by Cycle start date
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle: MaybeUndefined<CycleSort>,
@@ -4854,7 +4206,7 @@ pub struct IssueSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release: MaybeUndefined<ReleaseSort>,
 }
-/// Filter for issue subscription events.
+/// Filters issue creation and update events using the issue's values in the event. All supplied conditions must match. IDs must be UUIDs. Exclusions with `neq` or `nin` do not match an unset relationship, such as an unassigned issue.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueSubscriptionFilter {
@@ -4867,7 +4219,7 @@ pub struct IssueSubscriptionFilter {
     /// Filter by assignee ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee_id: MaybeUndefined<IDComparator>,
-    /// Filter by workflow state ID.
+    /// Filters by issue status UUID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state_id: MaybeUndefined<IDComparator>,
     /// Filter by parent issue ID.
@@ -4878,13 +4230,13 @@ pub struct IssueSubscriptionFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueSuggestionCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the suggestion type.
@@ -4925,13 +4277,13 @@ pub struct IssueSuggestionCollectionFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueSuggestionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the suggestion type.
@@ -4959,7 +4311,7 @@ pub struct IssueSuggestionFilter {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<IssueSuggestionFilter>>,
 }
-/// Input for creating a new association between an issue and a release. Both an issue identifier and a release identifier must be provided.
+/// The issue and release to connect. Supply an issue UUID or human-readable identifier and the release UUID. Each pair can have only one active association.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueToReleaseCreateInput {
@@ -4968,245 +4320,188 @@ pub struct IssueToReleaseCreateInput {
     pub id: MaybeUndefined<String>,
     /// The identifier of the issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
     pub issue_id: String,
-    /// The identifier of the release.
+    /// UUID of the release.
     pub release_id: String,
 }
-/// Input for updating an existing issue. All fields are optional; only provided fields will be updated. Setting a field to null (where supported) will clear the value.
+/// The changes to make to an existing issue. Omit a field to keep its current value; each nullable field describes how to clear it. Lists such as labelIds and subscriberIds replace existing assignments, while addedLabelIds and removedLabelIds change only the specified labels.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueUpdateInput {
-    /// The issue title.
+    /// The replacement issue title. Omit to keep the current title; an empty string or null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The issue description in markdown format.
+    /// The replacement issue description in Markdown. Send an empty string to clear it, or omit this field to keep the current description. Null also leaves it unchanged. This replaces the full description rather than appending to it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// `Internal` The issue description as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description_data: MaybeUndefined<serde_json::Value>,
-    /// The identifier of the user to assign the issue to.
+    /// UUID of the new assignee. Null unassigns the issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee_id: MaybeUndefined<String>,
-    /// The identifier of the agent user to delegate the issue to.
+    /// The UUID of the agent to delegate work to. Changing the delegate can start an agent session; pass null to remove the delegate, or omit this field to keep the current one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub delegate_id: MaybeUndefined<String>,
-    /// The identifier of the parent issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
+    /// The UUID or identifier of the new parent issue, such as ENG-123. Pass null to make this a top-level issue, or omit it to keep the current parent. An issue cannot be its own ancestor.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
     /// The priority of the issue. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The estimated complexity of the issue.
+    /// The numeric estimate, from 0 to 64, mapped to the nearest value in the team’s configured scale. Zero is accepted only when the team allows it. Pass null to clear the estimate, or omit it to keep the current value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub estimate: MaybeUndefined<i64>,
-    /// The identifiers of the users subscribing to this ticket.
+    /// The complete replacement list of subscriber UUIDs. An empty list removes the current subscribers; omitting the field keeps them. Assignee, delegate, or mention changes can add subscribers as part of the same update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subscriber_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the issue labels associated with this ticket.
+    /// Replacement list of label UUIDs. An empty list removes all labels. Cannot be combined with addedLabelIds or removedLabelIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the issue labels to be added to this issue.
+    /// Label UUIDs to add without replacing the full list. Cannot be combined with labelIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_label_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the issue labels to be removed from this issue.
+    /// Label UUIDs to remove without replacing the full list. Cannot be combined with labelIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub removed_label_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the releases associated with this issue.
+    /// Replacement list of release UUIDs. An empty list removes all release links. Cannot be combined with addedReleaseIds or removedReleaseIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the releases to be added to this issue.
+    /// Release UUIDs to add without replacing the full list. Cannot be combined with releaseIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_release_ids: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the releases to be removed from this issue.
+    /// Release UUIDs to remove without replacing the full list. Cannot be combined with releaseIds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub removed_release_ids: MaybeUndefined<Vec<String>>,
-    /// The identifier of the team associated with the issue.
+    /// The UUID of the destination team. Moving an issue gives it a new team identifier and maps team-specific values, such as status and labels, to the destination team. Its UUID and previous identifiers are preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The cycle associated with the issue.
+    /// UUID of a cycle in the issue’s team. Null removes the cycle, subject to the team’s automatic cycle assignment settings.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_id: MaybeUndefined<String>,
-    /// The project associated with the issue. Can be a UUID or project identifier (e.g., 'P-LIN-123').
+    /// UUID or identifier of a project that includes the issue’s team. Null removes the project and milestone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// The project milestone associated with the issue.
+    /// UUID of a milestone in the issue’s project. Null removes the milestone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone_id: MaybeUndefined<String>,
-    /// The ID of the last template applied to the issue.
+    /// UUID of the template to record as last applied. Does not apply template values. Pass null to clear the recorded template, or omit to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
-    /// The team state of the issue.
+    /// UUID of a status in the issue’s team. A status change updates lifecycle times and may change cycle membership. Moving to the reserved duplicate status requires an existing duplicate relation; use issueRelationCreate to mark an issue as a duplicate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state_id: MaybeUndefined<String>,
-    /// The position of the issue related to other issues.
+    /// The position of the issue in its column on the board view.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub board_order: MaybeUndefined<f64>,
+    /// Position in manually sorted lists. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// The position of the issue related to other issues, when ordered by priority.
+    /// Position among issues with the same priority. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority_sort_order: MaybeUndefined<f64>,
-    /// The position of the issue in parent's sub-issue list.
+    /// Position among the parent’s sub-issues. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sub_issue_sort_order: MaybeUndefined<f64>,
-    /// The date at which the issue is due.
+    /// Due date in YYYY-MM-DD format, without a time or time zone. Null clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<chrono::NaiveDate>,
-    /// Whether this issue should inherit shared access from its parent issue.
+    /// Whether people with shared access to the parent also receive access to this issue. Setting true requires a parent issue. Omit this field to keep the current setting.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherits_shared_access: MaybeUndefined<bool>,
-    /// `Internal` Whether this issue has been explicitly marked as trusted.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub trusted: MaybeUndefined<bool>,
-    /// Whether the issue has been trashed. Set to true to trash, or null to restore.
+    /// The trash marker for an already archived issue. Set true to mark it as trashed, or null to remove that marker while keeping it archived. Use issueDelete to trash an active issue and issueUnarchive to restore it to normal issue lists.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub trashed: MaybeUndefined<bool>,
-    /// `Internal` The time at which an issue will be considered in breach of SLA.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sla_breaches_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` The time at which the issue's SLA was started.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sla_started_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The time until which the issue will be snoozed in Triage view.
+    /// The time until which to hide the issue from triage. Pass null to clear the snooze. Linear records the acting user as snoozedBy when a snooze is set.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The identifier of the user who snoozed the issue.
+    /// The UUID of the user recorded as snoozing the issue. For API requests, Linear sets this from the acting user when snoozedUntilAt changes; you cannot change it independently.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_by_id: MaybeUndefined<String>,
-    /// The SLA day count type for the issue. Whether SLA should be business days only or calendar days (default).
+    /// How to count time for the issue’s SLA: all for calendar days, or onlyBusinessDays for the team’s working days. Omit it to keep the current setting. Changing it recalculates the risk thresholds for an existing SLA.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_type: MaybeUndefined<SLADayCountType>,
-    /// Whether the issue was automatically closed because its parent issue was closed.
+    /// Record that this status change was caused by closing the parent issue. Requires stateId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_closed_by_parent_closing: MaybeUndefined<bool>,
 }
+/// The Jira projects of one connected Jira site to migrate to Linear.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JiraConfigurationInput {
-    /// The Jira personal access token, or the API key of a Jira Cloud service account.
-    pub access_token: String,
-    /// The Jira user's email address. A username is also accepted on Jira Server / DC.
-    pub email: String,
-    /// Whether the access token is the API key of a Jira Cloud service account. Defaults to detecting the service account key prefix. The site's cloudId is resolved from the hostname, and webhooks are always set up manually.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub service_account: MaybeUndefined<bool>,
-    /// The Jira installation hostname.
-    pub hostname: String,
-    /// Whether this integration will be setup using the manual webhook flow.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub manual_setup: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JiraFetchProjectStatusesInput {
-    /// The id of the Jira integration.
+pub struct JiraProjectBatchMigrateInput {
+    /// The identifier of the Jira integration of the site that hosts every project.
     pub integration_id: String,
-    /// The Jira project ID to fetch statuses for.
-    pub project_id: String,
+    /// The projects to migrate: 1 to 50, each at most once.
+    pub projects: Vec<JiraProjectBatchMigrateProjectInput>,
 }
+/// One Jira project to import, sync with a Linear team, or both. Give exactly one of externalId and key, and at least one of import and sync. An import can target an existing team or create one from teamName; sync without an import requires an existing team. If both are requested, synchronization starts after the import completes.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JiraLinearMappingInput {
-    /// The Jira id for this project.
-    pub jira_project_id: String,
-    /// The Linear team id to map to the given project.
-    pub linear_team_id: String,
-    /// Whether the sync for this mapping is bidirectional.
+pub struct JiraProjectBatchMigrateProjectInput {
+    /// The Jira project ID, such as 10016.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub bidirectional: MaybeUndefined<bool>,
-    /// Whether this mapping is the default one for issue creation.
+    pub external_id: MaybeUndefined<String>,
+    /// The Jira project key, such as ENG. Case-insensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub default: MaybeUndefined<bool>,
-    /// Whether this mapping uses legacy unidirectional sync behavior where no changes sync from Linear to Jira.
+    pub key: MaybeUndefined<String>,
+    /// The identifier or key of the team to import into and sync with. An import of a project that already syncs must go into the team it syncs with.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub legacy_unidirectional: MaybeUndefined<bool>,
+    pub team_id: MaybeUndefined<String>,
+    /// Name for a new team to create during import. Requires import and team-creation permission. Ignored when teamId selects an existing team. Leading and trailing whitespace is removed, and a number is added if another team already uses the name.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub team_name: MaybeUndefined<String>,
+    /// The import of the project's existing issues. Omit to only sync. Several imports into one team run one at a time.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub import: MaybeUndefined<JiraProjectMigrateImportInput>,
+    /// How the project syncs. With an import, sync starts once the import completes. Omit to only import. Requires a team identifier when there is no import.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub sync: MaybeUndefined<JiraProjectMigrateSyncInput>,
 }
+/// Filters Jira project records by their Linear integration, Jira project key, synced team, or common entity fields. Combine integrationId and key when the same project key may exist on more than one connected Jira site.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JiraPersonalSettingsInput {
-    /// The name of the Jira site currently authorized through the integration.
+pub struct JiraProjectFilter {
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub site_name: MaybeUndefined<String>,
-    /// The id of the workspace Jira integration this personal integration authenticates through.
+    pub id: MaybeUndefined<IDComparator>,
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub workspace_integration_id: MaybeUndefined<String>,
+    pub created_at: MaybeUndefined<DateComparator>,
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub updated_at: MaybeUndefined<DateComparator>,
+    /// Compares the Linear UUID of the Jira integration that hosts this project, not the Jira site or project ID.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub integration_id: MaybeUndefined<IDComparator>,
+    /// Comparator for the Jira project key, such as ENG.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub key: MaybeUndefined<StringComparator>,
+    /// Filters that the team the project syncs with must satisfy. Use `{ null: true }` to find the projects that do not sync.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub team: MaybeUndefined<NullableTeamFilter>,
+    /// Compound filters, all of which need to be matched by the Jira project. An empty list adds no constraint.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub and: MaybeUndefined<Vec<JiraProjectFilter>>,
+    /// Compound filters, one of which needs to be matched by the Jira project. An empty list adds no constraint.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub or: MaybeUndefined<Vec<JiraProjectFilter>>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Options for importing a Jira project's existing issues through its workspace integration. Choose whether to include stale or closed issues and how to map Jira users. This copies existing issues; ongoing synchronization is configured separately with sync.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JiraProjectDataInput {
-    /// The Jira id for this project.
-    pub id: String,
-    /// The Jira key for this project, such as ENG.
-    pub key: String,
-    /// The Jira name for this project, such as Engineering.
-    pub name: String,
+pub struct JiraProjectMigrateImportInput {
+    /// A JQL filter that limits which of the project's issues are imported. Linear adds it to the project's query, so it cannot reach other projects.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub jql: MaybeUndefined<String>,
+    /// Whether to import issues not updated in the last 6 months. They are imported archived.
+    pub include_stale_issues: bool,
+    /// Whether to import closed and done issues. They are imported archived.
+    pub include_closed_issues: bool,
+    /// Which Jira users to map to Linear users.
+    pub users: ImportUsersOption,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// How a Jira project syncs with its team.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JiraSettingsInput {
-    /// The mapping of Jira project id => Linear team id.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub project_mapping: MaybeUndefined<Vec<JiraLinearMappingInput>>,
-    /// The Jira projects for the organization.
-    pub projects: Vec<JiraProjectDataInput>,
-    /// Whether this integration is for Jira Server or not.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub is_jira_server: MaybeUndefined<bool>,
-    /// Whether this integration uses custom OAuth authentication (enterprise SSO).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub is_custom_o_auth: MaybeUndefined<bool>,
-    /// Whether this integration authenticates with a Jira Cloud service account API key.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub is_cloud_service_account: MaybeUndefined<bool>,
-    /// The OAuth client ID for the personal connection OAuth app, when using custom OAuth.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub personal_o_auth_client_id: MaybeUndefined<String>,
-    /// The custom OAuth server token endpoint URL (enterprise SSO).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub custom_o_auth_server_url: MaybeUndefined<String>,
-    /// Whether the user needs to provide setup information about the webhook to complete the integration setup. Only relevant for integrations that use a manual setup flow
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub setup_pending: MaybeUndefined<bool>,
-    /// Whether this integration is using a manual setup flow.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub manual_setup: MaybeUndefined<bool>,
-    /// The label of the Jira instance, for visual identification purposes only
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub label: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JiraUpdateInput {
-    /// The id of the integration to update.
-    pub id: String,
-    /// The mapped Jira project to use as its team's default. Omit to keep the current default.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub default_project_id: MaybeUndefined<String>,
-    /// Whether to refresh Jira Projects for the integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub update_projects: MaybeUndefined<bool>,
-    /// Whether to refresh Jira metadata for the integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub update_metadata: MaybeUndefined<bool>,
-    /// Whether to delete the current manual webhook configuration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub delete_webhook: MaybeUndefined<bool>,
-    /// Webhook secret for a new manual configuration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub webhook_secret: MaybeUndefined<String>,
-    /// The Jira personal access token, or the API key of a Jira Cloud service account.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub access_token: MaybeUndefined<String>,
-    /// The Jira user email address associated with the access token.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub email: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JoinOrganizationInput {
-    /// The identifier of the organization.
-    pub organization_id: String,
-    /// An optional invite link for an organization.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub invite_link: MaybeUndefined<String>,
+pub struct JiraProjectMigrateSyncInput {
+    /// Use bidirectional to create issues from either Linear or Jira, or jiraToLinear to create issues from Jira only. Both modes sync changes to already linked issues back to Jira. The legacyJiraToLinear mode is not accepted for a new migration.
+    pub sync_direction: JiraSyncDirection,
 }
 /// Issue label-group sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -5232,14 +4527,6 @@ pub struct LabelSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LaunchDarklySettingsInput {
-    /// The project key of the LaunchDarkly integration.
-    pub project_key: String,
-    /// The environment of the LaunchDarkly integration.
-    pub environment: String,
-}
 /// `ALPHA` Issue link count sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -5261,54 +4548,6 @@ pub struct ManualSort {
     /// The order for the individual sort
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
-}
-/// An additional HTTP header sent with requests to the connected MCP server. Header values are stored securely.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct McpServerCustomHeaderInput {
-    /// The HTTP header name.
-    pub name: String,
-    /// The HTTP header value.
-    pub value: String,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct McpServerIntegrationSettingsInput {
-    /// The connection-specific display name.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub name: MaybeUndefined<String>,
-    /// Who may add this connector to a Loop.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub loop_access: MaybeUndefined<String>,
-    /// Who may use this connector in conversations.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub conversation_access: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MicrosoftTeamsPostSettingsInput {
-    /// AAD group id of the Team.
-    pub team_id: String,
-    /// Display name of the Team.
-    pub team_name: String,
-    /// Microsoft Teams channel id.
-    pub channel_id: String,
-    /// Display name of the channel.
-    pub channel_name: String,
-    /// Membership type of the channel: standard, private, or shared.
-    pub membership_type: String,
-    /// Azure AD tenant id the team belongs to.
-    pub tenant_id: String,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MicrosoftTeamsSettingsInput {
-    /// The display name of the Azure AD tenant.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub tenant_name: MaybeUndefined<String>,
-    /// Whether Code Intelligence should be enabled for this Microsoft Teams integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_code_intelligence: MaybeUndefined<bool>,
 }
 /// Issue project milestone options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -5332,6 +4571,7 @@ pub struct NameSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
+/// The notification categories and channels to change. Only supplied channel values are updated; omitted categories and channels keep their saved settings. Channel-wide preferences can still prevent delivery for an enabled category.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationCategoryPreferencesInput {
@@ -5384,23 +4624,29 @@ pub struct NotificationCategoryPreferencesInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub billing: MaybeUndefined<PartialNotificationChannelPreferencesInput>,
 }
+/// Delivery timing for a notification channel. A schedule limits when delivery is allowed; notificationChannelPreferences controls whether the channel is enabled.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationDeliveryPreferencesChannelInput {
+    /// Whether notifications are disabled for this channel. Use notificationChannelPreferences instead.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub notifications_disabled: MaybeUndefined<bool>,
     /// The schedule for notifications on this channel.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub schedule: MaybeUndefined<NotificationDeliveryPreferencesScheduleInput>,
 }
+/// Notification delivery window for one day, in the user's time zone. An empty object disables delivery for that day.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationDeliveryPreferencesDayInput {
-    /// The start time of the notification delivery window in HH:MM military time format (e.g., '09:00'). Must be earlier than 'end'.
+    /// Start of the delivery window in 24-hour HH:MM format, such as 09:00. Requires end and must be earlier than it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start: MaybeUndefined<String>,
-    /// The end time of the notification delivery window in HH:MM military time format (e.g., '18:00'). Must be later than 'start'.
+    /// End of the delivery window in 24-hour HH:MM format. Requires start; 23:59 includes the rest of the day.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub end: MaybeUndefined<String>,
 }
+/// Mobile notification delivery preferences. Other channels do not support delivery schedules.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationDeliveryPreferencesInput {
@@ -5408,6 +4654,7 @@ pub struct NotificationDeliveryPreferencesInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub mobile: MaybeUndefined<NotificationDeliveryPreferencesChannelInput>,
 }
+/// A weekly mobile notification schedule in your user time zone. Supply all seven days, using an empty object for days without delivery. Days with delivery must use the same start and end times. Set disabled to true to allow delivery at any time.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationDeliveryPreferencesScheduleInput {
@@ -5451,36 +4698,36 @@ pub struct NotificationEntityInput {
     /// The id of the OAuth client approval related to the notification.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub oauth_client_approval_id: MaybeUndefined<String>,
-    /// The id of the notification.
+    /// A notification UUID identifying the group of related notifications to change.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
 }
-/// Notification filtering options.
+/// Filters notifications by event type, subscription reason, or archive date. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the notification type.
+    /// The event type that generated the notification, such as issueCreated or issueStatusChanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
-    /// Comparator for the notification subscription type.
+    /// The reason the recipient received the notification, such as being assigned, mentioned, or subscribed. This is separate from the event type.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subscription_type: MaybeUndefined<NotificationSubscriptionTypeComparator>,
     /// Comparator for the archived at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub archived_at: MaybeUndefined<DateComparator>,
-    /// Compound filters, all of which need to be matched by the notification.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NotificationFilter>>,
-    /// Compound filters, one of which need to be matched by the notification.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NotificationFilter>>,
 }
@@ -5515,19 +4762,19 @@ pub struct NotificationSubscriptionCreateInput {
     /// The identifier of the user to subscribe to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user_id: MaybeUndefined<String>,
-    /// The type of view to which the notification subscription context is associated with.
+    /// The team view whose issues to follow, such as active issues or backlog. Requires teamId. Omit to subscribe without limiting the team to a particular view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub context_view_type: MaybeUndefined<ContextViewType>,
-    /// The type of user view to which the notification subscription context is associated with.
+    /// User view to subscribe to. Required with userId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user_context_view_type: MaybeUndefined<UserContextViewType>,
-    /// The specific notification event types the subscriber wants to receive for the target entity.
+    /// The nonempty list of event type names to subscribe to. Values must be distinct supported subscription event types, such as issueCreated or issueStatusChanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub notification_subscription_types: MaybeUndefined<Vec<String>>,
-    /// Whether the subscription is active. Set to false to pause notifications without deleting the subscription.
+    /// Accepted for compatibility but ignored at creation. New subscriptions are active; use notificationSubscriptionUpdate to pause one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub active: MaybeUndefined<bool>,
-    /// Whether to include updates from sub-initiatives.
+    /// Whether to include updates from sub-initiatives. Defaults to false. Enabling it requires initiativeId and a plan that supports sub-initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub include_sub_initiative_updates: MaybeUndefined<bool>,
 }
@@ -5535,24 +4782,24 @@ pub struct NotificationSubscriptionCreateInput {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSubscriptionTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<NotificationSubscriptionType>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<NotificationSubscriptionType>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<NotificationSubscriptionType>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<NotificationSubscriptionType>>,
 }
-/// Input for updating an existing notification subscription. Allows changing the subscribed notification types and active state.
+/// Changes to your subscription’s event types, active state, or inclusion of sub-initiative updates. Omitted fields stay unchanged. The target entity and view cannot be changed.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSubscriptionUpdateInput {
-    /// Whether to include updates from sub-initiatives.
+    /// Whether to include updates from sub-initiatives. Enabling it requires an initiative subscription and a plan that supports sub-initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub include_sub_initiative_updates: MaybeUndefined<bool>,
     /// The specific notification event types the subscriber wants to receive. Replaces all previously configured types.
@@ -5562,14 +4809,14 @@ pub struct NotificationSubscriptionUpdateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub active: MaybeUndefined<bool>,
 }
-/// Input for updating a notification's read and snooze state.
+/// Changes to one notification. Omitted fields remain unchanged; use inboxNotificationUpdate to update the related inbox group.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationUpdateInput {
-    /// The time when notification was marked as read.
+    /// The time the notification was read. Null marks it unread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub read_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The time until a notification will be snoozed. After that it will appear in the inbox again.
+    /// Hide the notification until this time. Null removes the snooze.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
     /// The id of the project update related to the notification.
@@ -5579,81 +4826,73 @@ pub struct NotificationUpdateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_id: MaybeUndefined<String>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NotionSettingsInput {
-    /// The ID of the Notion workspace being connected.
-    pub workspace_id: String,
-    /// The name of the Notion workspace being connected.
-    pub workspace_name: String,
-}
-/// Comment filtering options.
+/// Conditions on an optional comment relation. Use null to test whether the relation is set, or supply comment fields to filter the related record. Combine conditions with `and` or `or`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableCommentFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the comment's body.
+    /// Conditions on the stored comment body text. This filters the comment itself, not its quoted text or replies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<StringComparator>,
-    /// Filters that the comment's creator must satisfy.
+    /// Conditions on the user recorded as the comment’s author. This does not match an app’s separate display attribution.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user: MaybeUndefined<Box<UserFilter>>,
-    /// Filters that the comment's issue must satisfy.
+    /// Conditions on the issue directly associated with the comment. Use documentContent to filter comments attached to an issue’s description content instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<NullableIssueFilter>>,
-    /// Filters that the comment's project update must satisfy.
+    /// Conditions on the project update being discussed. Use null: false to select comments on project updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update: MaybeUndefined<Box<NullableProjectUpdateFilter>>,
-    /// Filters that the comment's initiative update must satisfy.
+    /// Conditions on the initiative update being discussed. Use null: false to select comments on initiative updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update: MaybeUndefined<Box<NullableInitiativeUpdateFilter>>,
-    /// Filters that the comment parent must satisfy.
+    /// Conditions on the thread’s root comment. Use null: true to return root comments, or null: false to return replies. An ID condition selects replies in one thread.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableCommentFilter>>,
-    /// Filters that the comment's document content must satisfy.
+    /// Conditions on the rich-text content being discussed, such as a document body or issue description. Use its issue or document filter to choose the enclosing resource.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document_content: MaybeUndefined<Box<NullableDocumentContentFilter>>,
-    /// `Internal` Filters that the comment's project must satisfy.
+    /// Filters that the comment's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// `Internal` Filters that the comment's initiative must satisfy.
+    /// Filters that the comment's initiative must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative: MaybeUndefined<Box<NullableInitiativeFilter>>,
-    /// Filters that the comment's reactions must satisfy.
+    /// Conditions on the comment’s emoji reactions. Use some with an emoji condition to find comments that received that reaction, or length to test the total reaction count.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the comment's customer needs must satisfy.
+    /// Conditions on customer requests linked to the comment. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Filter based on the existence of the relation.
+    /// Use true to match an unset comment relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the comment.
+    /// Conditions that the comment must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableCommentFilter>>,
-    /// Compound filters, one of which need to be matched by the comment.
+    /// Alternative conditions; the comment must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableCommentFilter>>,
 }
-/// Customer filtering options.
+/// Filters an optional relation to customers. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableCustomerFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the customer name.
@@ -5686,60 +4925,60 @@ pub struct NullableCustomerFilter {
     /// Filters that the customer's tier must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub tier: MaybeUndefined<CustomerTierFilter>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the customer.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableCustomerFilter>>,
-    /// Compound filters, one of which need to be matched by the customer.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableCustomerFilter>>,
 }
-/// Cycle filtering options.
+/// Conditions on an optional cycle relation. Use null to test whether the relation is set, or supply cycle fields to filter the related record. Combine conditions with `and` or `or`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableCycleFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle number.
+    /// Conditions on the positive cycle number within a team. Combine with team when you need a specific cycle, since different teams can have the same number.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub number: MaybeUndefined<NumberComparator>,
     /// Comparator for the cycle name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the cycle start date.
+    /// Conditions on the cycle’s scheduled start time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle ends at date.
+    /// Conditions on the cycle’s end time, which can change when a cycle is completed early.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the cycle completed at date.
+    /// Conditions on the time the cycle was closed. This is distinct from its scheduled end time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the filtering active cycle.
+    /// Whether the current time falls within the cycle’s start and end times. Use team to restrict the result to one team’s schedule.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_active: MaybeUndefined<BooleanComparator>,
-    /// Comparator for filtering for whether the cycle is currently in cooldown.
+    /// Whether the cycle has completed and its next numbered cycle has not started yet. This identifies the completed cycle during the team’s gap between cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_in_cooldown: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering next cycle.
+    /// Whether this is the team’s next upcoming, uncompleted and unarchived cycle. Combine with team to select one team’s next cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_next: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering previous cycle.
+    /// Whether this is the team’s most recently completed, unarchived cycle. A past end time alone does not make a cycle the previous one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_previous: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering future cycles.
+    /// Whether the cycle’s start time is in the future. This can match several upcoming cycles; use isNext for only the next one per team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_future: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the filtering past cycles.
+    /// Whether the cycle’s end time has passed. This is independent of whether its completion step has run.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_past: MaybeUndefined<BooleanComparator>,
     /// Filters that the cycles team must satisfy.
@@ -5751,132 +4990,194 @@ pub struct NullableCycleFilter {
     /// Comparator for the inherited cycle ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherited_from_id: MaybeUndefined<IDComparator>,
-    /// Filter based on the existence of the relation.
+    /// Use true to match an unset cycle relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the cycle.
+    /// Conditions that the cycle must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableCycleFilter>>,
-    /// Compound filters, one of which need to be matched by the cycle.
+    /// Alternative conditions; the cycle must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableCycleFilter>>,
 }
-/// Comparator for optional dates.
+/// Compares optional timestamps at millisecond precision. Accepts ISO 8601 timestamps or durations relative to when the filter runs, such as `-P7D`. Combine `gte` and `lt` for a time window. Use `{ null: true }` for missing timestamps; `nin` also includes missing values, while `neq` and range comparisons do not.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableDateComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<serde_json::Value>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<serde_json::Value>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<serde_json::Value>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<serde_json::Value>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<serde_json::Value>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<serde_json::Value>,
 }
-/// Document content filtering options.
+/// Conditions on an optional document content relation. Use null to test whether the relation is set, or supply document content fields to filter the related record. Combine conditions with `and` or `or`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableDocumentContentFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the document content.
+    /// Conditions on the stored document text, such as a document body or issue description. This does not search titles or comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<NullableStringComparator>,
-    /// Filters that the document content project must satisfy.
+    /// Conditions on the project whose description this content stores.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<ProjectFilter>>,
-    /// Filters that the document content initiative must satisfy.
+    /// Conditions on the initiative whose description this content stores.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative: MaybeUndefined<Box<InitiativeFilter>>,
-    /// Filters that the document content issue must satisfy.
+    /// Conditions on the issue whose description this content stores.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue: MaybeUndefined<Box<IssueFilter>>,
-    /// Filters that the document content document must satisfy.
+    /// Conditions on the document whose body this content stores.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub document: MaybeUndefined<Box<DocumentFilter>>,
-    /// Filters that the document content project milestone must satisfy.
+    /// Conditions on the project milestone whose description this content stores.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone: MaybeUndefined<Box<ProjectMilestoneFilter>>,
-    /// Filter based on the existence of the relation.
+    /// Use true to match an unset document content relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the user.
+    /// Conditions that the document content must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableDocumentContentFilter>>,
-    /// Compound filters, one of which need to be matched by the user.
+    /// Alternative conditions; the document content must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableDocumentContentFilter>>,
 }
-/// Nullable comparator for optional durations.
+/// Conditions on an optional document relation. Use null to test whether the relation is set, or supply document fields to filter the related record. Combine conditions with `and` or `or`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NullableDocumentFilter {
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub id: MaybeUndefined<IDComparator>,
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub created_at: MaybeUndefined<DateComparator>,
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub updated_at: MaybeUndefined<DateComparator>,
+    /// Conditions on the document title. This does not search the document’s body.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub title: MaybeUndefined<StringComparator>,
+    /// Comparator for the document's searchable content.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub searchable_content: MaybeUndefined<ContentComparator>,
+    /// Conditions on the document’s short URL identifier. This differs from its UUID and title.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub slug_id: MaybeUndefined<StringComparator>,
+    /// Conditions on the user who created the document, independent of its current owner.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub creator: MaybeUndefined<Box<UserFilter>>,
+    /// Conditions on the document’s owner. Use null: true for documents without an owner; ownership is separate from the creator and most recent editor.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub owner: MaybeUndefined<Box<NullableUserFilter>>,
+    /// Conditions on the project that contains the document. This selects documents directly associated with a project, not documents attached to that project’s issues.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub project: MaybeUndefined<Box<ProjectFilter>>,
+    /// Conditions on the issue that contains the document. This selects attached documents, not the issue’s own description.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub issue: MaybeUndefined<Box<IssueFilter>>,
+    /// Conditions on the initiative that contains the document.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub initiative: MaybeUndefined<Box<InitiativeFilter>>,
+    /// Conditions on the team directly associated with the document. Use null: true when no team is set on the document.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub team: MaybeUndefined<Box<NullableTeamFilter>>,
+    /// Conditions on the cycle that contains the document.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub cycle: MaybeUndefined<Box<CycleFilter>>,
+    /// Conditions on the release that contains the document.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub release: MaybeUndefined<Box<ReleaseFilter>>,
+    /// Filters that the document's parent document must satisfy. Use `null: true` for documents that are not sub-documents.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub parent_document: MaybeUndefined<Box<NullableDocumentFilter>>,
+    /// Filters that the user owning the personal space of a personal document must satisfy. Use `null: false` for personal documents.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub personal_user: MaybeUndefined<Box<NullableUserFilter>>,
+    /// Use true to match an unset document relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub null: MaybeUndefined<bool>,
+    /// Conditions that the document must all match. These are combined with the other fields in this filter.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub and: MaybeUndefined<Vec<NullableDocumentFilter>>,
+    /// Alternative conditions; the document must match at least one. Other fields at this level must still match. An empty list adds no condition.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub or: MaybeUndefined<Vec<NullableDocumentFilter>>,
+}
+/// Compares optional elapsed durations using ISO 8601 duration strings or numbers in milliseconds. All supplied conditions must match. Use `{ null: true }` for missing durations; `nin` also includes missing values, while `neq` and range comparisons do not.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableDurationComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<serde_json::Value>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<serde_json::Value>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<serde_json::Value>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<serde_json::Value>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<serde_json::Value>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<serde_json::Value>,
 }
-/// Initiative filtering options.
+/// Filters an optional relation to initiatives. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableInitiativeFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the initiative name.
@@ -5885,9 +5186,12 @@ pub struct NullableInitiativeFilter {
     /// Comparator for the initiative slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the initiative's custom identifier.
+    /// Comparator for the initiative's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
+    /// Comparator for the initiative's name and summary.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Filters that the initiative creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
@@ -5897,10 +5201,10 @@ pub struct NullableInitiativeFilter {
     /// Comparator for the initiative priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Filters that the initiative teams must satisfy.
+    /// Conditions on teams contributing through projects or lead-team associations. When team initiatives are available, this also accounts for sub-initiative projects and lead teams in the initiative hierarchy. Use leadTeam to filter only the initiative’s own lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub teams: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// Filters that the initiative lead team must satisfy.
+    /// Conditions on the initiative’s own lead team. Use { null: true } to find workspace-level initiatives.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_team: MaybeUndefined<Box<NullableTeamFilter>>,
     /// Filters that the initiative owner must satisfy.
@@ -5915,51 +5219,51 @@ pub struct NullableInitiativeFilter {
     /// Comparator for the initiative completed at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// `Internal` Comparator for the initiative canceled at date.
+    /// Comparator for the initiative canceled at date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
     /// Comparator for the initiative health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The initiative’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
-    /// Comparator for the initiative activity type.
+    /// Not supported. Initiative activity is not stored on the server, so filters that set this field are rejected.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity_type: MaybeUndefined<StringComparator>,
-    /// Filters that the initiative must be an ancestor of.
+    /// Conditions on this initiative’s parent initiatives and their ancestors. For example, some: { id: { eq: ID } } finds descendants of the specified initiative.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<InitiativeCollectionFilter>>,
     /// Filters that the initiative labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<InitiativeLabelCollectionFilter>>,
-    /// Filters that the initiative projects must satisfy.
+    /// Conditions on distinct accessible projects linked to this initiative or its sub-initiatives. A project linked through several sub-initiatives is counted once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub projects: MaybeUndefined<Box<ProjectCollectionFilter>>,
-    /// Filters that the initiative updates must satisfy.
+    /// Conditions on updates published directly to this initiative. Updates on sub-initiatives are not included in this collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_updates: MaybeUndefined<InitiativeUpdatesCollectionFilter>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the initiative.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableInitiativeFilter>>,
-    /// Compound filters, one of which need to be matched by the initiative.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableInitiativeFilter>>,
 }
-/// Nullable initiative update filtering options.
+/// Filters an optional relation to initiative updates. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableInitiativeUpdateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the initiative update creator must satisfy.
@@ -5971,84 +5275,84 @@ pub struct NullableInitiativeUpdateFilter {
     /// Filters that the initiative updates reactions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the initiative update.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableInitiativeUpdateFilter>>,
-    /// Compound filters, one of which need to be matched by the initiative update.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableInitiativeUpdateFilter>>,
 }
-/// Issue filtering options.
+/// Conditions on an optional issue relation. Use null to test whether the relation is set, or supply issue fields to filter the related record. Combine conditions with `and` or `or`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableIssueFilter {
-    /// Comparator for the identifier.
+    /// Matches the issue UUID or human-readable identifier, such as ENG-123. Use number with a team filter when matching only the numeric portion.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IssueIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the issues number.
+    /// Matches the issue number within its team. Numbers are not unique across teams, so combine this with team when looking for a specific issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub number: MaybeUndefined<NumberComparator>,
-    /// Comparator for the issues title.
+    /// Conditions on the issue title. This does not search descriptions or comments.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<StringComparator>,
-    /// Comparator for the issues description.
+    /// Conditions on the issue’s stored description text. Use null to find issues without a stored description, or text comparisons to match its contents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<NullableStringComparator>,
-    /// Comparator for the issues priority. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
+    /// Conditions on the numeric priority: 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low. Lower nonzero values mean higher priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
-    /// Comparator for the issues estimate.
+    /// Conditions on the stored numeric estimate in the team’s scale. Use null to find unestimated issues; zero is a separate, explicit estimate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub estimate: MaybeUndefined<EstimateComparator>,
-    /// Comparator for the issues started at date.
+    /// Conditions on when work started. Use null: true for issues with no recorded start time; moving back to triage, backlog, or an unstarted status clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub started_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues triaged at date.
+    /// Conditions on when the issue last left triage. The value is unset before triage is completed and after re-entering triage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triaged_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues completed at date.
+    /// Conditions on the recorded completion time. Use null: false to require a completion time, or a date range to find issues completed during that period.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues canceled at date.
+    /// Conditions on when the issue entered a canceled or duplicate status. The value is cleared when the issue leaves those status types.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub canceled_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issue's SLA breach date.
+    /// Conditions on the SLA deadline. A deadline before now does not by itself mean the SLA was missed; use slaStatus to distinguish unfinished breaches from completed outcomes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_breaches_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues archived at date.
+    /// Conditions on when the issue was archived. Also set includeArchived on the query; a filter alone does not include records excluded by the query’s archive setting.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto closed at date.
+    /// Conditions on when the issue was automatically closed after inactivity. The value is cleared when its status changes.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_closed_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues auto archived at date.
+    /// Conditions on when the issue was automatically archived. Include archived issues in the query to find them; restoring an issue clears this value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_archived_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues added to cycle at date.
+    /// Conditions on when the issue joined its current cycle. Changing cycles resets this time; removing the cycle clears it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the period when issue was added to a cycle.
+    /// Conditions on when the issue joined its cycle. before includes the cycle’s first 24 hours; during covers the remaining time before closure, and after covers times at or after closure.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub added_to_cycle_period: MaybeUndefined<CyclePeriodComparator>,
-    /// Comparator for the issues due date.
+    /// Conditions on the due date, without a time of day. Use null: true for issues without a due date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub due_date: MaybeUndefined<NullableTimelessDateComparator>,
-    /// `Internal` Comparator for the issue's accumulatedStateUpdatedAt date.
+    /// Comparator for the issue's accumulatedStateUpdatedAt date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accumulated_state_updated_at: MaybeUndefined<NullableDateComparator>,
-    /// Comparator for the issues snoozed until date.
+    /// Conditions on when the issue’s triage snooze ends. Use null: true for issues without a recorded snooze time.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_until_at: MaybeUndefined<NullableDateComparator>,
-    /// Filters that the issues assignee must satisfy.
+    /// Conditions on the assigned user. For example, null: true finds unassigned issues, while id: { eq: "user-uuid" } selects one assignee.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assignee: MaybeUndefined<Box<NullableUserFilter>>,
     /// Filters that the issue's delegated agent must satisfy.
@@ -6066,13 +5370,13 @@ pub struct NullableIssueFilter {
     /// Filters that the issues creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that the issue parent must satisfy.
+    /// Conditions on the immediate parent issue. Use null: true to find top-level issues, or an ID condition to find direct sub-issues of one parent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableIssueFilter>>,
     /// Filters that the issues snoozer must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub snoozed_by: MaybeUndefined<Box<NullableUserFilter>>,
-    /// Filters that issue labels must satisfy.
+    /// Conditions on assigned labels. Use some for at least one matching label, every to constrain all labels, or length: { eq: 0 } for unlabeled issues. Separate some conditions in and can require different labels on the same issue.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<IssueLabelCollectionFilter>>,
     /// Filters that issue subscribers must satisfy.
@@ -6090,158 +5394,158 @@ pub struct NullableIssueFilter {
     /// Filters that the issues project milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone: MaybeUndefined<Box<NullableProjectMilestoneFilter>>,
-    /// Filters that the issues comments must satisfy.
+    /// Conditions on comments linked directly to the issue, including replies. Inline comments on the issue description are linked through documentContent and are not included by this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comments: MaybeUndefined<Box<CommentCollectionFilter>>,
     /// Filters that the issue's activities must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub activity: MaybeUndefined<Box<ActivityCollectionFilter>>,
-    /// `Internal` Filters that the issue's suggestions must satisfy.
+    /// Filters that the issue's suggestions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub suggestions: MaybeUndefined<Box<IssueSuggestionCollectionFilter>>,
-    /// Filters that the issues cycle must satisfy.
+    /// Conditions on the assigned cycle. Use null: true for issues without a cycle or whose team has cycles disabled. Use null: false to require an assigned cycle on a team with cycles enabled. Other cycle comparisons do not require cycles to be enabled.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle: MaybeUndefined<Box<NullableCycleFilter>>,
-    /// Filters that the issues project must satisfy.
+    /// Conditions on the assigned project. Use null: true for issues without a project; otherwise the project must match the supplied conditions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filters that the issues state must satisfy.
+    /// Conditions on the issue’s current status. Filter by type, such as started or completed, to match the same workflow category across teams with different status names and IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub state: MaybeUndefined<Box<WorkflowStateFilter>>,
-    /// Filters that the child issues must satisfy.
+    /// Conditions on direct sub-issues. Use some for a matching child, every for all children, or length to count them. This does not search all descendants recursively.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub children: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Filters that the issues attachments must satisfy.
+    /// Conditions on the issue’s external links. For example, some with a URL or sourceType condition finds issues with at least one matching attachment.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub attachments: MaybeUndefined<Box<AttachmentCollectionFilter>>,
-    /// `Internal` Comparator for the issues content.
+    /// Comparator for the issues content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
-    /// Comparator for filtering issues with relations.
+    /// Whether the issue has a related link in either direction. Blocking links also count as related when either issue is closed; open blocking relationships are covered by hasBlockingRelations and hasBlockedByRelations.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_related_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are duplicates.
+    /// Whether other issues have been marked as duplicates of this issue. This checks incoming duplicate links, not whether this issue is itself a duplicate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_duplicate_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocked.
+    /// Whether another issue blocks this issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocked_by_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for filtering issues which are blocking.
+    /// Whether this issue blocks another issue, with both issues still open. A link with a closed issue counts under hasRelatedRelations instead.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_blocking_relations: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested related issues.
+    /// Comparator for filtering issues which have suggested related issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_related_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested similar issues.
+    /// Comparator for filtering issues which have suggested similar issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_similar_issues: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested assignees.
+    /// Comparator for filtering issues which have suggested assignees.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_assignees: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested projects.
+    /// Comparator for filtering issues which have suggested projects.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_projects: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested labels.
+    /// Comparator for filtering issues which have suggested labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_labels: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have suggested teams.
+    /// Comparator for filtering issues which have suggested teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_suggested_teams: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having active agent sessions, no closed agent pull requests, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_active_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having all agent sessions dismissed or closed, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_dismissed_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
+    /// Comparator for filtering issues bucketed as having an errored agent session, no active sessions, and no merged agent pull requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_errored_agent_sessions: MaybeUndefined<RelationExistsComparator>,
-    /// `Internal` Comparator for filtering issues which have agent-session-linked pull requests that were merged.
+    /// Comparator for filtering issues which have agent-session-linked pull requests that were merged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_merged_agent_pull_requests: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the issues sla status.
+    /// Conditions on the current SLA risk or outcome. Use null: true for issues without an SLA status, including canceled issues and issues without an SLA.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sla_status: MaybeUndefined<SlaStatusComparator>,
-    /// Filters that the issues reactions must satisfy.
+    /// Conditions on emoji reactions added directly to the issue. Reactions on its comments are filtered through comments.reactions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filters that the issue's customer needs must satisfy.
+    /// Conditions on customer requests linked to the issue. Use some to require a matching request or length to count linked requests.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Filters that the issue's releases must satisfy.
+    /// Conditions on releases linked to the issue. An issue can belong to several releases; use some to require a matching release or length to count them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub releases: MaybeUndefined<Box<ReleaseCollectionFilter>>,
-    /// Count of customers
+    /// Conditions on the number of distinct customers with active requests linked to the issue. Requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// Conditions on the number of distinct customers with active, important requests linked to the issue. Important requests without a customer record each count separately. Supply one comparison; to apply a range, put separate customerImportantCount conditions in and.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// `Internal` Lead time (created -> completed) comparator.
+    /// Compares the elapsed time from creation to completion. The duration is null for issues without a completion time. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Cycle time (started -> completed) comparator.
+    /// Compares the elapsed time from work starting to completion. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Age (created -> now) comparator, defined if the issue is still open.
+    /// Compares the elapsed time from creation to the start of the query's database transaction. The duration is null for completed or canceled issues. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub age_time: MaybeUndefined<NullableDurationComparator>,
-    /// `Internal` Triage time (entered triaged -> triaged) comparator.
+    /// Compares the elapsed time from entering triage to leaving triage. The duration is null if either timestamp is missing. Accepts ISO 8601 durations or milliseconds.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub triage_time: MaybeUndefined<NullableDurationComparator>,
-    /// Filter based on the existence of the relation.
+    /// Use true to match an unset issue relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the issue.
+    /// Conditions that the issue must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableIssueFilter>>,
-    /// Compound filters, one of which need to be matched by the issue.
+    /// Alternative conditions; the issue must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableIssueFilter>>,
 }
-/// Comparator for optional numbers.
+/// Compares optional numbers by equality, list membership, or range, with values between -2147483648 and 2147483647. Supplied conditions are combined with AND. Use `{ null: true }` for missing values or `{ null: false }` to require a value. `nin` includes missing values; `neq` and range comparisons do not.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableNumberComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<f64>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<f64>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<f64>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<f64>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<f64>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<f64>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<f64>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<f64>,
 }
-/// Project filtering options.
+/// Filters an optional relation to projects. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableProjectFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project name.
@@ -6250,7 +5554,7 @@ pub struct NullableProjectFilter {
     /// Comparator for the project slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the project's custom identifier.
+    /// Comparator for the project's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
     /// `DEPRECATED` Comparator for the project state.
@@ -6259,13 +5563,13 @@ pub struct NullableProjectFilter {
     /// Filters that the project status must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status: MaybeUndefined<Box<ProjectStatusFilter>>,
-    /// Comparator for the project priority.
+    /// The project priority: 0 for no priority, 1 for Urgent, 2 for High, 3 for Medium, or 4 for Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
     /// Filters that project labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<ProjectLabelCollectionFilter>>,
-    /// `Internal` Comparator for the project's content.
+    /// Comparator for the project's content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Comparator for the project started date (when it was moved to an "In Progress" status).
@@ -6286,7 +5590,7 @@ pub struct NullableProjectFilter {
     /// Comparator for the project health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the project health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The project’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
     /// `ALPHA` Comparator for the project activity type: buzzin, active, some, none
@@ -6310,7 +5614,7 @@ pub struct NullableProjectFilter {
     /// Comparator for filtering projects with violated dependencies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_violated_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the project updates.
+    /// Conditions on updates published directly to this project. Use some to find a matching update or length to test whether updates exist.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_updates: MaybeUndefined<ProjectUpdatesCollectionFilter>,
     /// Filters that the projects creator must satisfy.
@@ -6334,13 +5638,13 @@ pub struct NullableProjectFilter {
     /// Filters that the project's milestones must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
-    /// Filters that the project's completed milestones must satisfy.
+    /// Conditions on milestones with at least one unarchived issue and no open, non-triage issues. Canceled and completed issues do not keep a milestone open.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
     /// Filters that the project's next milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub next_project_milestone: MaybeUndefined<Box<ProjectMilestoneFilter>>,
-    /// Filters that the project's team must satisfy.
+    /// Conditions on the project’s associated teams that you can access. This can match any associated team, not just the lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accessible_teams: MaybeUndefined<Box<TeamCollectionFilter>>,
     /// `ALPHA` Filters that the project's lead team must satisfy.
@@ -6352,33 +5656,33 @@ pub struct NullableProjectFilter {
     /// Filters that the project's customer needs must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Count of customers
+    /// The number of distinct customers with unarchived needs associated with this project. Several needs from the same customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// The number of distinct customers with unarchived needs associated with this project and priority of at least 1. Several qualifying needs from one customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the project.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableProjectFilter>>,
-    /// Compound filters, one of which need to be matched by the project.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableProjectFilter>>,
 }
-/// Project milestone filtering options.
+/// Filters an optional relation to project milestones. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableProjectMilestoneFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project milestone name.
@@ -6390,27 +5694,27 @@ pub struct NullableProjectMilestoneFilter {
     /// Filters that the project milestone's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the project milestone.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableProjectMilestoneFilter>>,
-    /// Compound filters, one of which need to be matched by the project milestone.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableProjectMilestoneFilter>>,
 }
-/// Nullable project update filtering options.
+/// Filters an optional relation to project updates. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableProjectUpdateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the project update creator must satisfy.
@@ -6422,89 +5726,89 @@ pub struct NullableProjectUpdateFilter {
     /// Filters that the project updates reactions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the project update.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableProjectUpdateFilter>>,
-    /// Compound filters, one of which need to be matched by the project update.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableProjectUpdateFilter>>,
 }
-/// Comparator for optional strings.
+/// Compares optional text, with all supplied conditions combined with AND. Text is literal and case-sensitive unless the operator says otherwise. Use `{ null: true }` for missing values; an empty string is a set value. `nin` includes missing values, while other exclusions do not. Prefix, suffix, substring, and case-insensitive operators ignore empty strings.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableStringComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Equals case insensitive. Matches any values that matches the given string case insensitive.
+    /// Matches the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq_ignore_case: MaybeUndefined<String>,
-    /// Not-equals case insensitive. Matches any values that don't match the given string case insensitive.
+    /// Excludes the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq_ignore_case: MaybeUndefined<String>,
-    /// Starts with constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, with case preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with: MaybeUndefined<String>,
-    /// Starts with case insensitive constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with_ignore_case: MaybeUndefined<String>,
-    /// Doesn't start with constraint. Matches any values that don't start with the given string.
+    /// Excludes strings starting with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_starts_with: MaybeUndefined<String>,
-    /// Ends with constraint. Matches any values that end with the given string.
+    /// Matches strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_with: MaybeUndefined<String>,
-    /// Doesn't end with constraint. Matches any values that don't end with the given string.
+    /// Excludes strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_ends_with: MaybeUndefined<String>,
-    /// Contains constraint. Matches any values that contain the given string.
+    /// Matches strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains: MaybeUndefined<String>,
-    /// Contains case insensitive constraint. Matches any values that contain the given string case insensitive.
+    /// Matches strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case: MaybeUndefined<String>,
-    /// Doesn't contain constraint. Matches any values that don't contain the given string.
+    /// Excludes strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains: MaybeUndefined<String>,
-    /// Doesn't contain case insensitive constraint. Matches any values that don't contain the given string case insensitive.
+    /// Excludes strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains_ignore_case: MaybeUndefined<String>,
-    /// Contains case and accent insensitive constraint. Matches any values that contain the given string case and accent insensitive.
+    /// Matches strings containing this text, ignoring case and accents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case_and_accent: MaybeUndefined<String>,
 }
-/// Team filtering options.
+/// Filters an optional relation to teams. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableTeamFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the team name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the team key.
+    /// The team key used as the prefix of its issue identifiers, such as ENG in ENG-123.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub key: MaybeUndefined<StringComparator>,
     /// Comparator for the team description.
@@ -6519,118 +5823,118 @@ pub struct NullableTeamFilter {
     /// Filters that the team's members must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub members: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// `Internal` Filters that the team's members must satisfy. Alias of `members` matching the filter shape produced by the app; prefer `members`.
+    /// Filters that the team's members must satisfy. Alias of `members` matching the filter shape produced by the app; prefer `members`.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub users: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// Filters that the team's owners must satisfy.
+    /// Conditions on users who own this team. Team ownership is separate from the workspace owner role.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owners: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// Comparator for the time at which the team was retired.
+    /// The time the team was retired. Use { null: true } for teams that are not retired; retirement is separate from archiving for deletion.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<NullableDateComparator>,
     /// Filters that the team's issues must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Filters that the team's parent must satisfy.
+    /// Conditions on the immediate parent team. Use { null: true } to find top-level teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the team's ancestors must satisfy.
+    /// Conditions on the parent team and all teams above it in the hierarchy. The team itself is excluded.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// `Internal` Filters that the private team forming this team's visibility boundary must satisfy. Only relevant for non-public teams.
+    /// Filters that the private team forming this team's visibility boundary must satisfy. Only relevant for non-public teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub restricted_by: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the team's release pipelines must satisfy.
+    /// Conditions on release pipelines associated with the team. To combine tests, put each in a separate and entry: at one level, and takes precedence over or, then length, then every, then some or direct properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_pipelines: MaybeUndefined<Box<ReleasePipelineCollectionFilter>>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the team.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableTeamFilter>>,
-    /// Compound filters, one of which need to be matched by the team.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableTeamFilter>>,
 }
-/// Template filtering options.
+/// Conditions on an optional template relation. Use null to test whether the relation is set, or supply template fields to filter the related record. Combine conditions with `and` or `or`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableTemplateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the template's name.
+    /// Conditions on the template’s name, not the titles of resources created from it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the template's type.
+    /// Conditions on the template’s type, such as issue, project, or document. This selects what the template creates, not the scope where the template is available.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
-    /// Comparator for the inherited template's ID.
+    /// Conditions on the UUID of the template inherited from a parent team. This matches the immediate source template.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherited_from_id: MaybeUndefined<IDComparator>,
-    /// Filters that the template's team must satisfy.
+    /// Conditions on the team that owns the template. Use null: true for templates without a team, including workspace and pipeline-scoped release-note templates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filter based on the existence of the relation.
+    /// Use true to match an unset template relation, or false to require it to be set. Omit this field when you only want to test the related record’s properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the template.
+    /// Conditions that the template must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableTemplateFilter>>,
-    /// Compound filters, one of which need to be matched by the template.
+    /// Alternative conditions; the template must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableTemplateFilter>>,
 }
-/// Comparator for optional timeless dates.
+/// Compares optional calendar dates using YYYY-MM-DD strings or durations relative to the day the filter runs, such as `-P7D`. All supplied conditions must match. Use `{ null: true }` for missing dates; `nin` also includes missing values, while `neq` and range comparisons do not.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableTimelessDateComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<serde_json::Value>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<serde_json::Value>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<serde_json::Value>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<serde_json::Value>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<serde_json::Value>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<serde_json::Value>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<serde_json::Value>,
 }
-/// User filtering options.
+/// Filters an optional relation to users. Use null to test whether the relation is set, or supply property conditions to filter the related object.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NullableUserFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the user's name.
@@ -6642,16 +5946,16 @@ pub struct NullableUserFilter {
     /// Comparator for the user's email.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub email: MaybeUndefined<StringComparator>,
-    /// Comparator for the user's activity status.
+    /// Whether the user is active in the workspace. This is account membership state, not whether the user is currently online.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub active: MaybeUndefined<BooleanComparator>,
-    /// Filters that the users assigned issues must satisfy.
+    /// Conditions on issues assigned to the user. Use some to find a user with a matching issue, or length to test the number of assigned issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assigned_issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Comparator for the user's admin status.
+    /// Whether the user has the workspace admin role. Workspace owners have a separate role; use owner to test for them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub admin: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's owner status.
+    /// Whether the user has the workspace owner role. This does not test ownership of a team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner: MaybeUndefined<BooleanComparator>,
     /// Comparator for the user's invited status.
@@ -6660,58 +5964,58 @@ pub struct NullableUserFilter {
     /// Comparator for the user's invited status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_invited: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's app status.
+    /// Whether the user represents an installed application rather than a person.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub app: MaybeUndefined<BooleanComparator>,
-    /// Filter based on the currently authenticated user. Set to true to filter for the authenticated user, false for any other user.
+    /// Use { eq: true } for the authenticated user or { eq: false } for other users. The value is a BooleanComparator, not a bare boolean.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_me: MaybeUndefined<BooleanComparator>,
-    /// Filter based on the existence of the relation.
+    /// True matches a missing relation; false requires a relation to be set. A direct null: true condition takes precedence over other property conditions in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the user.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<NullableUserFilter>>,
-    /// Compound filters, one of which need to be matched by the user.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<NullableUserFilter>>,
 }
-/// Comparator for numbers.
+/// Compares numbers by equality, list membership, or range. Values must be between -2147483648 and 2147483647; fields representing counts may require integers. For a numeric field, combine bounds such as `{ gte: 1, lt: 5 }` to include 1 through values below 5. Collection aggregates may accept only one comparison; see the aggregate field's description.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NumberComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<f64>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<f64>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<f64>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<f64>>,
-    /// Less-than constraint. Matches any values that are less than the given value.
+    /// Matches values less than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lt: MaybeUndefined<f64>,
-    /// Less-than-or-equal constraint. Matches any values that are less than or equal to the given value.
+    /// Matches values less than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lte: MaybeUndefined<f64>,
-    /// Greater-than constraint. Matches any values that are greater than the given value.
+    /// Matches values greater than the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gt: MaybeUndefined<f64>,
-    /// Greater-than-or-equal constraint. Matches any values that are greater than or equal to the given value.
+    /// Matches values greater than or equal to the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub gte: MaybeUndefined<f64>,
 }
-/// Input for creating an OAuth application through the public API.
+/// Configuration for a private OAuth application owned by the current workspace and managed by your calling OAuth application. Provide its name, developer, and allowed redirect URIs. To receive webhooks, provide both a webhook URL and at least one resource type. Use an idempotencyKey when retrying creation. The caller needs OAuth authentication and workspace API management permission.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthApplicationCreateInput {
-    /// The OAuth application's name.
+    /// Display name, from 2 to 80 characters. Must not contain a URL or the word Linear.
     pub name: String,
-    /// User-facing description of the OAuth application.
+    /// Description shown during authorization, up to 1,000 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
     /// Name of the developer or company that built the OAuth application.
@@ -6724,27 +6028,30 @@ pub struct OAuthApplicationCreateInput {
     /// OAuth grant capabilities the app may use. authorization_code is required. Defaults to authorization_code.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub grant_types: MaybeUndefined<Vec<OAuthApplicationGrantType>>,
-    /// Optional client-supplied idempotency key. Reusing the same key with the same managing OAuth application returns the existing OAuth application instead of creating a duplicate. The key does not apply to archived applications.
+    /// Whether token requests for the OAuth application, including refresh token requests, must include a DPoP proof. Defaults to false.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub require_token_binding: MaybeUndefined<bool>,
+    /// A nonempty retry key, up to 255 characters, scoped to the current workspace and managing OAuth application. Reusing it returns the existing unarchived application without changing its settings and without returning its secrets again. Keep the key stable when retrying an uncertain create result. Archived applications are not matched by the key.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub idempotency_key: MaybeUndefined<String>,
-    /// URL of the OAuth application's icon.
+    /// Linear upload URL for the application icon. Use fileUpload first; the image is resized and made public.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub image_url: MaybeUndefined<String>,
-    /// Webhook URL used for delivering webhook payloads.
+    /// The public HTTPS endpoint that receives this application’s signed webhook requests. A URL requires at least one webhookResourceTypes entry, and resource types require a configured URL. On update, the existing URL is used when this field is omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub webhook_url: MaybeUndefined<String>,
-    /// Resource types the OAuth application's webhooks subscribe to.
+    /// The event streams delivered to the application’s webhook endpoint. A nonempty list requires a webhook URL, and a supplied list replaces the previous selection. These subscriptions belong to the application; they are separate from webhooks you create manually with webhookCreate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub webhook_resource_types: MaybeUndefined<Vec<WebhookResourceType>>,
 }
-/// Input for updating an OAuth application through the public API.
+/// Changes to an application created by the calling OAuth application. Omitted properties remain unchanged; supplied redirectUris, grantTypes, and webhookResourceTypes replace their full lists. Enabling client_credentials or changing the webhook URL requires permission to manage the application’s credentials, which depends on its private-team access.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthApplicationUpdateInput {
-    /// The OAuth application's name.
+    /// Display name, from 2 to 80 characters. Must not contain a URL or the word Linear.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// User-facing description of the OAuth application.
+    /// Description shown during authorization, up to 1,000 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
     /// Name of the developer or company that built the OAuth application.
@@ -6759,44 +6066,29 @@ pub struct OAuthApplicationUpdateInput {
     /// OAuth grant capabilities the app may use. authorization_code is required. Omit to keep the existing grant types.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub grant_types: MaybeUndefined<Vec<OAuthApplicationGrantType>>,
-    /// URL of the OAuth application's icon.
+    /// Whether token requests for the OAuth application, including refresh token requests, must include a DPoP proof. Access tokens issued before this is enabled are not affected.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub require_token_binding: MaybeUndefined<bool>,
+    /// Linear upload URL for the application icon. Use fileUpload first; the image is resized and made public.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub image_url: MaybeUndefined<String>,
-    /// Webhook URL used for delivering webhook payloads.
+    /// The public HTTPS endpoint that receives this application’s signed webhook requests. A URL requires at least one webhookResourceTypes entry, and resource types require a configured URL. On update, the existing URL is used when this field is omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub webhook_url: MaybeUndefined<String>,
     /// Whether webhook delivery is enabled for this OAuth application.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub webhook_enabled: MaybeUndefined<bool>,
-    /// Resource types the OAuth application's webhooks subscribe to.
+    /// The event streams delivered to the application’s webhook endpoint. A nonempty list requires a webhook URL, and a supplied list replaces the previous selection. These subscriptions belong to the application; they are separate from webhooks you create manually with webhookCreate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub webhook_resource_types: MaybeUndefined<Vec<WebhookResourceType>>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OnboardingCustomerSurvey {
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub company_role: MaybeUndefined<String>,
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub company_size: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpsgenieInput {
-    /// The date when the Opsgenie API failed with an unauthorized error.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub api_failed_with_unauthorized_error_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-}
-/// Input for updating workspace authentication settings.
+/// Workspace authentication restrictions and sign-in behavior. Use allowedAuthServices to limit login providers and the bypass setting to control whether administrators can use other providers.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationAuthSettingsInput {
-    /// Allowed authentication providers, empty array means all are allowed.
+    /// The replacement list of authentication providers allowed for sign-in. An empty array allows all providers. Omit to keep the existing list; restricting providers requires the corresponding plan feature.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub allowed_auth_services: MaybeUndefined<Vec<String>>,
-    /// `Internal` The minimum role required for the auth service bypass exemption.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub allowed_auth_service_bypass_role: MaybeUndefined<String>,
     /// Whether to hide non-primary workspaces during signup for users with matching email domains.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub hide_non_primary_organizations: MaybeUndefined<bool>,
@@ -6804,59 +6096,7 @@ pub struct OrganizationAuthSettingsInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub disable_auth_service_bypass: MaybeUndefined<bool>,
 }
-/// `Internal` Input for updating Coding Sessions settings for the workspace.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationCodingAgentSettingsInput {
-    /// `Internal` The model preference used for Coding Sessions.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub model: MaybeUndefined<String>,
-    /// `Internal` The provider-agnostic reasoning effort level used for Coding Sessions. Clamped to the selected model's provider when the session runs.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub effort: MaybeUndefined<String>,
-    /// `Internal` Whether Coding Sessions require uploaded user commit signing keys.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub commit_signing_enabled: MaybeUndefined<bool>,
-    /// `Internal` The default sandbox size used for Coding Sessions.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sandbox_size: MaybeUndefined<String>,
-    /// `Internal` Whether new Coding Session sandboxes should use workspace region pinning.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub region_pinning: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationDomainCreateInput {
-    /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub id: MaybeUndefined<String>,
-    /// The identity provider to which to add the domain.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub identity_provider_id: MaybeUndefined<String>,
-    /// The domain name to add.
-    pub name: String,
-    /// The email address to which to send the verification code.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub verification_email: MaybeUndefined<String>,
-    /// The authentication type this domain is for.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub auth_type: MaybeUndefined<String>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationDomainUpdateInput {
-    /// Prevent users with this domain to create new workspaces. Only allowed to set on claimed domains!
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub disable_organization_creation: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationDomainVerificationInput {
-    /// The identifier in UUID v4 format of the domain being verified.
-    pub organization_domain_id: String,
-    /// The verification code sent via email.
-    pub verification_code: String,
-}
+/// The email address, workspace role, and optional teams for an invitation. The default role is user. Guest invitations require at least one team, and Free workspaces only accept the admin role.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationInviteCreateInput {
@@ -6868,87 +6108,35 @@ pub struct OrganizationInviteCreateInput {
     /// What user role the invite should grant.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub role: MaybeUndefined<UserRoleType>,
-    /// The teams that the user has been invited to.
+    /// UUIDs of the teams the invitee will join when accepting. Required and nonempty for guest invitations. The selected teams must be accessible and available for invitation.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_ids: MaybeUndefined<Vec<String>>,
-    /// `INTERNAL` Optional metadata about the invite.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub metadata: MaybeUndefined<serde_json::Value>,
 }
+/// Changes the team memberships granted when this invitation is accepted.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationInviteUpdateInput {
-    /// The teams that the user has been invited to.
+    /// Replaces the team UUIDs the invitee will join on acceptance.
     pub team_ids: Vec<String>,
 }
-/// `INTERNAL` Organization IP restriction configuration.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationIpRestrictionInput {
-    /// IP range in CIDR format.
-    pub range: String,
-    /// Restriction type.
-    pub r#type: String,
-    /// Optional restriction description.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description: MaybeUndefined<String>,
-    /// Whether the restriction is enabled.
-    pub enabled: bool,
-}
-/// `Internal` An MCP server URL entry for the Linear Agent allowlist.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationLinearAgentMcpServerAllowlistEntryInput {
-    /// `Internal` The MCP server URL that Linear Agent is allowed to use.
-    pub url: String,
-    /// `Internal` Slug of the built-in MCP integration this entry was added from, if any.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub known_integration_key: MaybeUndefined<String>,
-}
-/// `Internal` Input for updating Linear Agent settings for the workspace.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationLinearAgentSettingsInput {
-    /// `Internal` Whether the workspace has enabled web search for Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub web_search_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether the workspace has enabled MCP servers for Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub mcp_servers_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether all MCP servers or only approved MCP servers are allowed for Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub mcp_servers_mode: MaybeUndefined<LinearAgentMcpServersMode>,
-    /// `Internal` Legacy MCP server allowlist for Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub mcp_servers_allowlist:
-        MaybeUndefined<Vec<OrganizationLinearAgentMcpServerAllowlistEntryInput>>,
-    /// `Internal` Whether external trusted sources are disabled or restricted to approved sources for loops.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub trusted_sources_mode: MaybeUndefined<LinearAgentTrustedSourcesMode>,
-    /// `Internal` Trusted-source allowlist for loops.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub trusted_sources_allowlist:
-        MaybeUndefined<Vec<OrganizationLinearAgentTrustedSourcesAllowlistEntryInput>>,
-}
-/// `Internal` A trusted-source entry for the loop allowlist.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationLinearAgentTrustedSourcesAllowlistEntryInput {
-    /// `Internal` The trusted-source key that loops are allowed to use.
-    pub key: String,
-}
-/// Filter public workspace quotas by key.
+/// Filter public workspace quotas by key or scope.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationQuotaFilter {
+    /// Matches the stable quota key.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub key: MaybeUndefined<StringComparator>,
+    /// Comparator for the quota scope: workspace, team, project, or initiative.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub scope: MaybeUndefined<StringComparator>,
+    /// Requires every listed filter to match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<OrganizationQuotaFilter>>,
+    /// Requires at least one listed filter to match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<OrganizationQuotaFilter>>,
 }
-/// Input for updating workspace security settings such as role-based access controls.
+/// Minimum workspace roles required for individual actions, such as inviting members or creating API keys. These settings control who can perform the actions; they do not change users’ assigned roles.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationSecuritySettingsInput {
@@ -6999,18 +6187,7 @@ pub struct OrganizationStartTrialInput {
     /// The plan type to trial.
     pub plan_type: String,
 }
-/// `Internal` Input for updating workspace theme settings.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrganizationThemeSettingsInput {
-    /// `ALPHA` Light theme palette: CSS custom property name (`--name`) to color or length value.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub light_theme: MaybeUndefined<serde_json::Value>,
-    /// `ALPHA` Dark theme palette: CSS custom property name (`--name`) to color or length value.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub dark_theme: MaybeUndefined<serde_json::Value>,
-}
-/// Input for updating the workspace.
+/// Changes to the workspace associated with your credentials. Omitted fields keep their current values. Most settings require workspace-settings permission, while update reminder schedules require schedule-management permission.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrganizationUpdateInput {
@@ -7038,28 +6215,28 @@ pub struct OrganizationUpdateInput {
     /// Whether the default prompt for copying an issue or opening it in a coding tool includes a suggested Git branch name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub suggested_branch_name_enabled: MaybeUndefined<bool>,
-    /// Whether the workspace is using roadmap.
+    /// Whether initiatives are enabled for the workspace. The field keeps its legacy roadmap name, but controls access to initiative creation.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub roadmap_enabled: MaybeUndefined<bool>,
-    /// The n-weekly frequency at which to prompt for project updates.
+    /// Weeks between project update reminders, from 0 to 8. Null disables workspace reminders.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_reminder_frequency_in_weeks: MaybeUndefined<f64>,
     /// The day at which project updates are sent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_reminders_day: MaybeUndefined<Day>,
-    /// The hour at which project updates are sent.
+    /// The hour for project update reminders, from 0 to 23.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_reminders_hour: MaybeUndefined<f64>,
-    /// `ALPHA` The n-weekly frequency at which to prompt for initiative updates.
+    /// `ALPHA` Weeks between initiative update reminders, from 0 to 8. Null disables workspace reminders.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_reminder_frequency_in_weeks: MaybeUndefined<f64>,
     /// `ALPHA` The day at which initiative updates are sent.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_reminders_day: MaybeUndefined<Day>,
-    /// `ALPHA` The hour at which initiative updates are sent.
+    /// `ALPHA` The hour for initiative update reminders, from 0 to 23.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_reminders_hour: MaybeUndefined<f64>,
-    /// The month at which the fiscal year starts.
+    /// The fiscal year’s first month, from 0 for January to 11 for December.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub fiscal_year_start_month: MaybeUndefined<f64>,
     /// The default home view for members of the workspace who have not chosen their own default.
@@ -7068,60 +6245,42 @@ pub struct OrganizationUpdateInput {
     /// The id of the specific initiative, project, view, or dashboard used as the default home view. The type of entity is given by defaultHomeView.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_home_view_target_id: MaybeUndefined<String>,
-    /// `Internal` The list of working days. Sunday is 0, Monday is 1, etc.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub working_days: MaybeUndefined<Vec<f64>>,
     /// Whether the workspace has opted for reduced customer support attachment information.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reduced_personal_information: MaybeUndefined<bool>,
     /// Whether the workspace has opted for having to approve all OAuth applications for install.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub oauth_app_review: MaybeUndefined<bool>,
-    /// Internal. Whether SLAs have been enabled for the workspace.
+    /// `DEPRECATED` List of services that are allowed to be used for login.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sla_enabled: MaybeUndefined<bool>,
+    pub allowed_auth_services: MaybeUndefined<Vec<String>>,
+    /// `DEPRECATED` Whether member users are allowed to send invites.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub allow_members_to_invite: MaybeUndefined<bool>,
+    /// `DEPRECATED` Whether team creation is restricted to admins.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub restrict_team_creation_to_admins: MaybeUndefined<bool>,
+    /// `DEPRECATED` Whether label creation is restricted to admins.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub restrict_label_management_to_admins: MaybeUndefined<bool>,
     /// Whether agent invocation is restricted to full workspace members.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub restrict_agent_invocation_to_members: MaybeUndefined<bool>,
-    /// IP restriction configurations controlling allowed access the workspace.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ip_restrictions: MaybeUndefined<Vec<OrganizationIpRestrictionInput>>,
-    /// Allowed file upload content types.
+    /// The allowed file MIME types or patterns, such as application/pdf or text/*. This replaces the workspace’s upload restriction list. Use null to remove the workspace-specific restriction; configuring restrictions requires the corresponding plan feature.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub allowed_file_upload_content_types: MaybeUndefined<Vec<String>>,
-    /// `ALPHA` Theme settings for the workspace.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub theme_settings: MaybeUndefined<OrganizationThemeSettingsInput>,
-    /// `INTERNAL` Whether the workspace is using customers.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub customers_enabled: MaybeUndefined<bool>,
-    /// `INTERNAL` Configuration settings for the Customers feature.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub customers_configuration: MaybeUndefined<CustomersConfigurationInput>,
-    /// `INTERNAL` Whether code intelligence is enabled for the workspace.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub code_intelligence_enabled: MaybeUndefined<bool>,
-    /// `INTERNAL` GitHub repository in owner/repo format for code intelligence.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub code_intelligence_repository: MaybeUndefined<String>,
     /// Whether the workspace has enabled the feed feature.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub feed_enabled: MaybeUndefined<bool>,
+    /// `DEPRECATED` Whether to hide other workspaces during signup for users whose email domain is claimed by this workspace.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub hide_non_primary_organizations: MaybeUndefined<bool>,
     /// Default schedule for how often feed summaries are generated.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_feed_summary_schedule: MaybeUndefined<FeedSummarySchedule>,
-    /// `INTERNAL` Whether the workspace has enabled the AI add-on.
+    /// `DEPRECATED` Whether the workspace has enabled the member API keys.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ai_addon_enabled: MaybeUndefined<bool>,
-    /// `INTERNAL` Whether the workspace has enabled loops.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub agent_automation_enabled: MaybeUndefined<bool>,
-    /// `INTERNAL` Whether the workspace has enabled generated updates.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub generated_updates_enabled: MaybeUndefined<bool>,
-    /// `INTERNAL` Whether the workspace has opted in to AI telemetry.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ai_telemetry_enabled: MaybeUndefined<bool>,
+    pub personal_api_keys_enabled: MaybeUndefined<bool>,
     /// Whether the workspace has enabled AI discussion summaries for issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ai_discussion_summaries_enabled: MaybeUndefined<bool>,
@@ -7149,24 +6308,6 @@ pub struct OrganizationUpdateInput {
     /// The prefix to use for auto-created Slack project channels (p-, proj-, or project-).
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_project_channel_prefix: MaybeUndefined<String>,
-    /// `Internal` Whether the Slack project channels feature is enabled for the workspace.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_project_channels_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether to automatically create a Slack channel when a new project is created.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_auto_create_project_channel: MaybeUndefined<bool>,
-    /// `Internal` Whether the workspace has enabled Linear Agent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub linear_agent_enabled: MaybeUndefined<bool>,
-    /// `Internal` Settings for Linear Agent features.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub linear_agent_settings: MaybeUndefined<OrganizationLinearAgentSettingsInput>,
-    /// `INTERNAL` Whether the workspace has enabled Coding Sessions.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub coding_agent_enabled: MaybeUndefined<bool>,
-    /// `Internal` Settings for Coding Sessions features.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub coding_agent_settings: MaybeUndefined<OrganizationCodingAgentSettingsInput>,
 }
 /// Customer owner sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -7179,13 +6320,7 @@ pub struct OwnerSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PagerDutyInput {
-    /// The date when the PagerDuty API failed with an unauthorized error.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub api_failed_with_unauthorized_error_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-}
+/// Channel preferences to change. Omitted channels retain their current settings.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialNotificationChannelPreferencesInput {
@@ -7201,53 +6336,6 @@ pub struct PartialNotificationChannelPreferencesInput {
     /// Whether notifications are currently enabled for Slack.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack: MaybeUndefined<bool>,
-}
-/// `INTERNAL` Input for a Startup Program partner application submitted from the website.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PartnerApplicationCreateInput {
-    /// Full name of the applicant.
-    pub full_name: String,
-    /// Business email of the applicant.
-    pub email: String,
-    /// The applicant's role or title at the organization.
-    pub role: String,
-    /// Name of the partner organization.
-    pub organization_name: String,
-    /// Website of the partner organization.
-    pub organization_website: String,
-    /// Type of the partner organization (e.g., venture capital firm, accelerator).
-    pub organization_type: String,
-    /// Primary countries or regions the organization operates in.
-    pub region: String,
-    /// One-line description of what the organization does.
-    pub description: String,
-    /// Number of active portfolio companies (venture capital firms).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub portfolio_companies: MaybeUndefined<String>,
-    /// Stages the firm primarily invests at (venture capital firms).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub investment_stages: MaybeUndefined<Vec<String>>,
-    /// Number of companies per cohort (accelerators and programs).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub companies_per_cohort: MaybeUndefined<String>,
-    /// Number of cohorts run per year (accelerators and programs).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub cohorts_per_year: MaybeUndefined<String>,
-    /// Number of active members or startups in the network (communities).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub network_size: MaybeUndefined<String>,
-    /// Channels the organization will use to distribute the offer.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub distribution_channels: MaybeUndefined<Vec<String>>,
-    /// Whether the organization already offers software perks from other companies.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub offers_software_perks: MaybeUndefined<String>,
-    /// Which other software perks the organization offers, when applicable.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub other_perks: MaybeUndefined<String>,
-    /// Whether the applicant confirmed the distribution terms.
-    pub consent: bool,
 }
 /// Issue priority sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -7266,17 +6354,17 @@ pub struct PrioritySort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub use_priority_sort_order_tiebreaker: MaybeUndefined<bool>,
 }
-/// Project filtering options.
+/// Filters a related collection of projects. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectCollectionFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project name.
@@ -7285,7 +6373,7 @@ pub struct ProjectCollectionFilter {
     /// Comparator for the project slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the project's custom identifier.
+    /// Comparator for the project's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
     /// `DEPRECATED` Comparator for the project state.
@@ -7294,13 +6382,13 @@ pub struct ProjectCollectionFilter {
     /// Filters that the project status must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status: MaybeUndefined<Box<ProjectStatusFilter>>,
-    /// Comparator for the project priority.
+    /// The project priority: 0 for no priority, 1 for Urgent, 2 for High, 3 for Medium, or 4 for Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
     /// Filters that project labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<ProjectLabelCollectionFilter>>,
-    /// `Internal` Comparator for the project's content.
+    /// Comparator for the project's content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Comparator for the project started date (when it was moved to an "In Progress" status).
@@ -7321,7 +6409,7 @@ pub struct ProjectCollectionFilter {
     /// Comparator for the project health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the project health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The project’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
     /// `ALPHA` Comparator for the project activity type: buzzin, active, some, none
@@ -7345,7 +6433,7 @@ pub struct ProjectCollectionFilter {
     /// Comparator for filtering projects with violated dependencies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_violated_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the project updates.
+    /// Conditions on updates published directly to this project. Use some to find a matching update or length to test whether updates exist.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_updates: MaybeUndefined<ProjectUpdatesCollectionFilter>,
     /// Filters that the projects creator must satisfy.
@@ -7369,13 +6457,13 @@ pub struct ProjectCollectionFilter {
     /// Filters that the project's milestones must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
-    /// Filters that the project's completed milestones must satisfy.
+    /// Conditions on milestones with at least one unarchived issue and no open, non-triage issues. Canceled and completed issues do not keep a milestone open.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
     /// Filters that the project's next milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub next_project_milestone: MaybeUndefined<Box<ProjectMilestoneFilter>>,
-    /// Filters that the project's team must satisfy.
+    /// Conditions on the project’s associated teams that you can access. This can match any associated team, not just the lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accessible_teams: MaybeUndefined<Box<TeamCollectionFilter>>,
     /// `ALPHA` Filters that the project's lead team must satisfy.
@@ -7387,16 +6475,16 @@ pub struct ProjectCollectionFilter {
     /// Filters that the project's customer needs must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Count of customers
+    /// The number of distinct customers with unarchived needs associated with this project. Several needs from the same customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// The number of distinct customers with unarchived needs associated with this project and priority of at least 1. Several qualifying needs from one customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// Compound filters, all of which need to be matched by the project.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the project.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectCollectionFilter>>,
     /// Filters that needs to be matched by some projects.
@@ -7405,11 +6493,11 @@ pub struct ProjectCollectionFilter {
     /// Filters that needs to be matched by all projects.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<ProjectFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new project. A name and at least one team are required. All other fields are optional and will use defaults if not specified.
+/// The details for a new project. Provide a name and the teams that will own its issues. A project template can supply defaults and create related milestones or issues; see templateId for how template values and your input are combined.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectCreateInput {
@@ -7421,54 +6509,54 @@ pub struct ProjectCreateInput {
     /// The icon of the project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the project.
+    /// The project color as a hexadecimal color string, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The ID of the project status.
+    /// `DEPRECATED` The state of the project.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub state: MaybeUndefined<String>,
+    /// The UUID of an active project status available to the project’s lead team. Without an explicit status or a template default, the project uses the first backlog status in that team’s status scope.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_id: MaybeUndefined<String>,
-    /// The description for the project.
+    /// A short plain-text summary. Use content for the full Markdown overview.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The project content as markdown.
+    /// The full project overview in Markdown, separate from the short description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
-    /// The identifiers of the teams this project is associated with.
+    /// UUIDs of the teams that the project belongs to. At least one accessible team must remain after template processing. Issues in the project must belong to one of these teams.
     pub team_ids: Vec<String>,
     /// The ID of the issue that was converted into this project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub converted_from_issue_id: MaybeUndefined<String>,
-    /// The ID of the last template applied to the project.
+    /// Records the last applied template UUID. To create the project from a template, use templateId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
-    /// The ID of a project template to apply when creating the project. Overrides useDefaultTemplate if both are provided.
+    /// The UUID of a project template to apply. Non-null input values override template defaults for icon, color, summary, status, priority, lead, and members. A nonempty teamIds list replaces the template’s teams; an empty list uses them. Nonempty content replaces the template overview. Labels are combined, with your selection taking precedence within a single-select group. The template can also create milestones, initial issues, and initiative associations. A nonempty name is still required. Omit useDefaultTemplate when supplying this field.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub template_id: MaybeUndefined<String>,
-    /// When set to true, the default project template of the first team provided will be applied. If templateId is provided, this will be ignored.
+    /// Whether to apply the first supplied team’s default project template. The request fails if that team has no default template. Omit or use false to create without a default template. This field cannot be supplied alongside templateId, even when false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub use_default_template: MaybeUndefined<bool>,
-    /// The identifier of the project lead.
+    /// UUID of the project lead. Application users cannot be leads. The lead is also added as a member.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_id: MaybeUndefined<String>,
-    /// `Internal` The identifier of the team that leads the project.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub lead_team_id: MaybeUndefined<String>,
-    /// The identifiers of the members of this project.
+    /// UUIDs of users to add as project members. Application users cannot be members, and the project lead is added even when not listed. Without this input, a template can supply members; otherwise the list starts empty.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub member_ids: MaybeUndefined<Vec<String>>,
-    /// The planned start date of the project.
+    /// The planned start date in YYYY-MM-DD format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The resolution of the project's start date.
+    /// The precision of startDate: month, quarter, halfYear, or year. Omit for an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date_resolution: MaybeUndefined<DateResolutionType>,
-    /// The planned target date of the project.
+    /// The planned completion date in YYYY-MM-DD format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The resolution of the project's estimated completion date.
+    /// The precision of targetDate: month, quarter, halfYear, or year. Omit for an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date_resolution: MaybeUndefined<DateResolutionType>,
-    /// The sort order for the project within shared views.
+    /// Position in shared project views, in ascending order. Omit or pass 0 to append; collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
     /// The sort order for the project within shared views, when ordered by priority.
@@ -7477,7 +6565,7 @@ pub struct ProjectCreateInput {
     /// The priority of the project. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The identifiers of the project labels associated with this project.
+    /// UUIDs of project labels to apply. When using a template, these are combined with its applicable labels; an explicitly supplied label takes precedence over a template label in the same group. Label groups themselves cannot be applied.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
 }
@@ -7492,17 +6580,17 @@ pub struct ProjectCreatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Project filtering options.
+/// Filters projects by status, health, dates, people, teams, milestones, dependencies, or customer needs. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<EntityIdentifierIDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project name.
@@ -7511,7 +6599,7 @@ pub struct ProjectFilter {
     /// Comparator for the project slug ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<StringComparator>,
-    /// `Internal` Comparator for the project's custom identifier.
+    /// Comparator for the project's custom identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_identifier: MaybeUndefined<NullableStringComparator>,
     /// `DEPRECATED` Comparator for the project state.
@@ -7520,13 +6608,13 @@ pub struct ProjectFilter {
     /// Filters that the project status must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status: MaybeUndefined<Box<ProjectStatusFilter>>,
-    /// Comparator for the project priority.
+    /// The project priority: 0 for no priority, 1 for Urgent, 2 for High, 3 for Medium, or 4 for Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<NullableNumberComparator>,
     /// Filters that project labels must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub labels: MaybeUndefined<Box<ProjectLabelCollectionFilter>>,
-    /// `Internal` Comparator for the project's content.
+    /// Comparator for the project's content.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub searchable_content: MaybeUndefined<ContentComparator>,
     /// Comparator for the project started date (when it was moved to an "In Progress" status).
@@ -7547,7 +6635,7 @@ pub struct ProjectFilter {
     /// Comparator for the project health: onTrack, atRisk, offTrack
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Comparator for the project health (with age): onTrack, atRisk, offTrack, outdated, noUpdate
+    /// The project’s health after accounting for the age of its latest update and its reminder schedule. Accepts onTrack, atRisk, offTrack, outdated, or noUpdate.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health_with_age: MaybeUndefined<StringComparator>,
     /// `ALPHA` Comparator for the project activity type: buzzin, active, some, none
@@ -7571,7 +6659,7 @@ pub struct ProjectFilter {
     /// Comparator for filtering projects with violated dependencies.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_violated_relations: MaybeUndefined<RelationExistsComparator>,
-    /// Comparator for the project updates.
+    /// Conditions on updates published directly to this project. Use some to find a matching update or length to test whether updates exist.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_updates: MaybeUndefined<ProjectUpdatesCollectionFilter>,
     /// Filters that the projects creator must satisfy.
@@ -7595,13 +6683,13 @@ pub struct ProjectFilter {
     /// Filters that the project's milestones must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
-    /// Filters that the project's completed milestones must satisfy.
+    /// Conditions on milestones with at least one unarchived issue and no open, non-triage issues. Canceled and completed issues do not keep a milestone open.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_project_milestones: MaybeUndefined<Box<ProjectMilestoneCollectionFilter>>,
     /// Filters that the project's next milestone must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub next_project_milestone: MaybeUndefined<Box<ProjectMilestoneFilter>>,
-    /// Filters that the project's team must satisfy.
+    /// Conditions on the project’s associated teams that you can access. This can match any associated team, not just the lead team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub accessible_teams: MaybeUndefined<Box<TeamCollectionFilter>>,
     /// `ALPHA` Filters that the project's lead team must satisfy.
@@ -7613,16 +6701,16 @@ pub struct ProjectFilter {
     /// Filters that the project's customer needs must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub needs: MaybeUndefined<Box<CustomerNeedCollectionFilter>>,
-    /// Count of customers
+    /// The number of distinct customers with unarchived needs associated with this project. Several needs from the same customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_count: MaybeUndefined<NumberComparator>,
-    /// Count of important customers
+    /// The number of distinct customers with unarchived needs associated with this project and priority of at least 1. Several qualifying needs from one customer count once.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub customer_important_count: MaybeUndefined<NumberComparator>,
-    /// Compound filters, all of which need to be matched by the project.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectFilter>>,
-    /// Compound filters, one of which need to be matched by the project.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectFilter>>,
 }
@@ -7637,17 +6725,17 @@ pub struct ProjectHealthSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Project label filtering options.
+/// Filters a related collection of project labels. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectLabelCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the name.
@@ -7662,16 +6750,16 @@ pub struct ProjectLabelCollectionFilter {
     /// Filters that the project label's team must satisfy. Use `{ null: true }` to filter workspace-level labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the project label's parent label must satisfy.
+    /// Conditions on the label group containing this label. This filters group properties, such as its name, rather than the child label itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<ProjectLabelFilter>>,
-    /// Filter based on the existence of the relation.
+    /// True matches an unset label list, which is different from an empty list. Use length: { eq: 0 } to find projects without labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectLabelCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectLabelCollectionFilter>>,
     /// Filters that needs to be matched by some project labels.
@@ -7680,52 +6768,52 @@ pub struct ProjectLabelCollectionFilter {
     /// Filters that needs to be matched by all project labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<ProjectLabelFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new project label. A name is required. If no team is specified, the label is created as a workspace-level label available to all teams.
+/// A project label or label group to create. Omit teamId for a workspace label, or supply a team UUID to limit the label to that team and its inherited copies. Use parentId to place a label in a group; a group’s children must share its scope.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectLabelCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji are not allowed.
     pub name: String,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Defaults to the parent group's color, or #4EA7FC without a parent. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Groups cannot be nested inside other groups.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Create a group to hold child labels. Groups cannot be applied directly. Defaults to false.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to create a retired label; omit or pass null for an active label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The selection mode of the label group. Only singleSelect is currently supported. Null uses single-select behavior.
+    /// How children of a label group can be applied to a project. singleSelect allows one child; multiSelect allows several. Omission or null uses single-select behavior. This setting applies to groups.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_type: MaybeUndefined<LabelGroupType>,
     /// The identifier of the team to scope the label to. If not given, the label is a workspace-level label available to all teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
 }
-/// Project label filtering options.
+/// Filters project labels by name, creator, team, or parent label group. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectLabelFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the name.
@@ -7740,13 +6828,13 @@ pub struct ProjectLabelFilter {
     /// Filters that the project label's team must satisfy. Use `{ null: true }` to filter workspace-level labels.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the project label's parent label must satisfy.
+    /// Conditions on the label group containing this label. This filters group properties, such as its name, rather than the child label itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<ProjectLabelFilter>>,
-    /// Compound filters, all of which need to be matched by the label.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectLabelFilter>>,
-    /// Compound filters, one of which need to be matched by the label.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectLabelFilter>>,
 }
@@ -7754,25 +6842,25 @@ pub struct ProjectLabelFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectLabelUpdateInput {
-    /// The name of the label.
+    /// Label name, from 1 to 80 characters. Emoji and null are not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the label.
+    /// Description of the label’s purpose, up to 255 characters. Null clears the description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The identifier of the parent label.
+    /// UUID of an existing label group. Null removes the label from its group. Groups cannot be nested.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// The color of the label.
+    /// Hex color, such as #EB5757. Changing a group's color also updates children that shared its previous color. Null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// Whether the label is a group.
+    /// Whether the label is a group of child labels. Changing this requires an unused label with no parent or children. Groups cannot be applied directly.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_group: MaybeUndefined<bool>,
-    /// The time at which the label was retired. Set to null to restore a retired label.
+    /// Retirement time. Set to null to restore the label. Changing a group's retirement state also changes its children; a child cannot be restored while its group is retired.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The selection mode of the label group. Omit to keep the current value. Only singleSelect is currently supported. Null uses single-select behavior.
+    /// How children of this label group can be applied to a project: singleSelect allows one child and multiSelect allows several. Omit to keep the current setting; null uses single-select behavior.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub group_type: MaybeUndefined<LabelGroupType>,
 }
@@ -7798,17 +6886,17 @@ pub struct ProjectManualSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Milestone collection filtering options.
+/// Filters a related collection of project milestones. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project milestone name.
@@ -7820,10 +6908,10 @@ pub struct ProjectMilestoneCollectionFilter {
     /// Filters that the project milestone's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Compound filters, all of which need to be matched by the milestone.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectMilestoneCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the milestone.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectMilestoneCollectionFilter>>,
     /// Filters that needs to be matched by some milestones.
@@ -7832,11 +6920,11 @@ pub struct ProjectMilestoneCollectionFilter {
     /// Filters that needs to be matched by all milestones.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<ProjectMilestoneFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new project milestone.
+/// The name and parent project for a new milestone, with optional description, target date, and ordering. The name must be unique among active milestones in that project.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneCreateInput {
@@ -7848,29 +6936,26 @@ pub struct ProjectMilestoneCreateInput {
     /// The description of the project milestone in markdown format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// `Internal` The description of the project milestone as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description_data: MaybeUndefined<serde_json::Value>,
-    /// The planned target date of the project milestone.
+    /// The planned completion date in YYYY-MM-DD format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
     /// Related project for the project milestone. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     pub project_id: String,
-    /// The sort order for the project milestone within a project.
+    /// Manual position within the project; lower values appear first. Omit or use 0 to append the milestone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Project milestone filtering options.
+/// Filters project milestones by name, target date, or project. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project milestone name.
@@ -7882,14 +6967,14 @@ pub struct ProjectMilestoneFilter {
     /// Filters that the project milestone's project must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project: MaybeUndefined<Box<NullableProjectFilter>>,
-    /// Compound filters, all of which need to be matched by the project milestone.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectMilestoneFilter>>,
-    /// Compound filters, one of which need to be matched by the project milestone.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectMilestoneFilter>>,
 }
-/// `Internal` Input for moving a project milestone to another project.
+/// Input for moving a project milestone to another project.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneMoveInput {
@@ -7908,16 +6993,16 @@ pub struct ProjectMilestoneMoveInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub undo_project_team_ids: MaybeUndefined<ProjectMilestoneMoveProjectTeamsInput>,
 }
-/// `Internal` Used for ProjectMilestoneMoveInput to describe a mapping between an issue and its team.
+/// Used for ProjectMilestoneMoveInput to describe a mapping between an issue and its team.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneMoveIssueToTeamInput {
-    /// The issue id in this relationship, you can use * as wildcard if all issues are being moved to the same team
+    /// The identifier of the issue to restore to its previous team. Must match an issue in the milestone.
     pub issue_id: String,
     /// The team id in this relationship
     pub team_id: String,
 }
-/// `Internal` Used for ProjectMilestoneMoveInput to describe a snapshot of a project and its team ids
+/// Used for ProjectMilestoneMoveInput to describe a snapshot of a project and its team ids
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneMoveProjectTeamsInput {
@@ -7926,26 +7011,23 @@ pub struct ProjectMilestoneMoveProjectTeamsInput {
     /// The team ids for the project
     pub team_ids: Vec<String>,
 }
-/// Input for updating an existing project milestone.
+/// Changes to an existing milestone. Omit fields to keep their current values. A null targetDate clears the date, while an empty or null description leaves the existing description unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectMilestoneUpdateInput {
-    /// The name of the project milestone.
+    /// The milestone name, unique among active milestones in the project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the project milestone in markdown format.
+    /// The replacement description in Markdown. An empty string or null leaves the description unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// `Internal` The description of the project milestone as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub description_data: MaybeUndefined<serde_json::Value>,
-    /// The planned target date of the project milestone.
+    /// The planned completion date in YYYY-MM-DD format. Null clears the target date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The sort order for the project milestone within a project.
+    /// Manual position within the project; lower values appear first. Colliding positions are adjusted automatically.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
-    /// Related project for the project milestone. Can be a UUID or project identifier (e.g., 'P-LIN-123').
+    /// The destination project’s UUID or human-readable identifier, such as P-LIN-123. Changing it moves the milestone and clears references from issue drafts in the previous project. Omit to keep the milestone in its current project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
 }
@@ -7974,53 +7056,53 @@ pub struct ProjectPrioritySort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub no_priority_first: MaybeUndefined<bool>,
 }
-/// Input for creating a new project relation.
+/// The two projects and anchor points for a new dependency. The projects must be different and editable. When an anchor type is milestone, provide the corresponding milestone UUID.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRelationCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The type of relation of the project to the related project.
+    /// The relation type. The supported value is dependency.
     pub r#type: String,
     /// The identifier of the project that is related to another project. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     pub project_id: String,
-    /// The identifier of the project milestone.
+    /// UUID of the source milestone when anchorType is milestone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone_id: MaybeUndefined<String>,
-    /// The type of the anchor for the project.
+    /// Source endpoint: start, end, or milestone. Use projectMilestoneId for a milestone anchor.
     pub anchor_type: String,
     /// The identifier of the related project. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     pub related_project_id: String,
-    /// The identifier of the related project milestone.
+    /// UUID of the related milestone when relatedAnchorType is milestone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub related_project_milestone_id: MaybeUndefined<String>,
-    /// The type of the anchor for the related project.
+    /// Related endpoint: start, end, or milestone. Use relatedProjectMilestoneId for a milestone anchor.
     pub related_anchor_type: String,
 }
-/// Input for updating an existing project relation.
+/// Changes to an existing project dependency. Omitted fields keep their current values. The resulting projects and anchor points are validated together, so update a milestone reference when changing its anchor.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRelationUpdateInput {
-    /// The type of relation of the project to the related project.
+    /// The relation type. The supported value is dependency.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<String>,
     /// The identifier of the project that is related to another project. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// The identifier of the project milestone.
+    /// UUID of the source milestone when anchorType is milestone. Null clears the milestone reference.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_milestone_id: MaybeUndefined<String>,
-    /// The type of the anchor for the project.
+    /// Source endpoint: start, end, or milestone. Use projectMilestoneId for a milestone anchor.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub anchor_type: MaybeUndefined<String>,
     /// The identifier of the related project. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub related_project_id: MaybeUndefined<String>,
-    /// The identifier of the related project milestone.
+    /// UUID of the related milestone when relatedAnchorType is milestone. Null clears the milestone reference.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub related_project_milestone_id: MaybeUndefined<String>,
-    /// The type of the anchor for the related project.
+    /// Related endpoint: start, end, or milestone. Use relatedProjectMilestoneId for a milestone anchor.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub related_anchor_type: MaybeUndefined<String>,
 }
@@ -8070,7 +7152,7 @@ pub struct ProjectSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead: MaybeUndefined<ProjectLeadSort>,
 }
-/// Input for creating a new project status.
+/// The name, color, lifecycle category, and position for a new project status. Use the category to define its lifecycle behavior and the name to describe the stage in your workflow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectStatusCreateInput {
@@ -8084,28 +7166,25 @@ pub struct ProjectStatusCreateInput {
     /// Description of the status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The position of the status in the workspace's project flow.
+    /// Order within the status’s type group. Lower values appear first.
     pub position: f64,
-    /// The type of the project status.
+    /// The lifecycle category: backlog, planned, started, completed, or canceled. The deprecated paused type cannot be created.
     pub r#type: ProjectStatusType,
     /// Whether or not a project can be in this status indefinitely.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub indefinite: MaybeUndefined<bool>,
-    /// `Internal` The identifier of the team to scope the status to. If not given, the status is a workspace-level status.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
 }
-/// Project status filtering options.
+/// Filters project statuses by name, lifecycle type, team, or projects using the status. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectStatusFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project status name.
@@ -8117,7 +7196,7 @@ pub struct ProjectStatusFilter {
     /// Comparator for the project status position.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<NumberComparator>,
-    /// Comparator for the project status type.
+    /// The lifecycle category: backlog, planned, started, paused, completed, or canceled. This is separate from the status name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
     /// Filters that the project status's team must satisfy. Use `{ null: true }` to filter workspace-level statuses.
@@ -8126,10 +7205,10 @@ pub struct ProjectStatusFilter {
     /// Filters that the project status projects must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub projects: MaybeUndefined<Box<ProjectCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the project status.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectStatusFilter>>,
-    /// Compound filters, one of which needs to be matched by the project status.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectStatusFilter>>,
 }
@@ -8144,7 +7223,7 @@ pub struct ProjectStatusSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Input for updating an existing project status.
+/// Changes to an existing project status. Omitted fields keep their current values. Changing a shared status affects how projects using it are presented and classified.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectStatusUpdateInput {
@@ -8157,49 +7236,46 @@ pub struct ProjectStatusUpdateInput {
     /// Description of the status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The position of the status in the workspace's project flow.
+    /// Order within the status’s type group. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<f64>,
-    /// The type of the project status.
+    /// The lifecycle category: backlog, planned, started, completed, or canceled. The deprecated paused type cannot be assigned.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<ProjectStatusType>,
     /// Whether or not a project can be in this status indefinitely.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub indefinite: MaybeUndefined<bool>,
 }
-/// Input for creating a new project update.
+/// The project, message, and optional health for a new status update. The current user becomes the author, and current project progress is captured automatically. Provide body when using the public API.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdateCreateInput {
     /// The identifier. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The content of the project update in markdown format.
+    /// Update body in Markdown. Required when creating an update through the public API.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// `Internal` The content of the project update as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
     /// The project to associate the project update with. Can be a UUID or project identifier (e.g., 'P-LIN-123').
     pub project_id: String,
-    /// The health of the project at the time of the update.
+    /// The project health reported by this update: onTrack, atRisk, or offTrack. Defaults to onTrack when omitted; publishing the update refreshes the project’s overall health.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<ProjectUpdateHealthType>,
     /// Whether the diff between the current update and the previous one should be hidden.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_diff_hidden: MaybeUndefined<bool>,
 }
-/// Options for filtering project updates.
+/// Filters project updates by author, project, or reactions. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Filters that the project update creator must satisfy.
@@ -8211,33 +7287,36 @@ pub struct ProjectUpdateFilter {
     /// Filters that the project updates reactions must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reactions: MaybeUndefined<ReactionCollectionFilter>,
-    /// Compound filters, all of which need to be matched by the ProjectUpdate.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectUpdateFilter>>,
-    /// Compound filters, one of which need to be matched by the ProjectUpdate.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectUpdateFilter>>,
 }
-/// Input for updating an existing project. All fields are optional; only provided fields will be updated. Setting a field to null (where supported) will clear the value.
+/// Changes to a project. Omit a field to keep its current value. Lists replace the corresponding selections unless their description says otherwise; null only clears fields that explicitly support it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdateInput {
-    /// The ID of the project status.
+    /// `DEPRECATED` The state of the project.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub state: MaybeUndefined<String>,
+    /// The UUID of an active project status available to the project’s lead team. Moving between status types updates startedAt, completedAt, or canceledAt as appropriate. Omit to keep the current status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_id: MaybeUndefined<String>,
     /// The name of the project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description for the project.
+    /// A short plain-text summary. Use an empty string to clear it; null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The project content as markdown.
+    /// Replacement project overview in Markdown. Empty strings, null, and omission leave the existing content unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
     /// The ID of the issue from which that project is created.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub converted_from_issue_id: MaybeUndefined<String>,
-    /// The ID of the last template applied to the project.
+    /// Records the last applied template UUID without applying its contents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub last_applied_template_id: MaybeUndefined<String>,
     /// The icon of the project.
@@ -8246,19 +7325,19 @@ pub struct ProjectUpdateInput {
     /// The color of the project.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The identifiers of the teams this project is associated with.
+    /// The replacement list of team UUIDs. Teams you cannot access are preserved, so omitting a private team does not remove it. At least one team must remain, and a team with active project issues cannot be removed until those issues are moved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_ids: MaybeUndefined<Vec<String>>,
-    /// The time until which project update reminders are paused. Set to null to resume reminders.
+    /// The time until which project update reminders are paused. Set null to remove the project-specific pause; reminders still follow the configured schedule. Omit to leave the pause unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_reminders_paused_until_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The n-weekly frequency at which to prompt for project updates. When not set, reminders are inherited from workspace settings.
+    /// The interval between update reminders in weeks. Null inherits the workspace setting; omit to leave unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub update_reminder_frequency_in_weeks: MaybeUndefined<f64>,
-    /// The frequency at which to prompt for project updates. When not set, reminders are inherited from workspace settings.
+    /// The interval between update reminders, in the unit given by frequencyResolution. Null inherits the workspace setting; omit to leave unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub update_reminder_frequency: MaybeUndefined<f64>,
-    /// The resolution type for the update reminder frequency (e.g., weekly, biweekly).
+    /// The unit of updateReminderFrequency: daily or weekly.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub frequency_resolution: MaybeUndefined<FrequencyResolutionType>,
     /// The day of the week on which to prompt for project updates.
@@ -8267,25 +7346,22 @@ pub struct ProjectUpdateInput {
     /// The hour of the day (0-23) at which to prompt for project updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub update_reminders_hour: MaybeUndefined<i64>,
-    /// The identifier of the project lead.
+    /// UUID of the project lead. Pass null to remove the lead. Application users cannot be leads; a new lead is added as a member.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub lead_id: MaybeUndefined<String>,
-    /// `Internal` The identifier of the team that leads the project.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub lead_team_id: MaybeUndefined<String>,
-    /// The identifiers of the members of this project.
+    /// The replacement list of project member UUIDs. Use [] to remove all members except the project lead, who remains a member. Application users cannot be added; omit the field to keep the current members.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub member_ids: MaybeUndefined<Vec<String>>,
-    /// The planned start date of the project.
+    /// The planned start date in YYYY-MM-DD format. Null clears the date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The resolution of the project's start date.
+    /// The precision of startDate: month, quarter, halfYear, or year. Null uses an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date_resolution: MaybeUndefined<DateResolutionType>,
-    /// The planned target date of the project.
+    /// The planned completion date in YYYY-MM-DD format. Null clears the date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The resolution of the project's estimated completion date.
+    /// The precision of targetDate: month, quarter, halfYear, or year. Null uses an exact date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date_resolution: MaybeUndefined<DateResolutionType>,
     /// The time at which the project was completed.
@@ -8303,35 +7379,35 @@ pub struct ProjectUpdateInput {
     /// Whether to send issue status update notifications to Slack.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slack_issue_statuses: MaybeUndefined<bool>,
-    /// The sort order for the project in shared views.
+    /// Position in shared project views, in ascending order. Pass 0 to append; collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
     /// The sort order for the project within shared views, when ordered by priority.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority_sort_order: MaybeUndefined<f64>,
-    /// Whether the project has been trashed. Set to true to trash, or null to restore.
+    /// The stored trash flag. This field does not archive or restore the project. Use projectDelete to move it to the trash and projectUnarchive to restore it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub trashed: MaybeUndefined<bool>,
     /// The priority of the project. 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub priority: MaybeUndefined<i64>,
-    /// The identifiers of the project labels associated with this project.
+    /// The replacement list of project label UUIDs. Use [] to remove all labels, or omit the field to keep them. Use projectAddLabel or projectRemoveLabel when you only need to change one label; team and label-group rules apply to both approaches.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_ids: MaybeUndefined<Vec<String>>,
 }
-/// Input for updating an existing project update.
+/// Changes to a published project update. Omitted fields keep their current values. Only the author or a user with permission to manage workspace entities can edit the update.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdateUpdateInput {
-    /// The content of the project update in markdown format.
+    /// Replacement update body in Markdown. Pass an empty string to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub body: MaybeUndefined<String>,
-    /// The content of the project update as a Prosemirror document.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub body_data: MaybeUndefined<serde_json::Value>,
     /// The health of the project at the time of the update.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<ProjectUpdateHealthType>,
+    /// Whether the diff between the current update and the previous one should be hidden.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub is_diff_hidden: MaybeUndefined<bool>,
 }
 /// Project update date sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -8344,26 +7420,26 @@ pub struct ProjectUpdatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Collection filtering options for filtering projects by project updates.
+/// Filters a related collection of project updates. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdatesCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project update health.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the project update.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectUpdatesCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the update.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectUpdatesCollectionFilter>>,
     /// Filters that needs to be matched by some updates.
@@ -8372,34 +7448,34 @@ pub struct ProjectUpdatesCollectionFilter {
     /// Filters that needs to be matched by all updates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<ProjectUpdatesFilter>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Options for filtering projects by project updates.
+/// Filters project updates by health, ID, or creation and update timestamps. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUpdatesFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the project update health.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub health: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the project updates.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ProjectUpdatesFilter>>,
-    /// Compound filters, one of which need to be matched by the project updates.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ProjectUpdatesFilter>>,
 }
-/// A reference to a pull request by its repository owner, name, and pull request number. Used during release sync to look up pull requests and associate their linked issues with the release.
+/// Identifies a pull or merge request whose closing or contributing issues should be included in the release. Supplying a reference asserts that it shipped; sync does not wait for the imported pull request’s merge status to catch up.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequestReferenceInput {
@@ -8417,126 +7493,120 @@ pub struct PushSubscriptionCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The push subscription data in stringified JSON format. For web subscriptions, this must contain keys, endpoint, and expirationTime fields per the Web Push API specification. For mobile subscriptions, this contains the device token.
+    /// Ignored. The subscription always belongs to the authenticated user.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub user_id: MaybeUndefined<String>,
+    /// Subscription data encoded as a JSON string. For web push, provide endpoint, keys.auth, keys.p256dh, and expirationTime; the endpoint must be a URL, both keys must be nonempty strings, and expirationTime may be null. Mobile subscriptions provide deviceToken and bundleIdentifier for the selected push service.
     pub data: String,
     /// The type of push subscription: 'web' for browser-based Web Push API, 'apple' for Apple Push Notification service (or 'appleDevelopment' for sandbox), or 'firebase' for Firebase Cloud Messaging (Android).
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<PushSubscriptionType>,
 }
-/// Reaction filtering options.
+/// Conditions on a collection of reactions. Use some to require a matching item, every to check the whole collection, or length to check its size. Direct reaction fields act as some only when no and, or, some, every, or length clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReactionCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the reactions emoji.
+    /// Conditions on the normalized emoji name stored on the reaction, such as +1. Custom workspace emoji use their names.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub emoji: MaybeUndefined<StringComparator>,
-    /// Comparator for the reactions custom emoji.
+    /// Conditions on the custom Emoji record’s UUID. Standard Unicode emoji do not have a custom emoji ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_emoji_id: MaybeUndefined<IDComparator>,
-    /// Compound filters, all of which need to be matched by the reaction.
+    /// Collection conditions that must all match. Different some branches can be satisfied by different reactions.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReactionCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the reaction.
+    /// Alternative collection conditions; at least one must match. Other collection clauses at this level still apply. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReactionCollectionFilter>>,
-    /// Filters that needs to be matched by some reactions.
+    /// Requires at least one related reaction to match these conditions. An empty collection does not match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<ReactionFilter>,
-    /// Filters that needs to be matched by all reactions.
+    /// Requires at least one related reaction and requires every related reaction to match these conditions. Use length: { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<ReactionFilter>,
-    /// Comparator for the collection length.
+    /// Conditions on the total number of related reactions, independent of some or every. Use eq: 0 to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new reaction.
+/// The emoji and resource to react to as the current user. Supply exactly one target: an issue, comment, project update, or initiative update. Repeating the same emoji on the same resource returns your existing reaction.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReactionCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The emoji the user reacted with.
+    /// A standard emoji name, alias, or Unicode emoji, or the name of a custom workspace emoji. Linear normalizes standard emoji to their canonical names; use the returned reaction.emoji when comparing stored reactions.
     pub emoji: String,
-    /// The comment to associate the reaction with.
+    /// UUID of the comment to react to. Supply exactly one target.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub comment_id: MaybeUndefined<String>,
-    /// The project update to associate the reaction with.
+    /// UUID of the project update to react to. Supply exactly one target.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_update_id: MaybeUndefined<String>,
-    /// The update to associate the reaction with.
+    /// UUID of the initiative update to react to. Supply exactly one target.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_update_id: MaybeUndefined<String>,
     /// The issue to associate the reaction with. Can be a UUID or issue identifier (e.g., 'LIN-123').
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_id: MaybeUndefined<String>,
-    /// `Internal` The post to associate the reaction with.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_id: MaybeUndefined<String>,
-    /// `Internal` The pull request to associate the reaction with.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub pull_request_id: MaybeUndefined<String>,
-    /// `Internal` The pull request comment to associate the reaction with.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub pull_request_comment_id: MaybeUndefined<String>,
 }
-/// Reaction filtering options.
+/// Conditions used to select reactions. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReactionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the reactions emoji.
+    /// Conditions on the normalized emoji name stored on the reaction, such as +1. Custom workspace emoji use their names.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub emoji: MaybeUndefined<StringComparator>,
-    /// Comparator for the reactions custom emoji.
+    /// Conditions on the custom Emoji record’s UUID. Standard Unicode emoji do not have a custom emoji ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_emoji_id: MaybeUndefined<IDComparator>,
-    /// Compound filters, all of which need to be matched by the reaction.
+    /// Conditions that the reaction must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReactionFilter>>,
-    /// Compound filters, one of which need to be matched by the reaction.
+    /// Alternative conditions; the reaction must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReactionFilter>>,
 }
-/// Comparator for relation existence.
+/// Tests whether any related records exist.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelationExistsComparator {
-    /// Equals constraint.
+    /// True requires at least one related record; false requires none.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<bool>,
-    /// Not equals constraint.
+    /// True requires no related records; false requires at least one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<bool>,
 }
-/// Release collection filtering options.
+/// Filters a related collection of releases. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseCollectionFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the release name.
@@ -8557,10 +7627,10 @@ pub struct ReleaseCollectionFilter {
     /// Comparator for whether the release is covered by any (non-archived) release note. Filter with `{ eq: false }` to retrieve releases that do not yet have release notes attached.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_release_notes: MaybeUndefined<BooleanComparator>,
-    /// Compound filters, all of which need to be matched by the release.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleaseCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the release.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleaseCollectionFilter>>,
     /// Filters that needs to be matched by some releases.
@@ -8569,11 +7639,11 @@ pub struct ReleaseCollectionFilter {
     /// Filters that needs to be matched by all releases.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<ReleaseFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for completing a release in a specific pipeline.
+/// Selects a release in a pipeline to complete. Supply version to select a specific release, or omit it to use the latest started release. You can also update its name, description, and attached content as part of completion.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseCompleteInput {
@@ -8627,7 +7697,7 @@ pub struct ReleaseCompleteInputBase {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_notes: MaybeUndefined<ReleaseNoteInput>,
 }
-/// The input for creating a release.
+/// Details for a new release in an existing pipeline. Provide its name and pipeline; if stageId is omitted, continuous pipelines use their first completed stage and scheduled pipelines use their first started stage. Version labels must be unique within the pipeline.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseCreateInput {
@@ -8639,30 +7709,30 @@ pub struct ReleaseCreateInput {
     /// The description of the release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The version of the release.
+    /// The version label, such as v1.2.3. An active or archived release in the same pipeline cannot already use it. If a trashed release holds the version, that release is permanently deleted to free the label.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The commit SHA associated with this release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub commit_sha: MaybeUndefined<String>,
-    /// The identifier of the pipeline this release belongs to.
+    /// UUID or slug of the pipeline that will own the release.
     pub pipeline_id: String,
-    /// The current stage of the release. Defaults to the first 'completed' stage for continuous pipelines, or the first 'started' stage for scheduled pipelines.
+    /// UUID of a stage in this pipeline. Defaults to its first completed stage for continuous pipelines or first started stage for scheduled pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub stage_id: MaybeUndefined<String>,
-    /// The estimated start date of the release.
+    /// Planned start date in YYYY-MM-DD format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The estimated completion date of the release.
+    /// Planned completion date in YYYY-MM-DD format.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
     /// The time at which the release was created (e.g. if importing from another system). Must be a time in the past. If none is provided, the backend will generate the time as now.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The time at which the release was started (e.g. if importing from another system). Must be a time in the past and after createdAt.
+    /// The actual start time, for example when importing a release. Requires createdAt and must be in the past, on or after createdAt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub started_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The time at which the release was completed (e.g. if importing from another system). Must be a time in the past and after createdAt. Cannot be provided with an incompatible stage.
+    /// The actual completion time, for example when importing a release. Requires createdAt and must be in the past, on or after createdAt and any startedAt. Requires a completed stage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
 }
@@ -8698,17 +7768,17 @@ pub struct ReleaseDocumentInput {
     /// The document body as markdown.
     pub content: String,
 }
-/// Release filtering options.
+/// Filters releases by name, version, pipeline, stage, completion date, or release-note coverage. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the release name.
@@ -8729,10 +7799,10 @@ pub struct ReleaseFilter {
     /// Comparator for whether the release is covered by any (non-archived) release note. Filter with `{ eq: false }` to retrieve releases that do not yet have release notes attached.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub has_release_notes: MaybeUndefined<BooleanComparator>,
-    /// Compound filters, all of which need to be matched by the release.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleaseFilter>>,
-    /// Compound filters, one of which need to be matched by the release.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleaseFilter>>,
 }
@@ -8746,7 +7816,7 @@ pub struct ReleaseLinkInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label: MaybeUndefined<String>,
 }
-/// Input for creating a release note.
+/// The pipeline, covered releases, and optional written content for a new release note. Select releases with releaseIds or with both range endpoints. All selected releases must belong to the pipeline; scheduled pipelines require exactly one.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseNoteCreateInput {
@@ -8755,33 +7825,33 @@ pub struct ReleaseNoteCreateInput {
     pub id: MaybeUndefined<String>,
     /// Identifier of the release pipeline.
     pub pipeline_id: String,
-    /// Explicit release IDs to include. Mutually exclusive with rangeFromReleaseId/rangeToReleaseId — exactly one of the two shapes must be provided.
+    /// Release UUIDs to include, all in this pipeline. Must contain at least one release. Cannot be combined with range endpoints.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_ids: MaybeUndefined<Vec<String>>,
-    /// Oldest release (by createdAt) to include. When paired with rangeToReleaseId, expands to every release in the pipeline within the createdAt window.
+    /// UUID of one range endpoint. With rangeToReleaseId, includes unarchived releases between both endpoints by completedAt, falling back to createdAt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub range_from_release_id: MaybeUndefined<String>,
-    /// Newest release (by createdAt) to include. Paired with rangeFromReleaseId.
+    /// UUID of the other range endpoint, included in the range. Required with rangeFromReleaseId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub range_to_release_id: MaybeUndefined<String>,
-    /// Optional user-supplied title.
+    /// Custom title. Omit to use a title derived from the covered releases in the app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
     /// The release note body as markdown.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
 }
-/// Release note filtering options.
+/// Filters release notes by title, slug, pipeline, or covered releases. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseNoteFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the release note title.
@@ -8796,10 +7866,10 @@ pub struct ReleaseNoteFilter {
     /// Filters that a release covered by the release note must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release: MaybeUndefined<ReleaseFilter>,
-    /// Compound filters, all of which need to be matched by the release note.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleaseNoteFilter>>,
-    /// Compound filters, one of which need to be matched by the release note.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleaseNoteFilter>>,
 }
@@ -8813,37 +7883,37 @@ pub struct ReleaseNoteInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
 }
-/// Input for updating a release note.
+/// Changes to a release note. Omitted fields keep their values. A supplied release selection replaces the previous selection; an empty content string clears the body, while null content leaves it unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseNoteUpdateInput {
-    /// Explicit release IDs to set. Mutually exclusive with rangeFromReleaseId/rangeToReleaseId.
+    /// Replacement release UUIDs from the same pipeline. Must contain at least one release; scheduled pipelines require exactly one. Takes precedence over range endpoints.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_ids: MaybeUndefined<Vec<String>>,
-    /// Oldest release (by createdAt) of the new range. Paired with rangeToReleaseId.
+    /// UUID of one replacement range endpoint. Pair with rangeToReleaseId; includes unarchived releases between both by completedAt, falling back to createdAt.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub range_from_release_id: MaybeUndefined<String>,
-    /// Newest release (by createdAt) of the new range. Paired with rangeFromReleaseId.
+    /// UUID of the other replacement range endpoint, included in the range. Required with rangeFromReleaseId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub range_to_release_id: MaybeUndefined<String>,
-    /// Optional user-supplied title.
+    /// Custom title. Pass an empty string or null to restore the title derived from the covered releases in the app.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub title: MaybeUndefined<String>,
-    /// The release note body as markdown.
+    /// Replacement body in Markdown. Pass an empty string to clear it; null or omission leaves it unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub content: MaybeUndefined<String>,
 }
-/// Release pipeline collection filtering options.
+/// Filters pipelines related to a team. Use some or every to test pipeline properties, or length to test how many pipelines are associated. Combine separate tests as entries in and; at one level, and takes precedence over or, then length, then every, then some or direct properties.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleasePipelineCollectionFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the pipeline name.
@@ -8858,10 +7928,10 @@ pub struct ReleasePipelineCollectionFilter {
     /// Filters that the release pipeline's teams must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub teams: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the release pipeline.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleasePipelineCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the release pipeline.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleasePipelineCollectionFilter>>,
     /// Filters that needs to be matched by some release pipelines.
@@ -8870,11 +7940,11 @@ pub struct ReleasePipelineCollectionFilter {
     /// Filters that needs to be matched by all release pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<ReleasePipelineFilter>>,
-    /// Comparator for the collection length.
+    /// The number of pipelines associated with the team. Use { eq: 0 } for no pipelines. To combine this with other collection tests, place each test in a separate and entry.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new release pipeline.
+/// Settings for a new release pipeline. Provide a name and optionally associate teams or choose a scheduled workflow. The pipeline is created with default stages; continuous is the default workflow.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleasePipelineCreateInput {
@@ -8883,10 +7953,10 @@ pub struct ReleasePipelineCreateInput {
     pub id: MaybeUndefined<String>,
     /// The name of the pipeline.
     pub name: String,
-    /// The pipeline's unique slug identifier. If not provided, it will be auto-generated.
+    /// URL slug. Defaults to the pipeline name converted to a slug. A suffix is added if the slug is already in use.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<String>,
-    /// The type of the pipeline.
+    /// Release workflow. Defaults to continuous; scheduled pipelines collect issues until explicitly completed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<ReleasePipelineType>,
     /// Whether this pipeline targets a production environment. Default to true.
@@ -8898,24 +7968,24 @@ pub struct ReleasePipelineCreateInput {
     /// Whether completing a scheduled release moves its open issues to the next release. Defaults to true. When false, open issues remain on the completed release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub rollover_issues_on_completion: MaybeUndefined<bool>,
-    /// Glob patterns to include commits affecting matching file paths.
+    /// Glob patterns that restrict synced commits to matching file paths. Omit or pass [] to include all paths.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub include_path_patterns: MaybeUndefined<Vec<String>>,
     /// The identifiers of the teams this pipeline is associated with.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_ids: MaybeUndefined<Vec<String>>,
 }
-/// Release pipeline filtering options.
+/// Filters release pipelines by name, production status, pipeline type, or teams. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleasePipelineFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the pipeline name.
@@ -8930,10 +8000,10 @@ pub struct ReleasePipelineFilter {
     /// Filters that the release pipeline's teams must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub teams: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the pipeline.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleasePipelineFilter>>,
-    /// Compound filters, one of which need to be matched by the pipeline.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleasePipelineFilter>>,
 }
@@ -8960,36 +8030,36 @@ pub struct ReleasePipelineSortInput {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleasePipelineTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<ReleasePipelineType>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<ReleasePipelineType>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<ReleasePipelineType>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<ReleasePipelineType>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
-/// Input for updating an existing release pipeline.
+/// Changes to an existing release pipeline. Omitted fields keep their values. Team and path-pattern lists replace their current selections, while teams you cannot access are preserved.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleasePipelineUpdateInput {
     /// The name of the pipeline.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The pipeline's unique slug identifier.
+    /// URL slug. A suffix is added if the slug is already in use.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub slug_id: MaybeUndefined<String>,
     /// The type of the pipeline.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<ReleasePipelineType>,
-    /// Whether this pipeline targets a production environment. Default to true.
+    /// Whether this pipeline targets a production environment.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_production: MaybeUndefined<bool>,
     /// Whether to automatically generate a release note when a release is completed.
@@ -8998,10 +8068,10 @@ pub struct ReleasePipelineUpdateInput {
     /// Whether completing a scheduled release moves its open issues to the next release. When false, open issues remain on the completed release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub rollover_issues_on_completion: MaybeUndefined<bool>,
-    /// Glob patterns to include commits affecting matching file paths.
+    /// Replaces the glob patterns used to filter synced commits by file path. Pass [] to include all paths.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub include_path_patterns: MaybeUndefined<Vec<String>>,
-    /// The identifiers of the teams this pipeline is associated with.
+    /// Replaces associated team UUIDs. Pass [] or null to remove accessible teams; private teams you cannot access are preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_ids: MaybeUndefined<Vec<String>>,
 }
@@ -9024,7 +8094,7 @@ pub struct ReleaseSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub stage: MaybeUndefined<ReleaseStageSort>,
 }
-/// Input for creating a new release stage.
+/// The stage name, display color, type, and position within a pipeline. Custom stages use the started type. Other types use the pipeline’s standard names and colors; only started stages can be frozen.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseStageCreateInput {
@@ -9037,25 +8107,25 @@ pub struct ReleaseStageCreateInput {
     pub color: String,
     /// The type of the stage.
     pub r#type: ReleaseStageType,
-    /// The position of the stage.
+    /// Position among stages in the pipeline, in ascending order.
     pub position: f64,
     /// The identifier of the pipeline this stage belongs to.
     pub pipeline_id: String,
-    /// Whether this stage is frozen. Only applicable to started stages.
+    /// Whether sync skips this stage when no version is supplied. Defaults to false. An explicit version can still target a release here. Only started stages can be frozen, and at least one must remain unfrozen.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub frozen: MaybeUndefined<bool>,
 }
-/// Release stage filtering options.
+/// Filters release stages by name or lifecycle type. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseStageFilter {
     /// Comparator for the identifier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the stage type.
@@ -9064,10 +8134,10 @@ pub struct ReleaseStageFilter {
     /// Comparator for the stage name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Compound filters, all of which need to be matched by the stage.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<ReleaseStageFilter>>,
-    /// Compound filters, one of which need to be matched by the stage.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<ReleaseStageFilter>>,
 }
@@ -9086,23 +8156,23 @@ pub struct ReleaseStageSort {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseStageTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<ReleaseStageType>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<ReleaseStageType>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<ReleaseStageType>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<ReleaseStageType>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
-/// Input for updating an existing release stage.
+/// Changes to a started stage. Other stage types cannot be edited; omitted fields remain unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseStageUpdateInput {
@@ -9112,14 +8182,14 @@ pub struct ReleaseStageUpdateInput {
     /// The UI color of the stage as a HEX string.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The position of the stage.
+    /// Position among stages in the pipeline, in ascending order.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<f64>,
-    /// Whether this stage is frozen. Only applicable to started stages.
+    /// Whether sync skips this stage when no version is supplied. An explicit version can still target a release here. At least one started stage must remain unfrozen.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub frozen: MaybeUndefined<bool>,
 }
-/// Input for syncing release data to a specific pipeline. Extends the base sync input with the target pipeline identifier.
+/// Release data to sync into a pipeline. Provide the pipeline identifier and commit SHA, then add issue or pull request references for work included in the release. Sync adds associations rather than replacing the existing issue list.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseSyncInput {
@@ -9129,21 +8199,21 @@ pub struct ReleaseSyncInput {
     /// The description of the release. Pass null to clear an existing description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The version of the release.
+    /// The release version. Continuous pipelines default to the first seven characters of commitSha; a repeated version must have the same full commit SHA. Scheduled pipelines target this version when supplied, or select an open release when omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The commit SHA associated with this release.
     pub commit_sha: String,
-    /// When true, an existing scheduled release keeps its stored commit SHA instead of taking this sync's commit. Set by CLI syncs from a checkout behind the stored commit, so the scan baseline does not move backwards. Has no effect on continuous pipelines, which identify releases by commit SHA.
+    /// When true, an existing scheduled release keeps its stored commit SHA instead of taking this sync’s commit. Use this when syncing from a checkout behind the stored commit so the scan baseline does not move backwards. Has no effect on continuous pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub preserve_stored_commit_sha: MaybeUndefined<bool>,
-    /// Issue references (e.g. ENG-123) to associate with this release.
+    /// Issues to add to the release, identified by their human-readable identifier and the commit where each reference was found. Missing or archived issues are skipped. Existing issue associations are kept, so an empty list does not clear the release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_references: MaybeUndefined<Vec<IssueReferenceInput>>,
-    /// Issue references that were reverted and should be removed from the release.
+    /// Issues to remove from the current release in a scheduled pipeline. Only existing release associations are removed; the issues themselves are kept. This field has no effect on continuous pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reverted_issue_references: MaybeUndefined<Vec<IssueReferenceInput>>,
-    /// Pull request references to look up. Issues linked to found PRs will be associated with this release.
+    /// Pull or merge requests whose closing or contributing issues should be added to the release. Missing references are skipped. Supplying a reference indicates that the change shipped, even if its imported merge status has not updated yet.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub pull_request_references: MaybeUndefined<Vec<PullRequestReferenceInput>>,
     /// Information about the source repository.
@@ -9152,10 +8222,10 @@ pub struct ReleaseSyncInput {
     /// Debug information for release creation diagnostics.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub debug_sink: MaybeUndefined<ReleaseDebugSinkInput>,
-    /// External links to attach to the release.
+    /// External links to add or update, matched by URL. Existing links not listed here are kept, and [] makes no changes. Invalid links can be skipped without failing the release sync.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub links: MaybeUndefined<Vec<ReleaseLinkInput>>,
-    /// Documents to attach to the release. Existing documents on the release with the same title are updated.
+    /// Documents to add or update, matched by title within the release. Existing documents not listed here are kept, and [] makes no changes. Invalid or oversized document entries can be skipped without failing the release sync.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub documents: MaybeUndefined<Vec<ReleaseDocumentInput>>,
     /// Release notes covering this release. Upserts the existing release notes that cover only this release.
@@ -9164,7 +8234,7 @@ pub struct ReleaseSyncInput {
     /// The identifier of the pipeline this release belongs to.
     pub pipeline_id: String,
 }
-/// Base input for syncing release data, containing the commit SHA, issue references, pull request references, and optional metadata. Does not include the pipeline ID, which is provided separately or inferred from the access key.
+/// Release data for a sync operation: a commit SHA, optional issue and pull request references, and descriptive metadata. The pipeline is supplied by the containing input or access key. Existing issue associations are retained unless revertedIssueReferences removes them from a scheduled release.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseSyncInputBase {
@@ -9174,21 +8244,21 @@ pub struct ReleaseSyncInputBase {
     /// The description of the release. Pass null to clear an existing description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The version of the release.
+    /// The release version. Continuous pipelines default to the first seven characters of commitSha; a repeated version must have the same full commit SHA. Scheduled pipelines target this version when supplied, or select an open release when omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The commit SHA associated with this release.
     pub commit_sha: String,
-    /// When true, an existing scheduled release keeps its stored commit SHA instead of taking this sync's commit. Set by CLI syncs from a checkout behind the stored commit, so the scan baseline does not move backwards. Has no effect on continuous pipelines, which identify releases by commit SHA.
+    /// When true, an existing scheduled release keeps its stored commit SHA instead of taking this sync’s commit. Use this when syncing from a checkout behind the stored commit so the scan baseline does not move backwards. Has no effect on continuous pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub preserve_stored_commit_sha: MaybeUndefined<bool>,
-    /// Issue references (e.g. ENG-123) to associate with this release.
+    /// Issues to add to the release, identified by their human-readable identifier and the commit where each reference was found. Missing or archived issues are skipped. Existing issue associations are kept, so an empty list does not clear the release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_references: MaybeUndefined<Vec<IssueReferenceInput>>,
-    /// Issue references that were reverted and should be removed from the release.
+    /// Issues to remove from the current release in a scheduled pipeline. Only existing release associations are removed; the issues themselves are kept. This field has no effect on continuous pipelines.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub reverted_issue_references: MaybeUndefined<Vec<IssueReferenceInput>>,
-    /// Pull request references to look up. Issues linked to found PRs will be associated with this release.
+    /// Pull or merge requests whose closing or contributing issues should be added to the release. Missing references are skipped. Supplying a reference indicates that the change shipped, even if its imported merge status has not updated yet.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub pull_request_references: MaybeUndefined<Vec<PullRequestReferenceInput>>,
     /// Information about the source repository.
@@ -9197,21 +8267,21 @@ pub struct ReleaseSyncInputBase {
     /// Debug information for release creation diagnostics.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub debug_sink: MaybeUndefined<ReleaseDebugSinkInput>,
-    /// External links to attach to the release.
+    /// External links to add or update, matched by URL. Existing links not listed here are kept, and [] makes no changes. Invalid links can be skipped without failing the release sync.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub links: MaybeUndefined<Vec<ReleaseLinkInput>>,
-    /// Documents to attach to the release. Existing documents on the release with the same title are updated.
+    /// Documents to add or update, matched by title within the release. Existing documents not listed here are kept, and [] makes no changes. Invalid or oversized document entries can be skipped without failing the release sync.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub documents: MaybeUndefined<Vec<ReleaseDocumentInput>>,
     /// Release notes covering this release. Upserts the existing release notes that cover only this release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_notes: MaybeUndefined<ReleaseNoteInput>,
 }
-/// Input for updating a release by pipeline identifier. Extends the base update input with the target pipeline identifier.
+/// Selects a release by pipeline and optionally version. Without a version, the latest started release is used, or the planned release with the earliest target date when none is started. Supplied fields update that release; stage selects a stage by name.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseUpdateByPipelineInput {
-    /// The version of the release to update. If not provided, the latest started or latest planned release will be updated.
+    /// The version of the release to update. If not provided, the latest started release is updated, or else the planned release with the earliest target date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The stage name to set. First tries exact match, then falls back to case-insensitive matching with dashes/underscores treated as spaces.
@@ -9239,7 +8309,7 @@ pub struct ReleaseUpdateByPipelineInput {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseUpdateByPipelineInputBase {
-    /// The version of the release to update. If not provided, the latest started or latest planned release will be updated.
+    /// The version of the release to update. If not provided, the latest started release is updated, or else the planned release with the earliest target date.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The stage name to set. First tries exact match, then falls back to case-insensitive matching with dashes/underscores treated as spaces.
@@ -9261,38 +8331,41 @@ pub struct ReleaseUpdateByPipelineInputBase {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_notes: MaybeUndefined<ReleaseNoteInput>,
 }
-/// Input for updating an existing release.
+/// Changes to a release selected by its ID. Omitted fields keep their values, and the release cannot move to another pipeline. Changing stageId updates lifecycle timestamps and may trigger issue rollover when completing a scheduled release. Backdating startedAt or completedAt before createdAt also moves createdAt back to the earliest lifecycle time.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseUpdateInput {
     /// The name of the release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The description of the release.
+    /// Release description. Pass null to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The version of the release.
+    /// The release’s version label, unique within its pipeline. If another active or archived release uses the label, the request fails. A trashed release holding that label is permanently deleted to free it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub version: MaybeUndefined<String>,
     /// The commit SHA associated with this release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub commit_sha: MaybeUndefined<String>,
-    /// The current stage of the release.
+    /// The identifier of the pipeline this release belongs to. Set at creation and cannot be changed.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub pipeline_id: MaybeUndefined<String>,
+    /// UUID of a stage in this release's pipeline. Changing stages updates lifecycle dates and may roll open issues into the next release.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub stage_id: MaybeUndefined<String>,
-    /// The estimated start date of the release.
+    /// Planned start date in YYYY-MM-DD format. Pass null to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub start_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The estimated completion date of the release.
+    /// Planned completion date in YYYY-MM-DD format. Pass null to clear it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub target_date: MaybeUndefined<chrono::NaiveDate>,
-    /// The time at which the release was started.
+    /// Actual start time, in the past. If later than completedAt and completedAt is omitted, also moves completedAt to this time. Supply both dates to require exact ordering.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub started_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The time at which the release was completed.
+    /// Actual completion time, in the past. If earlier than startedAt and startedAt is omitted, also moves startedAt to this time. Cannot be cleared while the release is completed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub completed_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// Whether the release has been trashed. Set to true to trash, or null to restore.
+    /// The stored trash flag. Set true only on an already archived release; null clears the flag but leaves the release archived. Use releaseDelete to move a release to the trash and releaseUnarchive to restore it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub trashed: MaybeUndefined<bool>,
 }
@@ -9304,7 +8377,7 @@ pub struct RepositoryDataInput {
     pub owner: String,
     /// The name of the repository.
     pub name: String,
-    /// The VCS provider hosting the repository (e.g., 'github', 'gitlab', 'bitbucket').
+    /// Repository host: github, gitlab, or bitbucket.
     pub provider: String,
     /// The base URL of the repository on the hosting provider (e.g., '<https://github.com/linear/linear-app>').
     pub url: String,
@@ -9320,17 +8393,17 @@ pub struct RevenueSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Roadmap collection filtering options.
+/// Filters a related collection of legacy roadmaps. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the roadmap name.
@@ -9342,10 +8415,10 @@ pub struct RoadmapCollectionFilter {
     /// Filters that the roadmap creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<UserFilter>>,
-    /// Compound filters, all of which need to be matched by the roadmap.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<RoadmapCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the roadmap.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<RoadmapCollectionFilter>>,
     /// Filters that needs to be matched by some roadmaps.
@@ -9354,11 +8427,11 @@ pub struct RoadmapCollectionFilter {
     /// Filters that needs to be matched by all roadmaps.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<RoadmapFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
-/// Input for creating a new roadmap.
+/// Legacy roadmap creation input. roadmapCreate is no longer supported; use initiativeCreate.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapCreateInput {
@@ -9380,17 +8453,17 @@ pub struct RoadmapCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
 }
-/// Roadmap filtering options.
+/// Filters legacy roadmaps by name, slug, or creator. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the roadmap name.
@@ -9402,14 +8475,14 @@ pub struct RoadmapFilter {
     /// Filters that the roadmap creator must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub creator: MaybeUndefined<Box<UserFilter>>,
-    /// Compound filters, all of which need to be matched by the roadmap.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<RoadmapFilter>>,
-    /// Compound filters, one of which need to be matched by the roadmap.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<RoadmapFilter>>,
 }
-/// Input for creating a new roadmap-to-project mapping.
+/// Legacy roadmap association input. Use InitiativeToProjectCreateInput.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapToProjectCreateInput {
@@ -9420,19 +8493,19 @@ pub struct RoadmapToProjectCreateInput {
     pub project_id: String,
     /// The identifier of the roadmap.
     pub roadmap_id: String,
-    /// The sort order for the project within its workspace.
+    /// Legacy project position within the roadmap.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Input for updating an existing roadmap-to-project mapping.
+/// Legacy roadmap association update input. Use InitiativeToProjectUpdateInput.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapToProjectUpdateInput {
-    /// The sort order for the project within its workspace.
+    /// Legacy project position within the roadmap.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Input for updating an existing roadmap.
+/// Legacy roadmap update input. roadmapUpdate is no longer supported; use initiativeUpdate.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoadmapUpdateInput {
@@ -9465,61 +8538,7 @@ pub struct RootIssueSort {
     /// The sort to apply to the root issues
     pub sort: Box<IssueSortInput>,
 }
-/// `INTERNAL` Comparator for Salesforce metadata.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SalesforceMetadataIntegrationComparator {
-    /// Salesforce Case metadata filter
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub case_metadata: MaybeUndefined<serde_json::Value>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SalesforceSettingsInput {
-    /// Whether an internal message should be added when a Linear issue changes status (for status types except completed or canceled).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_status_change: MaybeUndefined<bool>,
-    /// Whether an internal message should be added when someone comments on an issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_comment: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_cancellation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when a comment is posted on its linked Linear issue
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_comment: MaybeUndefined<bool>,
-    /// `ALPHA` Whether customer and customer requests should not be automatically created when conversations are linked to a Linear issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub disable_customer_requests_auto_creation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_cancellation: MaybeUndefined<bool>,
-    /// Whether Linear Agent should be enabled for this integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_ai_intake: MaybeUndefined<bool>,
-    /// The Salesforce subdomain.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub subdomain: MaybeUndefined<String>,
-    /// The Salesforce instance URL.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub url: MaybeUndefined<String>,
-    /// The Salesforce case status to use to reopen cases.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub reopen_case_status: MaybeUndefined<String>,
-    /// Whether to restrict visibility of the integration to issues that have been either created from Salesforce or linked to Salesforce.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub restrict_visibility: MaybeUndefined<bool>,
-    /// The Salesforce team to use when a template doesn't specify a team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub default_team: MaybeUndefined<String>,
-}
-/// Filters for semantic search results.
+/// Additional conditions for each resource type in a semantic search. Each filter applies only to results of its own type; setting an issue filter does not exclude projects or documents. Use the types argument to restrict which resource types are searched.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticSearchFilters {
@@ -9536,18 +8555,6 @@ pub struct SemanticSearchFilters {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub documents: MaybeUndefined<DocumentFilter>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SentrySettingsInput {
-    /// The slug of the Sentry organization being connected.
-    pub organization_slug: String,
-    /// The ID of the Sentry organization being connected.
-    pub organization_id: String,
-    /// Whether Sentry issues resolving completes Linear issues.
-    pub resolving_completes_issues: bool,
-    /// Whether Sentry issues unresolving reopens Linear issues.
-    pub unresolving_reopens_issues: bool,
-}
 /// Customer size sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -9559,23 +8566,23 @@ pub struct SizeSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Comparator for sla status.
+/// Conditions on an issue’s SLA state, such as whether it is at risk or has breached. Use the SlaStatus values rather than comparing the display text.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SlaStatusComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<SlaStatus>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<SlaStatus>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<SlaStatus>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<SlaStatus>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
@@ -9590,230 +8597,70 @@ pub struct SlaStatusSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SlackAsksSettingsInput {
-    /// Slack workspace name
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_name: MaybeUndefined<String>,
-    /// Slack workspace id
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// Enterprise name of the connected Slack enterprise
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enterprise_name: MaybeUndefined<String>,
-    /// Enterprise id of the connected Slack enterprise
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enterprise_id: MaybeUndefined<String>,
-    /// Whether to show unfurl previews in Slack
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub should_unfurl: MaybeUndefined<bool>,
-    /// Whether to show unfurls in the default style instead of Work Objects in Slack
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub should_use_default_unfurl: MaybeUndefined<bool>,
-    /// Whether to allow external users to perform actions on unfurls
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub external_user_actions: MaybeUndefined<bool>,
-    /// The mapping of Slack channel ID => Slack channel name for connected channels.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_channel_mapping: MaybeUndefined<Vec<SlackChannelNameMappingInput>>,
-    /// The user role type that is allowed to manage Asks settings.
-    pub can_administrate: UserRoleType,
-    /// Controls who can see and set Customers when creating Asks in Slack.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub customer_visibility: MaybeUndefined<CustomerVisibilityMode>,
-    /// Whether Linear Agent should be enabled for this Slack Asks integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_agent: MaybeUndefined<bool>,
-    /// Whether Linear Agent should be given Org-wide access within Slack workflows.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_linear_agent_workflow_access: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SlackAsksTeamSettingsInput {
-    /// The Linear team ID.
-    pub id: String,
-    /// Whether the default Asks template is enabled in the given channel for this team.
-    pub has_default_ask: bool,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SlackChannelNameMappingInput {
-    /// The Slack channel ID.
-    pub id: String,
-    /// The Slack channel name.
-    pub name: String,
-    /// Whether or not the Slack channel is private.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub is_private: MaybeUndefined<bool>,
-    /// Whether or not the Slack channel is shared with an external org.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub is_shared: MaybeUndefined<bool>,
-    /// Whether or not the Linear Asks bot has been added to this Slack channel.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub bot_added: MaybeUndefined<bool>,
-    /// Which teams are connected to the channel and settings for those teams.
-    pub teams: Vec<SlackAsksTeamSettingsInput>,
-    /// Whether or not top-level messages in this channel should automatically create Asks.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub auto_create_on_message: MaybeUndefined<bool>,
-    /// Whether or not using the :ticket: emoji in this channel should automatically create Asks.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub auto_create_on_emoji: MaybeUndefined<bool>,
-    /// Whether or not @-mentioning the bot should automatically create an Ask with the message.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub auto_create_on_bot_mention: MaybeUndefined<bool>,
-    /// The optional template ID to use for Asks auto-created in this channel. If not set, auto-created Asks won't use any template.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub auto_create_template_id: MaybeUndefined<String>,
-    /// Whether or not synced Slack threads should be updated with a message and emoji when their Ask is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_cancellation_updates: MaybeUndefined<bool>,
-    /// Whether or not synced Slack threads should be updated with a message and emoji when their Ask is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_completion_updates: MaybeUndefined<bool>,
-    /// Whether or not synced Slack threads should be updated with a message when their Ask is accepted from triage.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_accepted_from_triage_updates: MaybeUndefined<bool>,
-    /// Whether or not to use AI to generate titles for Asks created in this channel.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub ai_titles: MaybeUndefined<bool>,
-    /// Whether or not synced Slack threads should be updated with a message when their Ask has an updated assignee.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_assignment_updates: MaybeUndefined<bool>,
-    /// Whether or not synced Slack threads should be updated with a message when their Ask's SLA is at risk or breached.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub post_sla_updates: MaybeUndefined<bool>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SlackPostSettingsInput {
-    /// The name of the Slack channel.
-    pub channel: String,
-    /// The Slack channel ID.
-    pub channel_id: String,
-    /// The URL to the Slack integration configuration page.
-    pub configuration_url: String,
-    /// The Slack workspace ID.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// The type of the Slack channel (e.g., public, private, or DM).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub channel_type: MaybeUndefined<SlackChannelType>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SlackSettingsInput {
-    /// Slack workspace name
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_name: MaybeUndefined<String>,
-    /// Slack workspace id
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub team_id: MaybeUndefined<String>,
-    /// Enterprise name of the connected Slack enterprise
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enterprise_name: MaybeUndefined<String>,
-    /// Enterprise id of the connected Slack enterprise
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enterprise_id: MaybeUndefined<String>,
-    /// Whether to show unfurl previews in Slack
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub should_unfurl: MaybeUndefined<bool>,
-    /// Whether to show unfurls in the default style instead of Work Objects in Slack
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub should_use_default_unfurl: MaybeUndefined<bool>,
-    /// Whether to allow external users to perform actions on unfurls
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub external_user_actions: MaybeUndefined<bool>,
-    /// Whether Linear should automatically respond with issue unfurls when an issue identifier is mentioned in a Slack message.
-    pub link_on_issue_id_mention: bool,
-    /// Whether Linear Agent should be enabled for this Slack integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_agent: MaybeUndefined<bool>,
-    /// Whether Loops may read and send messages through this Slack integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_loops: MaybeUndefined<bool>,
-    /// Whether Linear Agent may respond in private channels for this Slack integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub allow_agent_in_private_channels: MaybeUndefined<bool>,
-    /// Whether Linear Agent should automatically sync threads in private channels for this Slack integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub sync_agent_threads_in_private_channels: MaybeUndefined<bool>,
-    /// Whether Linear Agent should be given Org-wide access within Slack workflows.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_linear_agent_workflow_access: MaybeUndefined<bool>,
-    /// Whether Code Intelligence should be enabled for this Slack integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_code_intelligence: MaybeUndefined<bool>,
-}
-/// Comparator for issue source type.
+/// Filters how an issue was created. Match an integration or intake service through `subType`, or a creating workflow through `workflowDefinitionId`. Supplied conditions are combined with AND. The `null` condition tests for an external integration or intake source, so API-created and workflow-created issues can match `{ null: true }`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceMetadataComparator {
     /// Null constraint. When true, matches issues without an external source: issues with no source metadata and issues created through the API, an OAuth application, or a loop. When false, matches issues created by an integration or an intake source such as email.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
-    /// Comparator for the sub type.
+    /// Filters the integration or intake service that created the issue, using its service identifier, such as `github` or `email`.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sub_type: MaybeUndefined<SubTypeComparator>,
-    /// Comparator for the workflow definition that created the issue.
+    /// Filters the workflow definition that created the issue. Use its UUID; this does not match workflows that only modified the issue later.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub workflow_definition_id: MaybeUndefined<WorkflowDefinitionIdComparator>,
-    /// `INTERNAL` Comparator for the salesforce metadata.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub salesforce_metadata: MaybeUndefined<SalesforceMetadataIntegrationComparator>,
 }
-/// Comparator for `sourceType` field.
+/// Filters an attachment's source using literal string comparisons. Matches its stored source type and, for API queries, the linked URL's domain or hostname. For example, a domain filter can match links even when no integration source type is stored. Matching is case-sensitive unless the operator says otherwise.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Equals case insensitive. Matches any values that matches the given string case insensitive.
+    /// Matches the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq_ignore_case: MaybeUndefined<String>,
-    /// Not-equals case insensitive. Matches any values that don't match the given string case insensitive.
+    /// Excludes the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq_ignore_case: MaybeUndefined<String>,
-    /// Starts with constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, with case preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with: MaybeUndefined<String>,
-    /// Starts with case insensitive constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with_ignore_case: MaybeUndefined<String>,
-    /// Doesn't start with constraint. Matches any values that don't start with the given string.
+    /// Excludes strings starting with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_starts_with: MaybeUndefined<String>,
-    /// Ends with constraint. Matches any values that end with the given string.
+    /// Matches strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_with: MaybeUndefined<String>,
-    /// Doesn't end with constraint. Matches any values that don't end with the given string.
+    /// Excludes strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_ends_with: MaybeUndefined<String>,
-    /// Contains constraint. Matches any values that contain the given string.
+    /// Matches strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains: MaybeUndefined<String>,
-    /// Contains case insensitive constraint. Matches any values that contain the given string case insensitive.
+    /// Matches strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case: MaybeUndefined<String>,
-    /// Doesn't contain constraint. Matches any values that don't contain the given string.
+    /// Excludes strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains: MaybeUndefined<String>,
-    /// Doesn't contain case insensitive constraint. Matches any values that don't contain the given string case insensitive.
+    /// Excludes strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains_ignore_case: MaybeUndefined<String>,
-    /// Contains case and accent insensitive constraint. Matches any values that contain the given string case and accent insensitive.
+    /// Matches strings containing this text, ignoring case and accents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case_and_accent: MaybeUndefined<String>,
 }
@@ -9828,143 +8675,143 @@ pub struct StartDateSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Comparator for strings.
+/// Filters an array of strings by its length and contents. Combine `length` with either `some` or `every`; those two cannot be used together. Use `{ length: { eq: 0 } }` to find empty or missing arrays. See `StringItemComparator` for the set-based behavior of `in` and `nin`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StringArrayComparator {
-    /// Length of the array. Matches any values that have the given length.
+    /// Compares the number of items using nonnegative integers. Empty and missing arrays both have length zero. This condition must match alongside any `some` or `every` condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
-    /// Compound filters, all of which need to be matched.
+    /// Applies each string condition to every item. For example, `{ startsWith: "ENG" }` requires a nonempty array whose items all start with `ENG`. The `in` and `nin` operators compare whole sets of values. Cannot be combined with `some`.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<StringItemComparator>,
-    /// Compound filters, one of which needs to be matched.
+    /// Requires a matching item for each supplied string condition; different items may satisfy different conditions. For example, `{ eq: "ENG" }` requires an item equal to `ENG`. Use `nin` to exclude arrays containing any value from a list. Cannot be combined with `every`.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub some: MaybeUndefined<StringItemComparator>,
 }
-/// Comparator for strings.
+/// Compares text literally, with all supplied conditions combined with AND. Matching is case-sensitive unless the operator says otherwise; `%` and `_` are ordinary characters, not wildcards. Use `eq` to match a full string or `containsIgnoreCase` to find text anywhere in it. Prefix, suffix, substring, and case-insensitive operators ignore empty strings.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StringComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Equals case insensitive. Matches any values that matches the given string case insensitive.
+    /// Matches the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq_ignore_case: MaybeUndefined<String>,
-    /// Not-equals case insensitive. Matches any values that don't match the given string case insensitive.
+    /// Excludes the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq_ignore_case: MaybeUndefined<String>,
-    /// Starts with constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, with case preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with: MaybeUndefined<String>,
-    /// Starts with case insensitive constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with_ignore_case: MaybeUndefined<String>,
-    /// Doesn't start with constraint. Matches any values that don't start with the given string.
+    /// Excludes strings starting with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_starts_with: MaybeUndefined<String>,
-    /// Ends with constraint. Matches any values that end with the given string.
+    /// Matches strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_with: MaybeUndefined<String>,
-    /// Doesn't end with constraint. Matches any values that don't end with the given string.
+    /// Excludes strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_ends_with: MaybeUndefined<String>,
-    /// Contains constraint. Matches any values that contain the given string.
+    /// Matches strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains: MaybeUndefined<String>,
-    /// Contains case insensitive constraint. Matches any values that contain the given string case insensitive.
+    /// Matches strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case: MaybeUndefined<String>,
-    /// Doesn't contain constraint. Matches any values that don't contain the given string.
+    /// Excludes strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains: MaybeUndefined<String>,
-    /// Doesn't contain case insensitive constraint. Matches any values that don't contain the given string case insensitive.
+    /// Excludes strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains_ignore_case: MaybeUndefined<String>,
-    /// Contains case and accent insensitive constraint. Matches any values that contain the given string case and accent insensitive.
+    /// Matches strings containing this text, ignoring case and accents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case_and_accent: MaybeUndefined<String>,
 }
-/// Comparator for strings in arrays.
+/// String conditions for array items. All conditions must pass, but `some` can match a different item for each. `some.in` tests overlap and `some.nin` requires none; `every.in` compares sets, ignoring order and duplicates, and `every.nin` rejects that set. Empty `in` or `nin` lists match nothing. Single-value conditions ignore empty strings. Empty arrays match `neq`, but no other equality or text condition. `containsIgnoreCaseAndAccent` has no effect on array items.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StringItemComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Equals case insensitive. Matches any values that matches the given string case insensitive.
+    /// Matches the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq_ignore_case: MaybeUndefined<String>,
-    /// Not-equals case insensitive. Matches any values that don't match the given string case insensitive.
+    /// Excludes the full string, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq_ignore_case: MaybeUndefined<String>,
-    /// Starts with constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, with case preserved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with: MaybeUndefined<String>,
-    /// Starts with case insensitive constraint. Matches any values that start with the given string.
+    /// Matches strings starting with this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub starts_with_ignore_case: MaybeUndefined<String>,
-    /// Doesn't start with constraint. Matches any values that don't start with the given string.
+    /// Excludes strings starting with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_starts_with: MaybeUndefined<String>,
-    /// Ends with constraint. Matches any values that end with the given string.
+    /// Matches strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ends_with: MaybeUndefined<String>,
-    /// Doesn't end with constraint. Matches any values that don't end with the given string.
+    /// Excludes strings ending with this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_ends_with: MaybeUndefined<String>,
-    /// Contains constraint. Matches any values that contain the given string.
+    /// Matches strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains: MaybeUndefined<String>,
-    /// Contains case insensitive constraint. Matches any values that contain the given string case insensitive.
+    /// Matches strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case: MaybeUndefined<String>,
-    /// Doesn't contain constraint. Matches any values that don't contain the given string.
+    /// Excludes strings containing this text. Case-sensitive.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains: MaybeUndefined<String>,
-    /// Doesn't contain case insensitive constraint. Matches any values that don't contain the given string case insensitive.
+    /// Excludes strings containing this text, ignoring case.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub not_contains_ignore_case: MaybeUndefined<String>,
-    /// Contains case and accent insensitive constraint. Matches any values that contain the given string case and accent insensitive.
+    /// Matches strings containing this text, ignoring case and accents.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub contains_ignore_case_and_accent: MaybeUndefined<String>,
 }
-/// Comparator for source type.
+/// Compares the integration or intake source recorded on an issue, such as `github`, `slack`, or `email`. Values are service identifiers, not display names. Use `{ null: true }` to find issues without an integration or intake subtype.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
@@ -9979,23 +8826,23 @@ pub struct TargetDateSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Team collection filtering options.
+/// Filters a related collection of teams. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Compound filters, all of which need to be matched by the team.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<TeamCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the team.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<TeamCollectionFilter>>,
     /// Filters that needs to be matched by some teams.
@@ -10004,16 +8851,17 @@ pub struct TeamCollectionFilter {
     /// Filters that needs to be matched by all teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<TeamFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
-    /// Filters that the teams parent must satisfy.
+    /// Conditions on a team’s immediate parent. Use { null: true } to require a top-level team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableTeamFilter>>,
     /// Filters that the team's ancestors must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<TeamCollectionFilter>>,
 }
+/// The name and initial settings for a new team. Omitted settings use the team defaults. When teamCreate copies settings from another team, the copied settings replace the corresponding input values, except an explicit private value. The current user becomes a member and, for private teams or plans with team owners, an owner.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamCreateInput {
@@ -10025,7 +8873,7 @@ pub struct TeamCreateInput {
     /// The description of the team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The key of the team. If not given, the key will be generated based on the name of the team.
+    /// The prefix for issue identifiers, such as ENG in ENG-123. Generated from the team name if omitted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub key: MaybeUndefined<String>,
     /// The icon of the team.
@@ -10034,28 +8882,31 @@ pub struct TeamCreateInput {
     /// The color of the team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
+    /// The workspace associated with the team.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub organization_id: MaybeUndefined<String>,
     /// Whether the team uses cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycles_enabled: MaybeUndefined<bool>,
-    /// The day of the week that a new cycle starts.
+    /// The weekday on which cycles start, from 0 for Sunday to 6 for Saturday. The standard default is 1, Monday. Cycle boundaries use the team’s timezone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_start_day: MaybeUndefined<f64>,
-    /// The duration of each cycle in weeks.
+    /// The cycle length in weeks, from 1 to 8. The standard default is 2 weeks; copying another team’s settings can supply a different value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_duration: MaybeUndefined<i64>,
-    /// The cooldown time after each cycle in weeks.
+    /// The number of weeks between cycles, from 0 to 3. A value of 0 creates consecutive cycles and is the standard default.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_cooldown_time: MaybeUndefined<i64>,
-    /// Auto assign started issues to current active cycle setting.
+    /// Whether starting an issue automatically adds it to the current cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_issue_auto_assign_started: MaybeUndefined<bool>,
-    /// Auto assign completed issues to current active cycle setting.
+    /// Whether completing an issue automatically adds it to the current cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_issue_auto_assign_completed: MaybeUndefined<bool>,
     /// Only allow issues with cycles in Active Issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_lock_to_active: MaybeUndefined<bool>,
-    /// How many upcoming cycles to create.
+    /// Number of future cycles to keep scheduled: 1, 2, 3, 4, 6, 8, 10, 12, or 15.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub upcoming_cycle_count: MaybeUndefined<f64>,
     /// Whether triage mode is enabled for the team.
@@ -10064,31 +8915,28 @@ pub struct TeamCreateInput {
     /// Whether an issue needs to have a priority set before leaving triage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub require_priority_to_leave_triage: MaybeUndefined<bool>,
-    /// The timezone of the team.
+    /// The IANA time zone used for team schedules, such as Europe/Helsinki. The standard default is America/Los_Angeles; copied settings can supply another zone.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub timezone: MaybeUndefined<String>,
+    /// `DEPRECATED` Whether issues without priority should be sorted first.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub issue_ordering_no_priority_first: MaybeUndefined<bool>,
     /// Whether the team should inherit estimation settings from its parent. Only applies to sub-teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherit_issue_estimation: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit workflow statuses from its parent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_workflow_statuses: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit project statuses from its parent team, or from the workspace when it has no parent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_project_statuses: MaybeUndefined<bool>,
     /// The issue estimation type to use. Must be one of "notUsed", "exponential", "fibonacci", "linear", "tShirt".
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_estimation_type: MaybeUndefined<String>,
     /// Whether to allow zeros in issues estimates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_estimation_allow_zero: MaybeUndefined<bool>,
-    /// Whether to move issues to bottom of the column when changing state.
+    /// Where an issue is placed after a status change: first, last, or noAction to keep its position.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub set_issue_sort_order_on_state_change: MaybeUndefined<String>,
     /// Whether to add additional points to the estimate scale.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_estimation_extended: MaybeUndefined<bool>,
-    /// What to use as an default estimate for unestimated issues.
+    /// The estimate used in progress calculations for an issue without an explicit estimate: 0 or 1. The standard default is 1. This does not assign an estimate to the issue itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_issue_estimate: MaybeUndefined<f64>,
     /// Whether to group recent issue history entries.
@@ -10103,57 +8951,48 @@ pub struct TeamCreateInput {
     /// The identifier of the default project template of this team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_project_template_id: MaybeUndefined<String>,
-    /// Internal. Whether the team is private or not.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub private: MaybeUndefined<bool>,
-    /// Period after which issues are automatically closed, in months.
+    /// Months of inactivity before issues are automatically closed: 1, 3, 6, 9, or 12. Null disables automatic closing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_close_period: MaybeUndefined<f64>,
     /// The canceled workflow state which auto closed issues will be set to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_close_state_id: MaybeUndefined<String>,
-    /// Period after which closed (completed, canceled, or duplicate) issues are automatically archived, in months. 0 means disabled.
+    /// Months after which closed issues are automatically archived: 1, 3, 6, 9, or 12.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_archive_period: MaybeUndefined<f64>,
+    /// `DEPRECATED` No longer in use. Duplicates are now system-managed via the native duplicate state.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub marked_as_duplicate_workflow_state_id: MaybeUndefined<String>,
     /// The parent team ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// `Internal` Whether the team should inherit its product intelligence scope from its parent. Only applies to sub-teams.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_product_intelligence_scope: MaybeUndefined<bool>,
-    /// `Internal` The scope of product intelligence suggestion data for the team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub product_intelligence_scope: MaybeUndefined<ProductIntelligenceScope>,
     /// Whether issue sharing is enabled for this team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_sharing_enabled: MaybeUndefined<bool>,
     /// Whether initiatives are shown in the team's sidebar.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiatives_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit its Slack auto-create project channel setting from its parent. Only applies to sub-teams.
+    /// The policy controlling whether and by whom issues in the team can be shared with non-team-members.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_slack_auto_create_project_channel: MaybeUndefined<bool>,
-    /// `Internal` Whether to automatically create a Slack channel when a new project is created in this team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_auto_create_project_channel: MaybeUndefined<bool>,
+    pub issue_sharing_policy: MaybeUndefined<IssueSharingPolicy>,
 }
-/// Team filtering options.
+/// Filters teams by name, key, visibility, retirement, people, hierarchy, issues, or release pipelines. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the team name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the team key.
+    /// The team key used as the prefix of its issue identifiers, such as ENG in ENG-123.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub key: MaybeUndefined<StringComparator>,
     /// Comparator for the team description.
@@ -10168,38 +9007,38 @@ pub struct TeamFilter {
     /// Filters that the team's members must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub members: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// `Internal` Filters that the team's members must satisfy. Alias of `members` matching the filter shape produced by the app; prefer `members`.
+    /// Filters that the team's members must satisfy. Alias of `members` matching the filter shape produced by the app; prefer `members`.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub users: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// Filters that the team's owners must satisfy.
+    /// Conditions on users who own this team. Team ownership is separate from the workspace owner role.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owners: MaybeUndefined<Box<UserCollectionFilter>>,
-    /// Comparator for the time at which the team was retired.
+    /// The time the team was retired. Use { null: true } for teams that are not retired; retirement is separate from archiving for deletion.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<NullableDateComparator>,
     /// Filters that the team's issues must satisfy.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Filters that the team's parent must satisfy.
+    /// Conditions on the immediate parent team. Use { null: true } to find top-level teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the team's ancestors must satisfy.
+    /// Conditions on the parent team and all teams above it in the hierarchy. The team itself is excluded.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ancestors: MaybeUndefined<Box<TeamCollectionFilter>>,
-    /// `Internal` Filters that the private team forming this team's visibility boundary must satisfy. Only relevant for non-public teams.
+    /// Filters that the private team forming this team's visibility boundary must satisfy. Only relevant for non-public teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub restricted_by: MaybeUndefined<Box<NullableTeamFilter>>,
-    /// Filters that the team's release pipelines must satisfy.
+    /// Conditions on release pipelines associated with the team. To combine tests, put each in a separate and entry: at one level, and takes precedence over or, then length, then every, then some or direct properties.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_pipelines: MaybeUndefined<Box<ReleasePipelineCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the team.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<TeamFilter>>,
-    /// Compound filters, one of which need to be matched by the team.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<TeamFilter>>,
 }
-/// Input for creating a new team membership.
+/// The user and team to connect with a new membership. The team must be active and the user must not already be a member. Regular workspace members also join ancestor teams; guest and application-user memberships do not propagate.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamMembershipCreateInput {
@@ -10210,24 +9049,19 @@ pub struct TeamMembershipCreateInput {
     pub user_id: String,
     /// The identifier of the team associated with the membership.
     pub team_id: String,
-    /// Internal. Whether the user is the owner of the team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub owner: MaybeUndefined<bool>,
-    /// The position of the item in the users list.
+    /// The team’s position in this user’s team list. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Input for updating an existing team membership.
+/// Changes to a membership’s personal team ordering. This input does not change the user, team, or ownership role; omit sortOrder to leave the position unchanged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamMembershipUpdateInput {
-    /// Internal. Whether the user is the owner of the team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub owner: MaybeUndefined<bool>,
-    /// The position of the item in the users list.
+    /// The team’s position in this user’s team list. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
+/// Minimum team roles required for specific actions. Omitted permissions retain their current settings.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamSecuritySettingsInput {
@@ -10267,6 +9101,7 @@ pub struct TeamSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
+/// Changes to a team’s identity, workflow, or settings. Omitted fields keep their current values. Permissions are checked for the settings being changed, and some settings require workspace-level administration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamUpdateInput {
@@ -10276,7 +9111,7 @@ pub struct TeamUpdateInput {
     /// The description of the team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The key of the team.
+    /// The prefix for issue identifiers, such as ENG in ENG-123.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub key: MaybeUndefined<String>,
     /// The icon of the team.
@@ -10288,19 +9123,19 @@ pub struct TeamUpdateInput {
     /// Whether the team uses cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycles_enabled: MaybeUndefined<bool>,
-    /// The day of the week that a new cycle starts.
+    /// The day cycles start: 0 for Sunday through 6 for Saturday.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_start_day: MaybeUndefined<f64>,
-    /// The duration of each cycle in weeks.
+    /// Cycle length in weeks, from 1 to 8.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_duration: MaybeUndefined<i64>,
-    /// The cooldown time after each cycle in weeks.
+    /// Weeks between cycles, from 0 to 3. Use 0 for consecutive cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_cooldown_time: MaybeUndefined<i64>,
-    /// Auto assign started issues to current active cycle setting.
+    /// Whether starting an issue automatically adds it to the current cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_issue_auto_assign_started: MaybeUndefined<bool>,
-    /// Auto assign completed issues to current active cycle setting.
+    /// Whether completing an issue automatically adds it to the current cycle.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_issue_auto_assign_completed: MaybeUndefined<bool>,
     /// Only allow issues with cycles in Active Issues.
@@ -10309,12 +9144,15 @@ pub struct TeamUpdateInput {
     /// The time at which to begin cycles.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub cycle_enabled_start_date: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// How many upcoming cycles to create.
+    /// Number of future cycles to keep scheduled: 1, 2, 3, 4, 6, 8, 10, 12, or 15.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub upcoming_cycle_count: MaybeUndefined<f64>,
-    /// The timezone of the team.
+    /// The IANA time zone for team schedules, such as Europe/Helsinki.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub timezone: MaybeUndefined<String>,
+    /// `DEPRECATED` Whether issues without priority should be sorted first.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub issue_ordering_no_priority_first: MaybeUndefined<bool>,
     /// Whether the team should inherit estimation settings from its parent. Only applies to sub-teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherit_issue_estimation: MaybeUndefined<bool>,
@@ -10324,13 +9162,13 @@ pub struct TeamUpdateInput {
     /// Whether to allow zeros in issues estimates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_estimation_allow_zero: MaybeUndefined<bool>,
-    /// Whether to move issues to bottom of the column when changing state.
+    /// Where an issue is placed after a status change: first, last, or noAction to keep its position.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub set_issue_sort_order_on_state_change: MaybeUndefined<String>,
     /// Whether to add additional points to the estimate scale.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_estimation_extended: MaybeUndefined<bool>,
-    /// What to use as an default estimate for unestimated issues.
+    /// The estimate used in progress calculations for an issue without an explicit estimate: 0 or 1. This changes its contribution to estimated scope, without assigning an estimate to the issue itself.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_issue_estimate: MaybeUndefined<f64>,
     /// Whether to send new issue notifications to Slack.
@@ -10351,12 +9189,6 @@ pub struct TeamUpdateInput {
     /// Whether to enable AI discussion summaries for issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub ai_discussion_summaries_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether the team has enabled agent automation.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub agent_automation_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether the team has enabled Coding Sessions.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub coding_agent_enabled: MaybeUndefined<bool>,
     /// The identifier of the default template for members of this team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_template_for_members_id: MaybeUndefined<String>,
@@ -10375,10 +9207,10 @@ pub struct TeamUpdateInput {
     /// Whether an issue needs to have a priority set before leaving triage.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub require_priority_to_leave_triage: MaybeUndefined<bool>,
-    /// Default status for newly created issues.
+    /// The issue status UUID used for new issues created by team members. It must belong to the team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub default_issue_state_id: MaybeUndefined<String>,
-    /// Period after which issues are automatically closed, in months.
+    /// Months of inactivity before issues are automatically closed: 1, 3, 6, 9, or 12. Null disables automatic closing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_close_period: MaybeUndefined<f64>,
     /// The canceled workflow state which auto closed issues will be set to.
@@ -10390,9 +9222,12 @@ pub struct TeamUpdateInput {
     /// Whether to automatically close all sub-issues when a parent issue in this team is closed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_close_child_issues: MaybeUndefined<bool>,
-    /// Period after which closed (completed, canceled, or duplicate) issues are automatically archived, in months.
+    /// Months after which closed issues are automatically archived: 1, 3, 6, 9, or 12.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub auto_archive_period: MaybeUndefined<f64>,
+    /// `DEPRECATED` No longer in use. Duplicates are now system-managed via the native duplicate state.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub marked_as_duplicate_workflow_state_id: MaybeUndefined<String>,
     /// Whether new users should join this team by default. Mutation restricted to workspace admins or owners!
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub join_by_default: MaybeUndefined<bool>,
@@ -10405,70 +9240,52 @@ pub struct TeamUpdateInput {
     /// The parent team ID.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub parent_id: MaybeUndefined<String>,
-    /// `Internal` Whether the team should inherit workflow statuses from its parent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_workflow_statuses: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit project statuses from its parent team, or from the workspace when it has no parent.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_project_statuses: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit its product intelligence scope from its parent. Only applies to sub-teams.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_product_intelligence_scope: MaybeUndefined<bool>,
-    /// `Internal` The scope of product intelligence suggestion data for the team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub product_intelligence_scope: MaybeUndefined<ProductIntelligenceScope>,
     /// Whether issue sharing is enabled for this team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issue_sharing_enabled: MaybeUndefined<bool>,
     /// Whether initiatives are shown in the team's sidebar.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiatives_enabled: MaybeUndefined<bool>,
-    /// `Internal` Whether the team should inherit its Slack auto-create project channel setting from its parent. Only applies to sub-teams.
+    /// The policy controlling whether and by whom issues in the team can be shared with non-team-members.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inherit_slack_auto_create_project_channel: MaybeUndefined<bool>,
-    /// `Internal` Whether to automatically create a Slack channel when a new project is created in this team.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub slack_auto_create_project_channel: MaybeUndefined<bool>,
+    pub issue_sharing_policy: MaybeUndefined<IssueSharingPolicy>,
     /// The security settings for the team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub security_settings: MaybeUndefined<TeamSecuritySettingsInput>,
     /// Whether all members in the workspace can join the team. Only used for public teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub all_members_can_join: MaybeUndefined<bool>,
-    /// When the team was retired.
+    /// Set a timestamp to retire the team, or null to restore it. Retired teams retain their data but do not accept new issues or members. Send this field separately from other changes. Through the public API, move or retire active sub-teams before retiring their parent. You must have permission to manage the team; restore a retired parent before its sub-teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub retired_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` How to handle sub-teams when retiring. Required if the team has active sub-teams.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub handle_sub_teams_on_retirement: MaybeUndefined<TeamRetirementSubTeamHandling>,
 }
-/// Comparator for team visibility.
+/// Filters teams by visibility: `public` teams have no private-team boundary, `restricted` teams inherit one from a parent, and `private` teams define their own. All supplied conditions must match. Filtering does not grant access to teams you cannot view.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamVisibilityComparator {
-    /// Equals constraint.
+    /// Matches teams with this visibility.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<TeamVisibility>,
-    /// Not-equals constraint.
+    /// Excludes teams with this visibility.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<TeamVisibility>,
-    /// In-array constraint.
+    /// Matches any visibility in the list. An empty list matches no teams.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<TeamVisibility>>,
-    /// Not-in-array constraint.
+    /// Excludes every visibility in the list. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<TeamVisibility>>,
 }
-/// Input for creating a new template. A name, type, and template data are required. If no team is specified, the template is shared across the workspace.
+/// The name, type, and configuration for a new template. Omit teamId to make it available across the workspace, or choose a team for a team template. Release-note templates instead require a release pipeline and are limited to one per pipeline.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The template type, e.g. 'issue', 'project', or 'document'.
+    /// The template type: issue, document, project, recurringIssue, releaseNote, or loop. The configuration in templateData must match the type. Loop templates require the feature to be available in the workspace.
     pub r#type: String,
-    /// The identifier or key of the team associated with the template. If not given, the template will be shared across all teams.
+    /// UUID of the team that owns the template. Omit for a workspace template. Release-note templates use pipelineId instead and cannot belong to a team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
     /// The identifier of the release pipeline this template is bound to. Required when the template type is 'releaseNote' and rejected otherwise. Each pipeline can have at most one release note template.
@@ -10476,76 +9293,76 @@ pub struct TemplateCreateInput {
     pub pipeline_id: MaybeUndefined<String>,
     /// The template name.
     pub name: String,
-    /// The template description.
+    /// Description of when to use the template. The content it applies belongs in templateData.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The icon of the template.
+    /// Emoji or decorative icon identifier for the template.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the template icon.
+    /// Icon color as a hexadecimal CSS color, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The template data as JSON-encoded attributes of the target entity type, such as pre-filled issue fields, project configuration, or document content.
+    /// The defaults for the selected type, supplied as a JSON object or a JSON-encoded string. For an issue template, fields can include title, description in Markdown, priority, labelIds, and children. Linear validates and normalizes the data for the template type.
     pub template_data: serde_json::Value,
-    /// The sort position of the template in the templates list.
+    /// Position in the template list. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
-/// Template filtering options.
+/// Conditions used to select templates. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the template's name.
+    /// Conditions on the template’s name, not the titles of resources created from it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the template's type.
+    /// Conditions on the template’s type, such as issue, project, or document. This selects what the template creates, not the scope where the template is available.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
-    /// Comparator for the inherited template's ID.
+    /// Conditions on the UUID of the template inherited from a parent team. This matches the immediate source template.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub inherited_from_id: MaybeUndefined<IDComparator>,
-    /// Filters that the template's team must satisfy.
+    /// Conditions on the team that owns the template. Use null: true for templates without a team, including workspace and pipeline-scoped release-note templates.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<NullableTeamFilter>,
-    /// Compound filters, all of which need to be matched by the template.
+    /// Conditions that the template must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<TemplateFilter>>,
-    /// Compound filters, one of which need to be matched by the template.
+    /// Alternative conditions; the template must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<TemplateFilter>>,
 }
-/// Input for updating an existing template. All fields are optional; only provided fields will be updated.
+/// The changes to a template’s metadata, scope, or saved defaults. Omitted fields keep their values, but templateData replaces the whole configuration when supplied. The template’s type cannot be changed through this input.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateUpdateInput {
     /// The template name.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The template description.
+    /// Description of when to use the template. The content it applies belongs in templateData. Pass null to clear this description, or omit to keep it.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The icon of the template.
+    /// Emoji or decorative icon identifier. Null clears the icon.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub icon: MaybeUndefined<String>,
-    /// The color of the template icon.
+    /// Icon color as a hexadecimal CSS color. Null clears the color.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The identifier or key of the team associated with the template. If set to null, the template will be shared across all teams.
+    /// UUID of the team that owns the template. Null moves a team template to the workspace; omit to keep its scope. Changing scope requires permission to manage templates at both the source and destination. Release-note templates remain scoped to their pipeline.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The template data as JSON-encoded attributes of the target entity type, such as pre-filled issue fields, project configuration, or document content.
+    /// The complete replacement configuration for the template’s existing type, supplied as a JSON object or a JSON-encoded string. Include the fields and nested content you want to keep; this does not merge individual keys with the old configuration. Omit it to leave the configuration unchanged; null is not accepted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub template_data: MaybeUndefined<serde_json::Value>,
-    /// The position of the template in the templates list.
+    /// Position in the template list. Lower values appear first.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub sort_order: MaybeUndefined<f64>,
 }
@@ -10560,35 +9377,25 @@ pub struct TierSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Issue time in status sorting options.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TimeInStatusSort {
-    /// Whether nulls should be sorted first or last
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub nulls: MaybeUndefined<PaginationNulls>,
-    /// The order for the individual sort
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub order: MaybeUndefined<PaginationSortOrder>,
-}
+/// `ALPHA` Upcoming shifts for displaying when each Linear user is next on call. nextShiftByUserId maps user UUIDs to startsAt and endsAt values. Each user must be accessible, and startsAt must be in the future, allowing one minute for request processing. This is display information; entries remains the source for current triage responsibility.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeScheduleConfigInput {
     /// Record of the next on-call shift keyed by Linear user id, e.g. `{ "<linearUserId>": { "startsAt": "X", "endsAt": "Y" } }`.
     pub next_shift_by_user_id: serde_json::Value,
 }
-/// Input for creating a new time schedule.
+/// A name and complete shift list for an API-managed on-call schedule. Provide at most 200 non-overlapping entries. If your system has its own schedule ID, store it in externalId so later calls can use timeScheduleUpsertExternal. The schedule can then be referenced by a team’s triage responsibility.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeScheduleCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The name of the schedule.
+    /// Schedule name, from 1 to 60 characters.
     pub name: String,
-    /// The schedule entries.
+    /// The complete shift list, with at most 200 entries. Each shift needs startsAt, endsAt, and userId or userEmail. Shifts must not overlap; adjacent entries with the same user and override must be combined. On update, this replaces the previous list rather than appending to it. An empty list leaves nobody scheduled.
     pub entries: Vec<TimeScheduleEntryInput>,
-    /// The unique identifier of the external schedule.
+    /// Schedule identifier in the external service, unique within the workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_id: MaybeUndefined<String>,
     /// The URL to the external schedule.
@@ -10598,6 +9405,7 @@ pub struct TimeScheduleCreateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub config: MaybeUndefined<TimeScheduleConfigInput>,
 }
+/// One shift with a start time, end time, and responsible user. Provide userId when the person is known in Linear, or userEmail as an external reference. The end cannot be earlier than the start, and shifts in the schedule must not overlap. Combine adjacent shifts for the same user and override into one entry.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeScheduleEntryInput {
@@ -10615,17 +9423,17 @@ pub struct TimeScheduleEntryInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub overridden_user: MaybeUndefined<TimeScheduleUserInput>,
 }
-/// Input for updating an existing time schedule.
+/// Changes to an API-managed schedule. Omitted fields remain unchanged, while entries replaces the complete shift list; use an empty list to clear all shifts. name, entries, externalId, and externalUrl do not accept null. config can be cleared with null. Integration-managed schedules must be refreshed from their integration instead.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeScheduleUpdateInput {
-    /// The name of the schedule.
+    /// Schedule name, from 1 to 60 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The schedule entries.
+    /// The complete shift list, with at most 200 entries. Each shift needs startsAt, endsAt, and userId or userEmail. Shifts must not overlap; adjacent entries with the same user and override must be combined. On update, this replaces the previous list rather than appending to it. An empty list leaves nobody scheduled.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub entries: MaybeUndefined<Vec<TimeScheduleEntryInput>>,
-    /// The unique identifier of the external schedule.
+    /// Schedule identifier in the external service, unique within the workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub external_id: MaybeUndefined<String>,
     /// The URL to the external schedule.
@@ -10635,6 +9443,7 @@ pub struct TimeScheduleUpdateInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub config: MaybeUndefined<TimeScheduleConfigInput>,
 }
+/// A schedule participant identified by userId or an external userEmail reference.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimeScheduleUserInput {
@@ -10656,23 +9465,27 @@ pub struct TitleSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
+/// Credentials for completing an email or SAML sign-in flow. For email sign-in, send the token from the email and the clientAuthCode used to request it. SAML sign-in uses the token issued by its own flow and does not use clientAuthCode.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenUserAccountAuthInput {
-    /// The email which to login via the magic login code.
+    /// Email address associated with the authentication token.
     pub email: String,
-    /// The magic login code.
+    /// One-time authentication token from the email or SAML sign-in flow.
     pub token: String,
-    /// The timezone of the user's browser.
+    /// Browser timezone. Required by the input type but currently unused by this operation.
     pub timezone: String,
+    /// Currently unused. Supplying team IDs does not join those teams during this sign-in operation.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub team_ids_to_join: MaybeUndefined<Vec<String>>,
     /// An optional invite link for a workspace.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub invite_link: MaybeUndefined<String>,
-    /// Auth code for the client initiating the login sequence.
+    /// The clientAuthCode UUID sent when requesting the email login. Required for email token login; unused for SAML.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub client_auth_code: MaybeUndefined<String>,
 }
-/// Input for creating a new triage responsibility.
+/// A rule for handling new triage issues in one team. Provide the team UUID, choose notify or assign, and supply exactly one of manualSelection or timeScheduleId. The team must not already have a triage responsibility, and the caller must have permission to manage it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TriageResponsibilityCreateInput {
@@ -10681,36 +9494,33 @@ pub struct TriageResponsibilityCreateInput {
     pub id: MaybeUndefined<String>,
     /// The identifier of the team associated with the triage responsibility.
     pub team_id: String,
-    /// The action to take when an issue is added to triage.
+    /// Action when an issue enters triage: notify or assign.
     pub action: String,
-    /// The manual selection of users responsible for triage.
+    /// Users responsible for triage. Setting this replaces any time schedule; cannot be combined with timeScheduleId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub manual_selection: MaybeUndefined<TriageResponsibilityManualSelectionInput>,
-    /// The identifier of the time schedule used for scheduling triage responsibility
+    /// UUID of the on-call schedule. Cannot be combined with manualSelection
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub time_schedule_id: MaybeUndefined<String>,
 }
-/// Manual triage responsibility using a set of users.
+/// The ordered set of Linear users responsible for triage. With assign, Linear rotates through eligible users; with notify, it notifies eligible users in the selection. Supply user UUIDs, not email addresses. Invalid UUIDs are rejected, and IDs that do not resolve to users are removed; a nonempty list with no valid users is rejected.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TriageResponsibilityManualSelectionInput {
-    /// The set of users responsible for triage.
+    /// Ordered user UUIDs. Notification rules notify eligible users; assignment rules rotate through them, skipping inactive, unavailable, or inaccessible users.
     pub user_ids: Vec<String>,
-    /// `Internal` The index of the current userId used for the assign action when having more than one user.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub assignment_index: MaybeUndefined<i64>,
 }
-/// Input for updating an existing triage responsibility.
+/// Changes to a team’s triage rule. Omitted fields remain unchanged. Supplying manualSelection replaces the current time schedule; supplying timeScheduleId replaces the manual selection. Do not supply both. The team cannot be changed through this input.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TriageResponsibilityUpdateInput {
-    /// The action to take when an issue is added to triage.
+    /// Action when an issue enters triage: notify or assign.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub action: MaybeUndefined<String>,
-    /// The manual selection of users responsible for triage.
+    /// Users responsible for triage. Setting this replaces any time schedule; cannot be combined with timeScheduleId.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub manual_selection: MaybeUndefined<TriageResponsibilityManualSelectionInput>,
-    /// The identifier of the time schedule used for scheduling triage responsibility.
+    /// UUID of the on-call schedule. Cannot be combined with manualSelection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub time_schedule_id: MaybeUndefined<String>,
 }
@@ -10725,26 +9535,26 @@ pub struct UpdatedAtSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// Usage alert filtering options.
+/// Filters recorded usage alerts by the condition that triggered them and common entity fields. Filtering by type does not indicate whether the condition is still active; inspect resolvedAt on each result.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageAlertFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the condition the alert was triggered by.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<UsageAlertTypeComparator>,
-    /// Compound filters, all of which need to be matched by the alert.
+    /// Compound filters, all of which need to be matched by the alert. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<UsageAlertFilter>>,
-    /// Compound filters, one of which need to be matched by the alert.
+    /// Compound filters, at least one of which needs to be matched by the alert. An empty list adds no constraint.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<UsageAlertFilter>>,
 }
@@ -10752,30 +9562,30 @@ pub struct UsageAlertFilter {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageAlertTypeComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<UsageAlertType>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<UsageAlertType>,
-    /// In-array constraint.
+    /// Values to include in the match. For scalar comparisons, matches any listed value. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<UsageAlertType>>,
-    /// Not-in-array constraint.
+    /// Values to exclude from the match. For scalar comparisons, an empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<UsageAlertType>>,
 }
-/// User filtering options.
+/// Filters a related collection of users. Use some or every to test its members and length to test its size, for example length: { eq: 0 } for an empty collection. Direct property filters act as some only when no collection clause is supplied.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserCollectionFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the user's name.
@@ -10787,16 +9597,16 @@ pub struct UserCollectionFilter {
     /// Comparator for the user's email.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub email: MaybeUndefined<StringComparator>,
-    /// Comparator for the user's activity status.
+    /// Whether the user is active in the workspace. This is account membership state, not whether the user is currently online.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub active: MaybeUndefined<BooleanComparator>,
-    /// Filters that the users assigned issues must satisfy.
+    /// Conditions on issues assigned to the user. Use some to find a user with a matching issue, or length to test the number of assigned issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assigned_issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Comparator for the user's admin status.
+    /// Whether the user has the workspace admin role. Workspace owners have a separate role; use owner to test for them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub admin: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's owner status.
+    /// Whether the user has the workspace owner role. This does not test ownership of a team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner: MaybeUndefined<BooleanComparator>,
     /// Comparator for the user's invited status.
@@ -10805,16 +9615,16 @@ pub struct UserCollectionFilter {
     /// Comparator for the user's invited status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_invited: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's app status.
+    /// Whether the user represents an installed application rather than a person.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub app: MaybeUndefined<BooleanComparator>,
-    /// Filter based on the currently authenticated user. Set to true to filter for the authenticated user, false for any other user.
+    /// Use { eq: true } for the authenticated user or { eq: false } for other users. The value is a BooleanComparator, not a bare boolean.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_me: MaybeUndefined<BooleanComparator>,
-    /// Compound filters, all of which need to be matched by the user.
+    /// All of these collection conditions must match. Each can test a different member of the collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<UserCollectionFilter>>,
-    /// Compound filters, one of which need to be matched by the user.
+    /// At least one of these collection conditions must match.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<UserCollectionFilter>>,
     /// Filters that needs to be matched by some users.
@@ -10823,7 +9633,7 @@ pub struct UserCollectionFilter {
     /// Filters that needs to be matched by all users.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub every: MaybeUndefined<Box<UserFilter>>,
-    /// Comparator for the collection length.
+    /// The number of related objects, before applying some or every. Use { eq: 0 } to find an empty collection.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub length: MaybeUndefined<NumberComparator>,
 }
@@ -10838,17 +9648,17 @@ pub struct UserDisplayNameSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
-/// User filtering options.
+/// Filters users by identity, workspace role, active or invited state, or assigned issues. Supplied conditions must match together; use and and or to combine nested filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
     /// Comparator for the user's name.
@@ -10860,16 +9670,16 @@ pub struct UserFilter {
     /// Comparator for the user's email.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub email: MaybeUndefined<StringComparator>,
-    /// Comparator for the user's activity status.
+    /// Whether the user is active in the workspace. This is account membership state, not whether the user is currently online.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub active: MaybeUndefined<BooleanComparator>,
-    /// Filters that the users assigned issues must satisfy.
+    /// Conditions on issues assigned to the user. Use some to find a user with a matching issue, or length to test the number of assigned issues.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub assigned_issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Comparator for the user's admin status.
+    /// Whether the user has the workspace admin role. Workspace owners have a separate role; use owner to test for them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub admin: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's owner status.
+    /// Whether the user has the workspace owner role. This does not test ownership of a team.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub owner: MaybeUndefined<BooleanComparator>,
     /// Comparator for the user's invited status.
@@ -10878,16 +9688,16 @@ pub struct UserFilter {
     /// Comparator for the user's invited status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_invited: MaybeUndefined<BooleanComparator>,
-    /// Comparator for the user's app status.
+    /// Whether the user represents an installed application rather than a person.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub app: MaybeUndefined<BooleanComparator>,
-    /// Filter based on the currently authenticated user. Set to true to filter for the authenticated user, false for any other user.
+    /// Use { eq: true } for the authenticated user or { eq: false } for other users. The value is a BooleanComparator, not a bare boolean.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub is_me: MaybeUndefined<BooleanComparator>,
-    /// Compound filters, all of which need to be matched by the user.
+    /// All of these nested filters must match, in addition to the other conditions on this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<UserFilter>>,
-    /// Compound filters, one of which need to be matched by the user.
+    /// At least one of these nested filters must match, in addition to the other conditions on this filter. An empty list is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<UserFilter>>,
 }
@@ -10902,12 +9712,16 @@ pub struct UserNameSort {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub order: MaybeUndefined<PaginationSortOrder>,
 }
+/// Changes to notification and app preferences. Omitted fields keep their values. General settings merge by key, notification categories and channels merge with existing preferences, and delivery schedules use the replacement rules described on that field.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSettingsUpdateInput {
     /// The user's settings. Merged key by key into the existing settings: keys missing from the object are left unchanged, and a key set to null is removed.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub settings: MaybeUndefined<serde_json::Value>,
+    /// The types of emails the user has unsubscribed from.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub unsubscribed_from: MaybeUndefined<Vec<String>>,
     /// Whether this user is subscribed to changelog email or not.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subscribed_to_changelog: MaybeUndefined<bool>,
@@ -10927,31 +9741,16 @@ pub struct UserSettingsUpdateInput {
     /// Whether this user is subscribed to general marketing communications or not.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub subscribed_to_general_marketing_communications: MaybeUndefined<bool>,
-    /// The user's notification category preferences.
+    /// Category and channel preferences to change. Merged with existing preferences; omitted values remain unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub notification_category_preferences: MaybeUndefined<NotificationCategoryPreferencesInput>,
-    /// The user's notification channel preferences.
+    /// Delivery channels to enable or disable. Omitted channels remain unchanged.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub notification_channel_preferences:
         MaybeUndefined<PartialNotificationChannelPreferencesInput>,
-    /// The user's notification delivery preferences.
+    /// Replacement delivery schedules. Mobile delivery uses one shared time range across enabled days. Supplying mobile also enables mobile notifications unless its notificationsDisabled is true; an explicitly supplied notificationChannelPreferences.mobile takes precedence.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub notification_delivery_preferences: MaybeUndefined<NotificationDeliveryPreferencesInput>,
-    /// `Internal` The user's usage warning history.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub usage_warning_history: MaybeUndefined<serde_json::Value>,
-    /// `Internal` How often to generate a feed summary.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub feed_summary_schedule: MaybeUndefined<FeedSummarySchedule>,
-    /// `Internal` The user's last seen time for the pulse feed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub feed_last_seen_time: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// `Internal` Whether the Priority Inbox is enabled for the user.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub priority_inbox_enabled: MaybeUndefined<bool>,
-    /// `Internal` Which Inbox notifications contribute to Inbox badges. 'all' includes all unread notifications; 'priority' includes only Priority Inbox notifications; 'none' hides the count.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub inbox_badge_scope: MaybeUndefined<InboxBadgeScope>,
 }
 /// User sorting options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -10964,17 +9763,17 @@ pub struct UserSortInput {
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<UserDisplayNameSort>,
 }
-/// Input for updating the authenticated user.
+/// Changes to a user’s profile. Omitted fields keep their values. You can update your own profile; changing another user requires member-management permission. Identity-provider rules can prevent name changes, and application accounts only accept name and displayName.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserUpdateInput {
-    /// The name of the user.
+    /// The user’s full name. Name changes can be blocked when the account is managed by an identity provider that does not allow them.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The display name of the user.
+    /// The user’s workspace username, using letters, numbers, hyphens, underscores, and periods. It must be unique within the workspace. Identity-provider rules can prevent changes to this value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub display_name: MaybeUndefined<String>,
-    /// The avatar image URL of the user.
+    /// An HTTP or HTTPS URL for the avatar image. Null removes the avatar.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub avatar_url: MaybeUndefined<String>,
     /// The user description or a short bio.
@@ -10989,192 +9788,192 @@ pub struct UserUpdateInput {
     /// The label part of the user status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_label: MaybeUndefined<String>,
-    /// When the user status should be cleared.
+    /// The time at which the status is cleared. Null removes its expiration.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub status_until_at: MaybeUndefined<chrono::DateTime<chrono::Utc>>,
-    /// The local timezone of the user.
+    /// The user’s IANA time zone, such as Europe/Helsinki.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub timezone: MaybeUndefined<String>,
 }
-/// Input for creating view preferences.
+/// The view, scope, and display settings to save. Use type user for your personal overrides or organization for defaults shared in that scope. Entity-specific views require the corresponding ID, such as teamId for cycle views or customViewId for saved views.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewPreferencesCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The type of view preferences (either user or workspace level preferences).
+    /// Whether to save personal overrides for the current user or workspace defaults.
     pub r#type: ViewPreferencesType,
-    /// The view type of the view preferences are associated with.
+    /// The kind of view these settings apply to.
     pub view_type: ViewType,
-    /// View preferences object.
+    /// The display settings to store. Supply the values you want this record to override; omitted fields use the next available workspace or system default when the view is displayed.
     pub preferences: serde_json::Value,
     /// The default parameters for the insight on that view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub insights: MaybeUndefined<serde_json::Value>,
-    /// The team these view preferences are associated with.
+    /// UUID of the team whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// The project these view preferences are associated with.
+    /// UUID of the project whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_id: MaybeUndefined<String>,
-    /// `Internal` The initiative these view preferences are associated with.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub initiative_id: MaybeUndefined<String>,
-    /// The label these view preferences are associated with.
+    /// UUID of the issue label whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label_id: MaybeUndefined<String>,
-    /// The project label these view preferences are associated with.
+    /// UUID of the project label whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub project_label_id: MaybeUndefined<String>,
-    /// The initiative label these view preferences are associated with.
+    /// UUID of the initiative label whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub initiative_label_id: MaybeUndefined<String>,
-    /// The release pipeline these view preferences are associated with.
+    /// UUID of the release pipeline whose view these settings apply to.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub release_pipeline_id: MaybeUndefined<String>,
-    /// The custom view these view preferences are associated with.
+    /// Ignored. Cycle views use teamId to share settings across the team’s cycles.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub cycle_id: MaybeUndefined<String>,
+    /// UUID of the custom view whose display settings are being saved.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub custom_view_id: MaybeUndefined<String>,
-    /// The user profile these view preferences are associated with.
+    /// UUID of the user whose profile view these settings apply to. This is not the owner of the preferences.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub user_id: MaybeUndefined<String>,
 }
-/// Input for updating view preferences.
+/// The settings to replace on an existing preferences record. Omit preferences or insights to keep that whole object unchanged. When supplying either object, include the existing values you want to retain; its individual keys are not merged.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewPreferencesUpdateInput {
-    /// View preferences.
+    /// The complete replacement set of display overrides. Include existing keys you want to keep. An empty object removes the record’s display overrides so the view can use its fallback defaults.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub preferences: MaybeUndefined<serde_json::Value>,
     /// The default parameters for the insight on that view.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub insights: MaybeUndefined<serde_json::Value>,
 }
-/// Input for creating a new webhook.
+/// The destination, event streams, and team scope for a new webhook. Provide a public HTTPS URL and at least one resource type. Choose a single teamId or set allPublicTeams to true; when allPublicTeams is true, teamId is ignored. Delivery is enabled by default, and Linear generates a signing secret if you omit one.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WebhookCreateInput {
-    /// Label for the webhook.
+    /// Display label, up to 64 characters. Must not contain a URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label: MaybeUndefined<String>,
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// Whether this webhook is enabled.
+    /// Whether matching events are delivered. Defaults to true on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub enabled: MaybeUndefined<bool>,
-    /// A secret token used to sign the webhook payload.
+    /// Signing secret, up to 256 characters. A secret is generated when omitted on create.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub secret: MaybeUndefined<String>,
-    /// The URL that will be called on data changes.
+    /// Public HTTPS endpoint that receives webhook POST requests, up to 1,000 characters.
     pub url: String,
-    /// List of resources the webhook should subscribe to.
+    /// Event streams to subscribe to. Accepted values are Attachment, AuditEntry, Comment, Customer, CustomerNeed, Cycle, Document, Initiative, InitiativeUpdate, Issue, IssueLabel, IssueSLA, Project, ProjectLabel, ProjectUpdate, Reaction, Release, ReleaseNote, and User. Names are case-sensitive. AuditEntry must be the only value and requires audit log permission and plan access; other streams may also require access to their feature.
     pub resource_types: Vec<String>,
-    /// The identifier or key of the team associated with the Webhook.
+    /// UUID of the team whose events to deliver. Required unless allPublicTeams is true.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team_id: MaybeUndefined<String>,
-    /// Whether this webhook is enabled for all public teams.
+    /// Receive events from every public team, including teams created later. If true, teamId is ignored.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub all_public_teams: MaybeUndefined<bool>,
 }
-/// Input for updating an existing webhook.
+/// Changes to an existing webhook’s destination, event streams, delivery state, or signing secret. Omitted fields keep their current values. resourceTypes replaces the whole subscription list. The team scope cannot be changed through this input; create a separate webhook when you need a different scope.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WebhookUpdateInput {
-    /// Label for the webhook.
+    /// Display label, up to 64 characters. Must not contain a URL.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub label: MaybeUndefined<String>,
-    /// A secret token used to sign the webhook payload.
+    /// Replacement signing secret, up to 256 characters. Omit to keep the current secret. Update your receiver to verify later deliveries with the replacement.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub secret: MaybeUndefined<String>,
-    /// Whether this webhook is enabled.
+    /// Whether matching events are delivered. Set false to pause delivery, or omit to keep the current setting.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub enabled: MaybeUndefined<bool>,
-    /// The URL that will be called on data changes.
+    /// Public HTTPS endpoint that receives webhook POST requests, up to 1,000 characters.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub url: MaybeUndefined<String>,
-    /// List of resources the webhook should subscribe to.
+    /// Event streams to subscribe to. Accepted values are Attachment, AuditEntry, Comment, Customer, CustomerNeed, Cycle, Document, Initiative, InitiativeUpdate, Issue, IssueLabel, IssueSLA, Project, ProjectLabel, ProjectUpdate, Reaction, Release, ReleaseNote, and User. Names are case-sensitive. AuditEntry must be the only value and requires audit log permission and plan access; other streams may also require access to their feature.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub resource_types: MaybeUndefined<Vec<String>>,
 }
-/// Comparator for the workflow definition that created an issue.
+/// Filters the workflow that created an issue, using its workflow definition ID. This describes creation provenance, not workflows that later updated the issue. `neq` and `nin` also match issues without a workflow source; use `{ null: false }` to require one.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowDefinitionIdComparator {
-    /// Equals constraint.
+    /// Matches the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub eq: MaybeUndefined<String>,
-    /// Not-equals constraint.
+    /// Excludes the given value.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub neq: MaybeUndefined<String>,
-    /// In-array constraint.
+    /// Matches any value in the list. An empty list matches nothing.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#in: MaybeUndefined<Vec<String>>,
-    /// Not-in-array constraint.
+    /// Excludes every value in the list, and includes null. An empty list adds no restriction.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub nin: MaybeUndefined<Vec<String>>,
-    /// Null constraint. Matches any non-null values if the given value is false, otherwise it matches null values.
+    /// Set to true to match resources with no value, or false to require a value. For example, `{ null: true }` finds unset values; `{ eq: null }` is not a substitute.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub null: MaybeUndefined<bool>,
 }
-/// Input for creating a new workflow state (issue status) in a team. The name, type, color, and team are required.
+/// The name, color, and category of a new issue status for a team. Choose the type carefully: it cannot be changed after creation. The name must be unique among active statuses of that type in the team.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowStateCreateInput {
     /// The identifier in UUID v4 format. If none is provided, the backend will generate one.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<String>,
-    /// The workflow state type, which categorizes the state. Valid values: backlog, unstarted, started, completed, canceled. The type determines how the state is treated in workflow progression and reporting.
+    /// The workflow category: backlog, unstarted, started, completed, or canceled. This controls issue lifecycle behavior and cannot be changed later. Triage and duplicate are reserved categories and cannot be created through this mutation.
     pub r#type: String,
     /// The name of the state.
     pub name: String,
-    /// The color of the state.
+    /// Status color as a hexadecimal CSS color, such as #5E6AD2.
     pub color: String,
-    /// The description of the state.
+    /// A short explanation of when your team should use this status. Omit it when the name already provides enough context.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The position of the state.
+    /// Display position within the status type, with lower values first. Defaults to the end of that type; collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<f64>,
-    /// The team associated with the state.
+    /// UUID of the team that owns the status.
     pub team_id: String,
 }
-/// Workflow state filtering options.
+/// Conditions used to select issue statuses. Supplied fields are combined with AND; use `or` to accept alternatives and `and` to group conditions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowStateFilter {
-    /// Comparator for the identifier.
+    /// Filters by the resource's stable UUID. Use `eq` for one ID or `in` for a list of IDs.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub id: MaybeUndefined<IDComparator>,
-    /// Comparator for the created at date.
+    /// Filters by creation time. Use a fixed timestamp or a relative duration, such as `{ gte: "-P7D" }` for resources created in the last seven days.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub created_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the updated at date.
+    /// Filters by the last meaningful update time. Some background changes do not advance it. Use `gte` and `lt` together to select a time window.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub updated_at: MaybeUndefined<DateComparator>,
-    /// Comparator for the workflow state name.
+    /// Conditions on the status name shown in Linear. Use type when you want the same workflow category across teams with different names.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<StringComparator>,
-    /// Comparator for the workflow state description.
+    /// Conditions on the status’s explanatory text.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<StringComparator>,
-    /// Comparator for the workflow state position.
+    /// Conditions on the status’s order within its workflow category. Lower values appear earlier.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<NumberComparator>,
     /// Comparator for the workflow state type. Possible values are "triage", "backlog", "unstarted", "started", "completed", "canceled", "duplicate".
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub r#type: MaybeUndefined<StringComparator>,
-    /// Filters that the workflow states team must satisfy.
+    /// Conditions on the team that owns the status.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub team: MaybeUndefined<Box<TeamFilter>>,
-    /// Filters that the workflow states issues must satisfy.
+    /// Conditions on issues currently in this status. For example, length: { eq: 0 } selects statuses with no issues included by the query’s archive settings.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub issues: MaybeUndefined<Box<IssueCollectionFilter>>,
-    /// Compound filters, all of which need to be matched by the workflow state.
+    /// Conditions that the issue status must all match. These are combined with the other fields in this filter.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub and: MaybeUndefined<Vec<WorkflowStateFilter>>,
-    /// Compound filters, one of which need to be matched by the workflow state.
+    /// Alternative conditions; the issue status must match at least one. Other fields at this level must still match. An empty list adds no condition.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub or: MaybeUndefined<Vec<WorkflowStateFilter>>,
 }
@@ -11191,77 +9990,24 @@ pub struct WorkflowStateSort {
     /// Whether to sort closed issues by recency
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub closed_issues_ordered_by_recency: MaybeUndefined<bool>,
+    /// Whether to sort by status type without ordering individual statuses within each type.
+    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
+    pub type_only: MaybeUndefined<bool>,
 }
-/// Input for updating an existing workflow state. All fields are optional; only provided fields will be updated. The state type cannot be changed after creation.
+/// Changes to an issue status. Omitted fields keep their values. The status type and team cannot be changed.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowStateUpdateInput {
     /// The name of the state.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub name: MaybeUndefined<String>,
-    /// The color of the state.
+    /// Status color as a hexadecimal CSS color, such as #5E6AD2.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub color: MaybeUndefined<String>,
-    /// The description of the state.
+    /// The explanation of when to use this status. Pass null to clear it, or omit the field to keep the current description.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub description: MaybeUndefined<String>,
-    /// The position of the state.
+    /// Display position within the status type, with lower values first. Collisions are adjusted.
     #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
     pub position: MaybeUndefined<f64>,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ZendeskSettingsInput {
-    /// Whether an internal message should be added when a Linear issue changes status (for status types except completed or canceled).
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_status_change: MaybeUndefined<bool>,
-    /// Whether an internal message should be added when someone comments on an issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub send_note_on_comment: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear issue is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_cancellation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when a comment is posted on its linked Linear issue
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_comment: MaybeUndefined<bool>,
-    /// `ALPHA` Whether customer and customer requests should not be automatically created when conversations are linked to a Linear issue.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub disable_customer_requests_auto_creation: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is completed.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_completion: MaybeUndefined<bool>,
-    /// Whether a ticket should be automatically reopened when its linked Linear project is canceled.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub automate_ticket_reopening_on_project_cancellation: MaybeUndefined<bool>,
-    /// Whether Linear Agent should be enabled for this integration.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_ai_intake: MaybeUndefined<bool>,
-    /// The subdomain of the Zendesk organization being connected.
-    pub subdomain: String,
-    /// The URL of the connected Zendesk organization, used to link into Zendesk. API requests use `customApiUrl` when it is set.
-    pub url: String,
-    /// `INTERNAL` Custom base URL for Zendesk API requests, such as a proxy in front of Zendesk. When unset, API requests use the standard subdomain URL. OAuth requests always use the standard subdomain URL.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub custom_api_url: MaybeUndefined<String>,
-    /// `INTERNAL` Whether API requests authenticate with a user-provided bearer token instead of a Zendesk OAuth token. Only used together with `customApiUrl`.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub bearer_token_auth: MaybeUndefined<bool>,
-    /// The ID of the Linear bot user.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub bot_user_id: MaybeUndefined<String>,
-    /// `INTERNAL` Temporary flag indicating if the integration has the necessary scopes for Customers
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub can_read_customers: MaybeUndefined<bool>,
-    /// `INTERNAL` Flag indicating if the integration supports OAuth refresh tokens
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub supports_o_auth_refresh: MaybeUndefined<bool>,
-    /// The host mappings from Zendesk brands.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub host_mappings: MaybeUndefined<Vec<String>>,
-    /// Whether Linear Agent should process supported attachments from Zendesk tickets during AI intake. When false, attachments are omitted from the prompt.
-    #[serde(default, skip_serializing_if = "MaybeUndefined::is_undefined")]
-    pub enable_ai_intake_attachment_processing: MaybeUndefined<bool>,
 }

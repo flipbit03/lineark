@@ -12,7 +12,7 @@ use crate::error::LinearError;
 use crate::field_selection::GraphQLFields;
 use crate::pagination::Connection;
 use serde::de::DeserializeOwned;
-/// Query builder: Returns all projects in the workspace, with optional filtering and sorting.
+/// Query builder: Returns projects visible to you in the workspace. Use filter to narrow the results and the connection arguments to page or sort them.
 ///
 /// Full type: [`Project`](super::types::Project)
 ///
@@ -194,7 +194,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>
             .await
     }
 }
-/// Query builder: All documents the user has access to in the workspace.
+/// Query builder: Lists documents you can access, with filters and cursor pagination. Archived documents are excluded unless includeArchived is true; access still follows each document’s location and sharing settings.
 ///
 /// Full type: [`Document`](super::types::Document)
 ///
@@ -289,7 +289,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>
             .await
     }
 }
-/// Query builder: All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+/// Query builder: Workspace and team labels the caller can access, with cursor pagination and optional filters.
 ///
 /// Full type: [`IssueLabel`](super::types::IssueLabel)
 ///
@@ -376,7 +376,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueLabel
             .await
     }
 }
-/// Query builder: All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+/// Query builder: Issue relations the caller can access, with cursor pagination.
 ///
 /// Full type: [`IssueRelation`](super::types::IssueRelation)
 ///
@@ -455,7 +455,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::IssueRelat
             .await
     }
 }
-/// Query builder: All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
+/// Query builder: Lists issues you can access. Use filter to narrow the results by team, assignee, status, labels, project, or cycle, and cursor arguments to fetch subsequent pages. Archived issues are excluded unless includeArchived is true.
 ///
 /// Full type: [`Issue`](super::types::Issue)
 ///
@@ -803,7 +803,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::ProjectSta
             .await
     }
 }
-/// Query builder: Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
+/// Query builder: Searches accessible issues using text matching and meaning. Results are ordered by relevance unless orderBy is supplied; use includeComments to search discussion text too. The issue filter narrows the retrieved candidates, so totalCount is not the final filtered count. Limited to 30 requests per minute.
 ///
 /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
 ///
@@ -995,7 +995,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::Team>>
             .await
     }
 }
-/// Query builder: All users in the workspace. Supports filtering, sorting, and pagination.
+/// Query builder: Users in the workspace, with filtering and pagination. Disabled accounts are excluded unless includeDisabled is true.
 ///
 /// Full type: [`User`](super::types::User)
 ///
@@ -1098,7 +1098,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>
             .await
     }
 }
-/// Query builder: All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
+/// Query builder: Issue statuses from teams the caller can access, with cursor pagination and optional filters.
 ///
 /// Full type: [`WorkflowState`](super::types::WorkflowState)
 ///
@@ -1185,7 +1185,7 @@ impl<'a, T: DeserializeOwned + GraphQLFields<FullType = super::types::WorkflowSt
             .await
     }
 }
-/// Returns all projects in the workspace, with optional filtering and sorting.
+/// Returns projects visible to you in the workspace. Use filter to narrow the results and the connection arguments to page or sort them.
 ///
 /// Full type: [`Project`](super::types::Project)
 pub fn projects<'a, T>(client: &'a Client) -> ProjectsQueryBuilder<'a, T> {
@@ -1202,7 +1202,7 @@ pub fn projects<'a, T>(client: &'a Client) -> ProjectsQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// Returns a single project by its identifier or URL slug.
+/// Returns a project you can access by UUID, URL slug, or human-readable project identifier. Archived projects can also be retrieved.
 ///
 /// Full type: [`Project`](super::types::Project)
 pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>(
@@ -1233,7 +1233,7 @@ pub fn cycles<'a, T>(client: &'a Client) -> CyclesQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// One specific cycle, looked up by ID or slug.
+/// Finds a cycle by its UUID or team-and-number identifier, such as ENG°12, including archived cycles. Use cycles with a team filter to discover a team’s cycles.
 ///
 /// Full type: [`Cycle`](super::types::Cycle)
 pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
@@ -1248,7 +1248,7 @@ pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::
     );
     client.execute::<T>(&query, variables, "cycle").await
 }
-/// All documents the user has access to in the workspace.
+/// Lists documents you can access, with filters and cursor pagination. Archived documents are excluded unless includeArchived is true; access still follows each document’s location and sharing settings.
 ///
 /// Full type: [`Document`](super::types::Document)
 pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
@@ -1265,7 +1265,7 @@ pub fn documents<'a, T>(client: &'a Client) -> DocumentsQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// A specific document by ID or slug.
+/// Finds a document by UUID or the short identifier used in its URL. Archived documents can also be returned if you still have access.
 ///
 /// Full type: [`Document`](super::types::Document)
 pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::types::Document>>(
@@ -1280,7 +1280,7 @@ pub async fn document<T: DeserializeOwned + GraphQLFields<FullType = super::type
     );
     client.execute::<T>(&query, variables, "document").await
 }
-/// All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+/// Workspace and team labels the caller can access, with cursor pagination and optional filters.
 ///
 /// Full type: [`IssueLabel`](super::types::IssueLabel)
 pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T> {
@@ -1296,7 +1296,7 @@ pub fn issue_labels<'a, T>(client: &'a Client) -> IssueLabelsQueryBuilder<'a, T>
         _marker: std::marker::PhantomData,
     }
 }
-/// All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+/// Issue relations the caller can access, with cursor pagination.
 ///
 /// Full type: [`IssueRelation`](super::types::IssueRelation)
 pub fn issue_relations<'a, T>(client: &'a Client) -> IssueRelationsQueryBuilder<'a, T> {
@@ -1330,7 +1330,7 @@ pub async fn issue_relation<
         .execute::<T>(&query, variables, "issueRelation")
         .await
 }
-/// All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
+/// Lists issues you can access. Use filter to narrow the results by team, assignee, status, labels, project, or cycle, and cursor arguments to fetch subsequent pages. Archived issues are excluded unless includeArchived is true.
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub fn issues<'a, T>(client: &'a Client) -> IssuesQueryBuilder<'a, T> {
@@ -1347,7 +1347,7 @@ pub fn issues<'a, T>(client: &'a Client) -> IssuesQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// One specific issue, looked up by its unique identifier.
+/// Finds an issue by UUID or a human-readable identifier such as ENG-123. Archived issues can also be returned. The query fails if the issue does not exist or you cannot access it.
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>(
@@ -1362,7 +1362,7 @@ pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::
     );
     client.execute::<T>(&query, variables, "issue").await
 }
-/// Find issue based on the VCS branch name.
+/// Find an accessible issue referenced by a version-control branch name. Null if no issue matches.
 ///
 /// Full type: [`Issue`](super::types::Issue)
 pub async fn issue_vcs_branch_search<
@@ -1417,7 +1417,7 @@ pub fn project_milestones<'a, T>(client: &'a Client) -> ProjectMilestonesQueryBu
         _marker: std::marker::PhantomData,
     }
 }
-/// Returns a single project milestone by its identifier.
+/// Fetches a milestone by UUID, including archived milestones.
 ///
 /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
 pub async fn project_milestone<
@@ -1451,7 +1451,7 @@ pub fn project_statuses<'a, T>(client: &'a Client) -> ProjectStatusesQueryBuilde
         _marker: std::marker::PhantomData,
     }
 }
-/// Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
+/// Searches accessible issues using text matching and meaning. Results are ordered by relevance unless orderBy is supplied; use includeComments to search discussion text too. The issue filter narrows the retrieved candidates, so totalCount is not the final filtered count. Limited to 30 requests per minute.
 ///
 /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
 pub fn search_issues<'a, T>(
@@ -1504,7 +1504,7 @@ pub async fn team<T: DeserializeOwned + GraphQLFields<FullType = super::types::T
     );
     client.execute::<T>(&query, variables, "team").await
 }
-/// All users in the workspace. Supports filtering, sorting, and pagination.
+/// Users in the workspace, with filtering and pagination. Disabled accounts are excluded unless includeDisabled is true.
 ///
 /// Full type: [`User`](super::types::User)
 pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
@@ -1522,7 +1522,7 @@ pub fn users<'a, T>(client: &'a Client) -> UsersQueryBuilder<'a, T> {
         _marker: std::marker::PhantomData,
     }
 }
-/// The currently authenticated user making the API request.
+/// The account making this request. For OAuth applications using actor=app, this is the application account.
 ///
 /// Full type: [`User`](super::types::User)
 pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
@@ -1533,7 +1533,7 @@ pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types:
     let query = format!("query {} {{ {} {{ {} }} }}", "Viewer", "viewer", selection);
     client.execute::<T>(&query, variables, "viewer").await
 }
-/// All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
+/// Issue statuses from teams the caller can access, with cursor pagination and optional filters.
 ///
 /// Full type: [`WorkflowState`](super::types::WorkflowState)
 pub fn workflow_states<'a, T>(client: &'a Client) -> WorkflowStatesQueryBuilder<'a, T> {
