@@ -13,13 +13,13 @@ use crate::error::LinearError;
 use crate::field_selection::GraphQLFields;
 use serde::de::DeserializeOwned;
 impl Client {
-    /// Returns all projects in the workspace, with optional filtering and sorting.
+    /// Returns projects visible to you in the workspace. Use filter to narrow the results and the connection arguments to page or sort them.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub fn projects<T>(&self) -> ProjectsQueryBuilder<'_, T> {
         crate::generated::queries::projects(self)
     }
-    /// Returns a single project by its identifier or URL slug.
+    /// Returns a project you can access by UUID, URL slug, or human-readable project identifier. Archived projects can also be retrieved.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project<T: DeserializeOwned + GraphQLFields<FullType = super::types::Project>>(
@@ -34,7 +34,7 @@ impl Client {
     pub fn cycles<T>(&self) -> CyclesQueryBuilder<'_, T> {
         crate::generated::queries::cycles(self)
     }
-    /// One specific cycle, looked up by ID or slug.
+    /// Finds a cycle by its UUID or team-and-number identifier, such as ENG°12, including archived cycles. Use cycles with a team filter to discover a team’s cycles.
     ///
     /// Full type: [`Cycle`](super::types::Cycle)
     pub async fn cycle<T: DeserializeOwned + GraphQLFields<FullType = super::types::Cycle>>(
@@ -43,13 +43,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::cycle::<T>(self, id).await
     }
-    /// All documents the user has access to in the workspace.
+    /// Lists documents you can access, with filters and cursor pagination. Archived documents are excluded unless includeArchived is true; access still follows each document’s location and sharing settings.
     ///
     /// Full type: [`Document`](super::types::Document)
     pub fn documents<T>(&self) -> DocumentsQueryBuilder<'_, T> {
         crate::generated::queries::documents(self)
     }
-    /// A specific document by ID or slug.
+    /// Finds a document by UUID or the short identifier used in its URL. Archived documents can also be returned if you still have access.
     ///
     /// Full type: [`Document`](super::types::Document)
     pub async fn document<
@@ -60,13 +60,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::document::<T>(self, id).await
     }
-    /// All issue labels. Returns a paginated list of labels visible to the authenticated user, including both workspace-level and team-scoped labels.
+    /// Workspace and team labels the caller can access, with cursor pagination and optional filters.
     ///
     /// Full type: [`IssueLabel`](super::types::IssueLabel)
     pub fn issue_labels<T>(&self) -> IssueLabelsQueryBuilder<'_, T> {
         crate::generated::queries::issue_labels(self)
     }
-    /// All issue relations. Returns a paginated list of all issue relations (blocks, blocked by, relates to, duplicates) visible to the authenticated user.
+    /// Issue relations the caller can access, with cursor pagination.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub fn issue_relations<T>(&self) -> IssueRelationsQueryBuilder<'_, T> {
@@ -83,13 +83,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::issue_relation::<T>(self, id).await
     }
-    /// All issues. Returns a paginated list of issues visible to the authenticated user. Can be filtered by various criteria including team, assignee, state, labels, project, and cycle.
+    /// Lists issues you can access. Use filter to narrow the results by team, assignee, status, labels, project, or cycle, and cursor arguments to fetch subsequent pages. Archived issues are excluded unless includeArchived is true.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub fn issues<T>(&self) -> IssuesQueryBuilder<'_, T> {
         crate::generated::queries::issues(self)
     }
-    /// One specific issue, looked up by its unique identifier.
+    /// Finds an issue by UUID or a human-readable identifier such as ENG-123. Archived issues can also be returned. The query fails if the issue does not exist or you cannot access it.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue<T: DeserializeOwned + GraphQLFields<FullType = super::types::Issue>>(
@@ -98,7 +98,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::issue::<T>(self, id).await
     }
-    /// Find issue based on the VCS branch name.
+    /// Find an accessible issue referenced by a version-control branch name. Null if no issue matches.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_vcs_branch_search<
@@ -121,7 +121,7 @@ impl Client {
     pub fn project_milestones<T>(&self) -> ProjectMilestonesQueryBuilder<'_, T> {
         crate::generated::queries::project_milestones(self)
     }
-    /// Returns a single project milestone by its identifier.
+    /// Fetches a milestone by UUID, including archived milestones.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
     pub async fn project_milestone<
@@ -138,7 +138,7 @@ impl Client {
     pub fn project_statuses<T>(&self) -> ProjectStatusesQueryBuilder<'_, T> {
         crate::generated::queries::project_statuses(self)
     }
-    /// Search issues by text query using full-text and vector search. Results are ranked by relevance unless an orderBy parameter is specified. Supports optional issue filters and comment inclusion. Rate-limited to 30 requests per minute.
+    /// Searches accessible issues using text matching and meaning. Results are ordered by relevance unless orderBy is supplied; use includeComments to search discussion text too. The issue filter narrows the retrieved candidates, so totalCount is not the final filtered count. Limited to 30 requests per minute.
     ///
     /// Full type: [`IssueSearchResult`](super::types::IssueSearchResult)
     pub fn search_issues<T>(&self, term: impl Into<String>) -> SearchIssuesQueryBuilder<'_, T> {
@@ -159,13 +159,13 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::team::<T>(self, id).await
     }
-    /// All users in the workspace. Supports filtering, sorting, and pagination.
+    /// Users in the workspace, with filtering and pagination. Disabled accounts are excluded unless includeDisabled is true.
     ///
     /// Full type: [`User`](super::types::User)
     pub fn users<T>(&self) -> UsersQueryBuilder<'_, T> {
         crate::generated::queries::users(self)
     }
-    /// The currently authenticated user making the API request.
+    /// The account making this request. For OAuth applications using actor=app, this is the application account.
     ///
     /// Full type: [`User`](super::types::User)
     pub async fn whoami<T: DeserializeOwned + GraphQLFields<FullType = super::types::User>>(
@@ -173,13 +173,68 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::queries::whoami::<T>(self).await
     }
-    /// All issue workflow states (issue statuses). Returns a paginated list of workflow states visible to the authenticated user, across all teams they have access to.
+    /// Issue statuses from teams the caller can access, with cursor pagination and optional filters.
     ///
     /// Full type: [`WorkflowState`](super::types::WorkflowState)
     pub fn workflow_states<T>(&self) -> WorkflowStatesQueryBuilder<'_, T> {
         crate::generated::queries::workflow_states(self)
     }
-    /// Creates a new project.
+    /// Creates a comment on one resource, or a reply when parentId is supplied. You must be allowed to comment on that resource. For issue comments, the author is subscribed to the issue unless doNotSubscribeToIssue is true.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        input: CommentCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_create::<T>(self, input).await
+    }
+    /// Replaces a comment’s Markdown body and records an edit time. Content edits are restricted to an authorized author or acting user; comments originating in synced Slack messages or Intercom cannot be edited here. Omit body to keep the existing message.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        skip_edited_at: Option<bool>,
+        input: CommentUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
+    }
+    /// Deletes a comment and, for a root comment, its replies. You must be allowed to delete the comment and comment on its resource. Deleting a reply selected as the resolution reopens the parent thread.
+    pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
+        crate::generated::mutations::comment_delete(self, id).await
+    }
+    /// Marks a root comment’s thread as resolved by you. You may select one of its replies as resolvingCommentId, or resolve the thread without a specific reply. Pass the root comment ID, even when the discussion ended in a reply.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_resolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        resolving_comment_id: Option<String>,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
+    }
+    /// Reopens a resolved thread and clears its resolution time, resolving user, and selected resolving reply. Pass the root comment ID. An already unresolved thread is returned unchanged.
+    ///
+    /// Full type: [`Comment`](super::types::Comment)
+    pub async fn comment_unresolve<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
+    >(
+        &self,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::comment_unresolve::<T>(self, id).await
+    }
+    /// Creates a project in the supplied teams. You can apply a project template to fill in defaults and create its milestones, initial issues, and initiative associations. The new project must have at least one accessible team.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project_create<
@@ -201,7 +256,7 @@ impl Client {
         )
         .await
     }
-    /// Updates a project.
+    /// Updates the supplied fields of a project you can edit. Omitted fields keep their current values. List inputs such as memberIds and labelIds replace the corresponding lists; see each input for clearing rules and team-access behavior.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project_update<
@@ -214,7 +269,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_update::<T>(self, input, id).await
     }
-    /// Deletes (trashes) a project. The project can be restored later with projectUnarchive.
+    /// Moves a project to the trash. This archives the project rather than immediately deleting it permanently. You can restore it with projectUnarchive while it remains available in the trash.
     ///
     /// Full type: [`Project`](super::types::Project)
     pub async fn project_delete<
@@ -226,7 +281,45 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_delete::<T>(self, id).await
     }
-    /// XHR request payload to upload an images, video and other attachments directly to Linear's cloud storage.
+    /// Creates a document in a project, issue, or release, with optional initial Markdown content. The returned document includes its assigned UUID and metadata; select content to read the resulting body.
+    ///
+    /// Full type: [`Document`](super::types::Document)
+    pub async fn document_create<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+    >(
+        &self,
+        input: DocumentCreateInput,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_create::<T>(self, input).await
+    }
+    /// Updates a document’s metadata or replaces its Markdown body. You must have edit access to the document. Supplying a different container moves the document there, which can affect access; omitted fields are left unchanged.
+    ///
+    /// Full type: [`Document`](super::types::Document)
+    pub async fn document_update<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+    >(
+        &self,
+        input: DocumentUpdateInput,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_update::<T>(self, input, id).await
+    }
+    /// Moves a document to the trash and archives it, including the sub-documents covered by its archive cascade. It is not permanently removed by this mutation. You must be allowed to manage the document; use documentUnarchive to restore it.
+    ///
+    /// Full type: [`Document`](super::types::Document)
+    pub async fn document_delete<
+        T: serde::de::DeserializeOwned
+            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
+    >(
+        &self,
+        if_parent_document_id: Option<String>,
+        id: String,
+    ) -> Result<T, LinearError> {
+        crate::generated::mutations::document_delete::<T>(self, if_parent_document_id, id).await
+    }
+    /// Prepares a file upload and returns a signed destination. Upload the raw bytes with HTTP PUT to uploadFile.uploadUrl, using its headers and the supplied Content-Type; start the request within one minute and send exactly size bytes. Once the PUT succeeds, reference uploadFile.assetUrl in an issue description, comment, or attachment. This mutation does not create that reference for you. Workspace file-type restrictions and plan upload limits apply.
     pub async fn file_upload(
         &self,
         meta_data: Option<serde_json::Value>,
@@ -245,107 +338,14 @@ impl Client {
         )
         .await
     }
-    /// Upload an image from an URL to Linear.
+    /// Copies an image from an external URL into Linear’s private upload storage. The URL must let Linear download the image directly; an HTML page containing the image is not accepted. On success, the returned URL refers to the copied image and can be used in Linear content. Unlike fileUpload, this mutation performs the download and upload for you.
     pub async fn image_upload_from_url(
         &self,
         url: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::image_upload_from_url(self, url).await
     }
-    /// Creates a new comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_create<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        input: CommentCreateInput,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_create::<T>(self, input).await
-    }
-    /// Updates a comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_update<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        skip_edited_at: Option<bool>,
-        input: CommentUpdateInput,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_update::<T>(self, skip_edited_at, input, id).await
-    }
-    /// Deletes a comment.
-    pub async fn comment_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
-        crate::generated::mutations::comment_delete(self, id).await
-    }
-    /// Resolves a comment thread. Marks the root comment as resolved by the current user.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_resolve<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        resolving_comment_id: Option<String>,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_resolve::<T>(self, resolving_comment_id, id).await
-    }
-    /// Unresolves a previously resolved comment thread. Clears the resolved state on the root comment.
-    ///
-    /// Full type: [`Comment`](super::types::Comment)
-    pub async fn comment_unresolve<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Comment>,
-    >(
-        &self,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::comment_unresolve::<T>(self, id).await
-    }
-    /// Creates a new document.
-    ///
-    /// Full type: [`Document`](super::types::Document)
-    pub async fn document_create<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
-    >(
-        &self,
-        input: DocumentCreateInput,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::document_create::<T>(self, input).await
-    }
-    /// Updates a document.
-    ///
-    /// Full type: [`Document`](super::types::Document)
-    pub async fn document_update<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
-    >(
-        &self,
-        input: DocumentUpdateInput,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::document_update::<T>(self, input, id).await
-    }
-    /// Deletes (trashes) a document. The document is marked as trashed and archived, but not permanently removed.
-    ///
-    /// Full type: [`Document`](super::types::Document)
-    pub async fn document_delete<
-        T: serde::de::DeserializeOwned
-            + crate::field_selection::GraphQLFields<FullType = super::types::Document>,
-    >(
-        &self,
-        if_parent_document_id: Option<String>,
-        id: String,
-    ) -> Result<T, LinearError> {
-        crate::generated::mutations::document_delete::<T>(self, if_parent_document_id, id).await
-    }
-    /// Creates a new label.
+    /// Create a workspace or team label. Requires permission to manage labels in its scope.
     ///
     /// Full type: [`IssueLabel`](super::types::IssueLabel)
     pub async fn issue_label_create<
@@ -358,7 +358,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_label_create::<T>(self, replace_team_labels, input).await
     }
-    /// Updates a label.
+    /// Update a label. Requires permission to manage labels in its scope; inherited labels must be edited at their source.
     ///
     /// Full type: [`IssueLabel`](super::types::IssueLabel)
     pub async fn issue_label_update<
@@ -373,11 +373,11 @@ impl Client {
         crate::generated::mutations::issue_label_update::<T>(self, replace_team_labels, input, id)
             .await
     }
-    /// Deletes an issue label.
+    /// Deletes a label and its inherited copies. Assignments to that label are removed from issues in the background, so they may remain visible briefly after the mutation succeeds. Retire a label instead if you want to preserve its existing assignments.
     pub async fn issue_label_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::issue_label_delete(self, id).await
     }
-    /// Creates a new issue relation.
+    /// Creates a relationship between two issues, replacing any conflicting relation between the pair and reusing an identical one. A duplicate relation closes the source as a duplicate of the target and can move linked customer requests to the target. You must have access to both issues and any permissions required for the merge.
     ///
     /// Full type: [`IssueRelation`](super::types::IssueRelation)
     pub async fn issue_relation_create<
@@ -391,14 +391,14 @@ impl Client {
         crate::generated::mutations::issue_relation_create::<T>(self, override_created_at, input)
             .await
     }
-    /// Deletes an issue relation.
+    /// Removes a relation by its UUID. Removing a duplicate relation also runs the unmerge behavior, including moving customer requests back to the original issue when applicable.
     pub async fn issue_relation_delete(
         &self,
         id: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::issue_relation_delete(self, id).await
     }
-    /// Creates a new issue.
+    /// Creates an issue in the chosen team and returns it with its assigned identifier. You can supply a template to populate defaults and create any sub-issues it defines. Team settings and automation may set values such as the initial status, assignee, and cycle.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_create<
@@ -410,7 +410,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_create::<T>(self, input).await
     }
-    /// Updates an issue.
+    /// Updates an issue by UUID or human-readable identifier and returns its resulting values. Omitted fields keep their values; list inputs replace their existing lists unless an add/remove field is used. Changes can also trigger team workflow behavior, such as automatic cycle assignment.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_update<
@@ -423,7 +423,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_update::<T>(self, input, id).await
     }
-    /// Updates multiple issues at once.
+    /// Applies the same update input to one to 50 issues. The batch runs as one transaction, so a failed update rolls back the other updates. Use the returned issues to read the resulting values.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_batch_update<
@@ -436,7 +436,7 @@ impl Client {
     ) -> Result<Vec<T>, LinearError> {
         crate::generated::mutations::issue_batch_update::<T>(self, input, ids).await
     }
-    /// Archives an issue.
+    /// Archives an issue and its sub-issues, keeping their data available for later restoration. Archived issues are excluded from normal issue lists. Pass trash only when you want the deletion grace period to apply instead.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_archive<
@@ -449,7 +449,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_archive::<T>(self, trash, id).await
     }
-    /// Unarchives an issue.
+    /// Restores an archived issue and its sub-issues to normal issue lists. Automatic-archive markers are cleared, and a project association is removed if the project no longer includes the issue’s team.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_unarchive<
@@ -461,7 +461,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_unarchive::<T>(self, id).await
     }
-    /// Deletes (trashes) an issue.
+    /// Moves an issue to the trash and trashes its unarchived sub-issues that you can access. Trashed issues can be restored during the 30-day grace period; permanentlyDelete skips that period and requires workspace entity-management permission.
     ///
     /// Full type: [`Issue`](super::types::Issue)
     pub async fn issue_delete<
@@ -474,7 +474,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::issue_delete::<T>(self, permanently_delete, id).await
     }
-    /// Creates a new project milestone.
+    /// Creates a milestone in a project you can edit. Its name must be unique among the project’s active milestones. A milestone starts without issues; assign issues to it separately.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
     pub async fn project_milestone_create<
@@ -486,7 +486,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_milestone_create::<T>(self, input).await
     }
-    /// Updates a project milestone.
+    /// Updates a milestone in a project you can edit, including an archived milestone. Omitted fields keep their current values. Changing projectId moves the milestone and clears its links from issue drafts in the previous project.
     ///
     /// Full type: [`ProjectMilestone`](super::types::ProjectMilestone)
     pub async fn project_milestone_update<
@@ -499,14 +499,14 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::project_milestone_update::<T>(self, input, id).await
     }
-    /// Deletes a project milestone.
+    /// Permanently deletes a milestone from a project you can edit. The issues are kept in the project, but their milestone association is removed.
     pub async fn project_milestone_delete(
         &self,
         id: String,
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::project_milestone_delete(self, id).await
     }
-    /// Creates a new team membership, adding a user to a team. Validates that the user is not already a member, the team is not archived or retired, and the requesting user has permission to add members.
+    /// Adds a user to an active team after checking permission and membership limits. Regular workspace members also join ancestor teams. The operation fails if the user is already a member or if the team is archived, retired, or managed through SCIM.
     ///
     /// Full type: [`TeamMembership`](super::types::TeamMembership)
     pub async fn team_membership_create<
@@ -518,7 +518,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_membership_create::<T>(self, input).await
     }
-    /// Deletes a team membership, removing the user from the team. Users can remove their own membership, or team owners and workspace admins can remove other members.
+    /// Removes a user from a team after checking removal permissions and membership restrictions. Leaving cannot remove the user’s last active team, and SCIM-managed memberships must be managed through the identity provider. alsoLeaveParentTeams can extend the removal to parent teams.
     pub async fn team_membership_delete(
         &self,
         also_leave_parent_teams: Option<bool>,
@@ -526,7 +526,7 @@ impl Client {
     ) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::team_membership_delete(self, also_leave_parent_teams, id).await
     }
-    /// Creates a new team. The user who creates the team will automatically be added as a member and owner of the newly created team. Default workflow states, labels, and other team resources are created alongside the team.
+    /// Creates a team with workflow states, labels, and other initial resources. You become a member and, for private teams or plans that support team owners, an owner. copySettingsFromTeamId copies settings and related resources from an existing team; copied settings take precedence over input values except an explicit private value.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub async fn team_create<
@@ -539,7 +539,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_create::<T>(self, copy_settings_from_team_id, input).await
     }
-    /// Updates a team's settings, properties, or configuration. Requires team owner or workspace admin permissions for most changes.
+    /// Updates the supplied team fields. Changes require the relevant team-management permissions.
     ///
     /// Full type: [`Team`](super::types::Team)
     pub async fn team_update<
@@ -553,7 +553,7 @@ impl Client {
     ) -> Result<T, LinearError> {
         crate::generated::mutations::team_update::<T>(self, mapping, input, id).await
     }
-    /// Archives a team and schedules its data for deletion. Requires team owner or workspace admin permissions.
+    /// Archives a team and schedules permanent deletion after a 30-day grace period. You cannot delete the workspace’s final active team. Requires a workspace administrator or team owner; use teamUnarchive before deletion begins to restore it.
     pub async fn team_delete(&self, id: String) -> Result<serde_json::Value, LinearError> {
         crate::generated::mutations::team_delete(self, id).await
     }

@@ -748,21 +748,38 @@ mod online {
 
     #[test_with::runtime_ignore_if(no_online_test_token)]
     async fn document_create_update_and_delete() {
-        use lineark_sdk::generated::inputs::{DocumentCreateInput, DocumentUpdateInput};
+        use lineark_sdk::generated::inputs::{
+            DocumentCreateInput, DocumentUpdateInput, IssueCreateInput,
+        };
 
         let client = test_client();
 
-        // Create a team to associate the document with (Linear requires at least one parent).
+        // Linear requires exactly one container (project, issue or release);
+        // use an issue in a fresh test team.
         let team = create_test_team(&client).await;
-        let team_id = team.id.clone();
+        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
+        let issue_input = IssueCreateInput {
+            title: Some(format!("[test] SDK document parent {suffix}")).into(),
+            team_id: team.id.clone(),
+            ..Default::default()
+        };
+        let issue_entity = retry_create(|| {
+            let issue_input = issue_input.clone();
+            async { client.issue_create::<Issue>(issue_input).await }
+        })
+        .await;
+        let issue_id = issue_entity.id.clone().unwrap();
+        let _issue_guard = IssueGuard {
+            token: test_token(),
+            id: issue_id.clone(),
+        };
 
         // Create a document.
-        let suffix = &uuid::Uuid::new_v4().to_string()[..8];
         let title = format!("[test] SDK document_create_update_and_delete {suffix}");
         let input = DocumentCreateInput {
             title: title.clone(),
             content: Some("Automated test document content.".to_string()).into(),
-            team_id: Some(team_id).into(),
+            issue_id: Some(issue_id).into(),
             ..Default::default()
         };
         let doc_entity = retry_create(|| {
